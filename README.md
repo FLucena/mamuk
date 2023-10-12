@@ -1,2 +1,0 @@
-# mamuk
-Mamuk Training
