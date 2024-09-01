@@ -34,7 +34,7 @@ export default function ExerciseCarousel() {
 
               {/* Conditionally render image */}
               {exercise.foto && exercise.foto !== "link_foto" ? (
-                <div className="relative w-96 h-64 mb-4">
+                <div className="relative w-full max-w-md h-64 mb-4 flex items-center justify-center">
                   <Image
                     src={exercise.foto} 
                     alt={`Imagen de ${exercise.nombre_es}`}

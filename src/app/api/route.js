@@ -13,8 +13,6 @@ export async function GET(req, res) {
     // Obtiene los datos en formato JSON
     const data = await response.json();
 
-    console.log(JSON.stringify(data[0]))
-
     // Devuelve los datos al cliente
     return new Response(JSON.stringify(data), { status: 200 });
   } catch (error) {
