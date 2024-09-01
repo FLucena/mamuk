@@ -38,13 +38,13 @@ export default function ExerciseCarousel() {
                 className="w-full h-64 object-cover rounded-md mb-4"
               />
 
-              {/* Video del ejercicio 
+              {/* Video del ejercicio */}
               <video className="w-full rounded-md mb-4" controls>
                 <source src={exercise.video} type="video/mp4" />
                 Tu navegador no soporta el elemento de video.
               </video>
 
-              */}
+              
 
               {/* Comentarios */}
               <p className="mt-4 text-gray-600">{exercise.comentarios}</p>
