@@ -55,7 +55,7 @@ export default function ExerciseCarousel() {
         {exercises.map((exercise, index) => (
           <SwiperSlide key={index}>
             <div className="p-4 bg-white rounded-lg shadow-lg">
-              <h2 className="text-xl font-semibold mb-6">{exercise.nombre_es} / {exercise.nombre_en}</h2>
+            <h2 className="text-xl font-semibold mb-6 text-black dark:text-black">{exercise.nombre_es} / {exercise.nombre_en}</h2>
 
               {exercise.foto && exercise.foto !== "link_foto" ? (
                 <div className="relative w-full max-w-md h-64 mb-4 flex items-center justify-center">
