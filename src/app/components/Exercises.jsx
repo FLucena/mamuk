@@ -1,4 +1,4 @@
-"use client"; 
+"use client";
 
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
@@ -6,6 +6,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import { Navigation, Pagination } from 'swiper/modules';
 import { useState, useEffect } from 'react';
+import Image from 'next/image'; // Import the Image component
 
 export default function ExerciseCarousel() {
   const [exercises, setExercises] = useState([]);
@@ -31,20 +32,26 @@ export default function ExerciseCarousel() {
             <div className="p-4 bg-white rounded-lg shadow-lg">
               <h2 className="text-xl font-semibold mb-2">{exercise.nombre_es} / {exercise.nombre_en}</h2>
 
-              {/* Imagen del ejercicio */}
-              <img
-                src={exercise.foto} 
-                alt={`Imagen de ${exercise.nombre_es}`}
-                className="w-full h-64 object-cover rounded-md mb-4"
-              />
+              {/* Conditionally render image */}
+              {exercise.foto && exercise.foto !== "link_foto" ? (
+                <div className="relative w-full h-64 mb-4">
+                  <Image
+                    src={exercise.foto} 
+                    alt={`Imagen de ${exercise.nombre_es}`}
+                    layout="fill"
+                    objectFit="cover"
+                    className="rounded-md"
+                  />
+                </div>
+              ) : (
+                <p className="text-gray-500 mb-4">No image available</p>
+              )}
 
               {/* Video del ejercicio */}
               <video className="w-full rounded-md mb-4" controls>
                 <source src={exercise.video} type="video/mp4" />
                 Tu navegador no soporta el elemento de video.
               </video>
-
-              
 
               {/* Comentarios */}
               <p className="mt-4 text-gray-600">{exercise.comentarios}</p>
