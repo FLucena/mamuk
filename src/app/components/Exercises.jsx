@@ -58,7 +58,7 @@ export default function ExerciseCarousel() {
             <h2 className="text-xl font-semibold mb-6 text-black dark:text-black">{exercise.nombre_es} / {exercise.nombre_en}</h2>
 
               {exercise.foto && exercise.foto !== "link_foto" ? (
-                <div className="relative w-full h-auto max-w-md mb-4 flex items-center justify-center">
+                <div className="relative w-full h-auto mb-4 flex items-center justify-center">
                   <Image
                     src={exercise.foto}
                     alt={`Imagen de ${exercise.nombre_es}`}
@@ -71,7 +71,6 @@ export default function ExerciseCarousel() {
               ) : (
                 <p className="text-gray-500 mb-4">No hay imagen disponible</p>
               )}
-
 
               {exercise.video && exercise.video !== "link_video" ? ( 
                 <video className="w-full rounded-md mb-4" controls>
