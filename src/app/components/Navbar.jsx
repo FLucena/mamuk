@@ -10,7 +10,7 @@ const Navbar = () => {
           </Link>
           <ul className="flex space-x-4">
             <li>
-              <Link href="/about">Sobre Nosotros
+              <Link href="/about">
               </Link>
             </li>
             <li>
@@ -18,7 +18,7 @@ const Navbar = () => {
               </Link>
             </li>
             <li>
-              <Link href="/contact">Contacto
+              <Link href="/contact">
               </Link>
             </li>
           </ul>

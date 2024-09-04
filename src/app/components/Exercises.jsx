@@ -62,8 +62,8 @@ export default function ExerciseCarousel() {
                   <Image
                     src={exercise.foto}
                     alt={`Imagen de ${exercise.nombre_es}`}
-                    width={300} // Puedes ajustar el ancho
-                    height={300} // Puedes ajustar la altura
+                    width={300}
+                    height={300}
                     objectFit="cover"
                     className="rounded-md"
                   />
