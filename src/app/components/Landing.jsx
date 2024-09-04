@@ -12,8 +12,10 @@ const LandingPage = () => {
         <h1 className="text-4xl font-extrabold text-gray-800 mb-4">
           Bienvenido a Mamuk Training
         </h1>
-        <p className="text-lg text-gray-600">
-            Vas a estar estallado.
+        <p className="text-9xl">🚧</p>
+        <p className="text-lg text-gray-600 pt-6">
+          
+            En construcción.
         </p>
         <br></br>
       </div>

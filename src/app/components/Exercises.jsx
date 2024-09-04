@@ -50,14 +50,25 @@ export default function ExerciseCarousel() {
         spaceBetween={50}
         slidesPerView={1}
         navigation
-        pagination={{ clickable: true }}
+        pagination={{
+          clickable: true,
+          renderBullet: (index, className) => {
+            // Limit to show a maximum of 5 dots
+            if (index < 5) {
+              return `<span class="${className} mt-24"></span>`;
+            }
+            return '';
+          },
+        }}
       >
         {exercises.map((exercise, index) => (
           <SwiperSlide key={index}>
             <div className="p-4 bg-white rounded-lg shadow-lg">
-            <h2 className="text-xl font-semibold mb-6 text-black dark:text-black">{exercise.nombre_es} / {exercise.nombre_en}</h2>
+              <h2 className="text-xl font-semibold mb-6 text-black dark:text-black">
+                {exercise.nombre_es} / {exercise.nombre_en}
+              </h2>
 
-              {exercise.foto && exercise.foto !== "link_foto" ? (
+              {exercise.foto && exercise.foto !== 'link_foto' ? (
                 <div className="relative w-full h-auto mb-4 flex items-center justify-center">
                   <Image
                     src={exercise.foto}
@@ -72,7 +83,7 @@ export default function ExerciseCarousel() {
                 <p className="text-gray-500 mb-4">No hay imagen disponible</p>
               )}
 
-              {exercise.video && exercise.video !== "link_video" ? ( 
+              {exercise.video && exercise.video !== 'link_video' ? (
                 <video className="w-full rounded-md mb-4" controls>
                   <source src={exercise.video} type="video/mp4" />
                   Tu navegador no soporta el elemento de video.
@@ -80,7 +91,6 @@ export default function ExerciseCarousel() {
               ) : (
                 <p className="text-gray-500 mb-4">No hay video disponible</p>
               )}
-
 
               <p className="mt-4 text-gray-600">Notas: {exercise.comentarios}</p>
             </div>
