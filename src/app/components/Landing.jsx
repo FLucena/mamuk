@@ -5,7 +5,7 @@ const LandingPage = () => {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="text-center">
         <img
-          src="/Mamuk logo.png"
+          src="/gorilla-2.png"
           alt="Gym Logo"
           className="w-96 h-96 mx-auto mb-4"
         />
