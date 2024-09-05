@@ -60,41 +60,25 @@ export default function ExerciseCarousel() {
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentItems.map((exercise, index) => (
-          <div key={index} className="p-6 bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 ease-in-out">
+          <div
+            key={index}
+            className="p-6 bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 ease-in-out flex flex-col items-center"
+          >
             <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
               {exercise.nombre_es} / {exercise.nombre_en}
             </h2>
 
             {exercise.foto && exercise.foto !== "link_foto" ? (
-              <div className="relative w-full h-auto mb-4 flex items-center justify-center">
-              <Image
-                src={exercise.foto}
-                alt={`Imagen de ${exercise.nombre_es}`}
-                width={300}
-                height={300}
-                objectFit="cover"
-                className="rounded-md"
-              />
-            </div>
+              <ImageLoader src={exercise.foto} alt={`Imagen de ${exercise.nombre_es}`} />
             ) : (
-              <p className="text-gray-500 mb-4">No hay imagen disponible</p>
+              <Placeholder type="image" />
             )}
 
-              {exercise.video && exercise.video !== 'link_video' ? (
-                <div className="relative mb-4">
-                  <div className="relative w-300">
-                    <iframe
-                      className="inset-0"
-                      allow="autoplay"
-                      src={exercise.video}
-                      title={`Video de ${exercise.nombre_es}`}
-                      allowFullScreen
-                    />
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-500 mb-4">No hay video disponible</p>
-              )}
+            {exercise.video && exercise.video !== 'link_video' ? (
+              <VideoLoader src={exercise.video} title={`Video de ${exercise.nombre_es}`} />
+            ) : (
+              <Placeholder type="video" />
+            )}
 
             <p className="mt-4 text-gray-600">Notas: {exercise.comentarios}</p>
           </div>
@@ -104,7 +88,9 @@ export default function ExerciseCarousel() {
       {/* Pagination Controls */}
       <div className="flex justify-center mt-6">
         <button
-          className={`px-4 py-2 mx-2 bg-blue-500 text-white rounded-md ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+          className={`px-4 py-2 mx-2 bg-blue-500 text-white rounded-md ${
+            currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+          }`}
           onClick={prevPage}
           disabled={currentPage === 1}
         >
@@ -112,7 +98,9 @@ export default function ExerciseCarousel() {
         </button>
 
         <button
-          className={`px-4 py-2 mx-2 bg-blue-500 text-white rounded-md ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+          className={`px-4 py-2 mx-2 bg-blue-500 text-white rounded-md ${
+            currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+          }`}
           onClick={nextPage}
           disabled={currentPage === totalPages}
         >
@@ -125,5 +113,48 @@ export default function ExerciseCarousel() {
         Página {currentPage} de {totalPages}
       </div>
     </div>
+  );
+}
+
+function ImageLoader({ src, alt }) {
+  const [loading, setLoading] = useState(true);
+
+  return (
+    <div className="relative w-full h-auto mb-4 flex items-center justify-center">
+      {loading && <Placeholder type="image" />}
+      <Image
+        src={src}
+        alt={alt}
+        width={300}
+        height={300}
+        objectFit="cover"
+        className="rounded-md"
+        onLoadingComplete={() => setLoading(false)}
+      />
+    </div>
+  );
+}
+
+function VideoLoader({ src, title }) {
+  const [loading, setLoading] = useState(true);
+
+  return (
+    <div className="relative mb-4">
+      {loading && <Placeholder type="video" />}
+      <iframe
+        className="inset-0"
+        allow="autoplay"
+        src={src}
+        title={title}
+        allowFullScreen
+        onLoad={() => setLoading(false)}
+      />
+    </div>
+  );
+}
+
+function Placeholder({ type }) {
+  return (
+    <div className={`w-full h-${type === 'image' ? '64' : '48'} bg-gray-200 animate-pulse rounded-md`} />
   );
 }

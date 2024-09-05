@@ -99,7 +99,7 @@ export default function ExerciseCarousel() {
                 <p className="text-gray-500 mb-4">No hay video disponible</p>
               )}
 
-              <p className="mt-4 text-gray-600">Notas: {exercise.comentarios}</p>
+              <p className="my-4 text-gray-600">Notas: {exercise.comentarios}</p>
             </div>
           </SwiperSlide>
         ))}
