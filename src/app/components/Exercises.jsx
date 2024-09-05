@@ -55,14 +55,14 @@ export default function ExerciseCarousel() {
           renderBullet: (index, className) => {
             // Limit to show a maximum of 5 dots
             if (index < 5) {
-              return `<span class="${className} mt-24"></span>`;
+              return `<span class="${className}"></span>`;
             }
             return '';
           },
         }}
       >
         {exercises.map((exercise, index) => (
-          <SwiperSlide key={index} className="pb-2">
+          <SwiperSlide key={index} className="mb-2 top-1">
             <div className="p-4 bg-white rounded-lg shadow-lg flex flex-col items-center">
               <h2 className="text-xl font-semibold mb-6 text-black dark:text-black">
                 {exercise.nombre_es} / {exercise.nombre_en}
