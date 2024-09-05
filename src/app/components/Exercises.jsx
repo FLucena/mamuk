@@ -84,10 +84,13 @@ export default function ExerciseCarousel() {
               )}
 
               {exercise.video && exercise.video !== 'link_video' ? (
-                <video className="w-full rounded-md mb-4" controls>
-                  <source src={exercise.video} type="video/mp4" />
-                  Tu navegador no soporta el elemento de video.
-                </video>
+                <iframe
+                  allow="autoplay"
+                  height="480"
+                  src={exercise.video}
+                  width="640"
+                />
+
               ) : (
                 <p className="text-gray-500 mb-4">No hay video disponible</p>
               )}
