@@ -62,7 +62,7 @@ export default function ExerciseCarousel() {
         }}
       >
         {exercises.map((exercise, index) => (
-          <SwiperSlide key={index} className="mb-2 top-1">
+          <SwiperSlide key={index} className="mb-2 top-1">            
             <div className="p-4 bg-white rounded-lg shadow-lg flex flex-col items-center">
               <h2 className="text-xl font-semibold mb-6 text-black dark:text-black">
                 {exercise.nombre_es} / {exercise.nombre_en}
