@@ -8,7 +8,7 @@ export default function ExerciseCarousel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1); // State for pagination
-  const itemsPerPage = 5; // Items per page
+  const itemsPerPage = 9; // Items per page
 
   useEffect(() => {
     fetch('/api/')
@@ -68,17 +68,41 @@ export default function ExerciseCarousel() {
               {exercise.nombre_es} / {exercise.nombre_en}
             </h2>
 
-            {exercise.foto && exercise.foto !== "link_foto" ? (
-              <ImageLoader src={exercise.foto} alt={`Imagen de ${exercise.nombre_es}`} />
-            ) : (
-              <Placeholder type="image" />
-            )}
+            {exercise.foto && exercise.foto !== 'link_foto' ? (
+                <div className="relative w-full h-auto mb-4 flex items-center justify-center">
+                  <Image
+                    src={exercise.foto}
+                    alt={`Imagen de ${exercise.nombre_es}`}
+                    width={300}
+                    height={300}
+                    objectFit="cover"
+                    className="rounded-md"
+                  />
+                </div>
+              ) : (
+                <div className="relative w-[300px] h-[300px] bg-gray-200 animate-pulse flex items-center justify-center rounded-md mb-4">
+                  <span className="text-gray-500">Cargando imagen...</span>
+                </div>
+              )}
 
-            {exercise.video && exercise.video !== 'link_video' ? (
-              <VideoLoader src={exercise.video} title={`Video de ${exercise.nombre_es}`} />
-            ) : (
-              <Placeholder type="video" />
-            )}
+              {exercise.video && exercise.video !== 'link_video' ? (
+                <div className="relative mb-4 w-[300px]" style={{ paddingBottom: '56.25%', position: 'relative' }}>
+                  <iframe
+                    className="absolute top-0 left-0 w-full h-full"
+                    src={exercise.video}
+                    title={`Video de ${exercise.nombre_es}`}
+                    allow="autoplay"
+                    allowFullScreen
+                    style={{ borderRadius: '8px' }}
+                  />
+                </div>
+              ) : (
+                <div className="relative w-[300px] h-[500px]" style={{ paddingBottom: '56.25%', position: 'relative' }}>
+                  <div className="absolute top-0 left-0 w-full h-full bg-gray-200 animate-pulse flex items-center justify-center rounded-md">
+                    <span className="text-gray-500">Cargando video...</span>
+                  </div>
+                </div>
+              )}
 
             <p className="mt-4 text-gray-600">Notas: {exercise.comentarios}</p>
           </div>
