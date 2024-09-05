@@ -66,29 +66,35 @@ export default function ExerciseCarousel() {
             </h2>
 
             {exercise.foto && exercise.foto !== "link_foto" ? (
-              <div className="relative w-full h-64 mb-4">
-                <Image
-                  src={exercise.foto}
-                  alt={`Imagen de ${exercise.nombre_es}`}
-                  layout="fill"
-                  objectFit="cover"
-                  className="rounded-md"
-                />
-              </div>
+              <div className="relative w-full h-auto mb-4 flex items-center justify-center">
+              <Image
+                src={exercise.foto}
+                alt={`Imagen de ${exercise.nombre_es}`}
+                width={300}
+                height={300}
+                objectFit="cover"
+                className="rounded-md"
+              />
+            </div>
             ) : (
               <p className="text-gray-500 mb-4">No hay imagen disponible</p>
             )}
 
-            {exercise.video && exercise.video !== "link_video" ? (
-              <iframe
-                allow="autoplay"
-                height="480"
-                src={exercise.video}
-                width="640"
-              />
-            ) : (
-              <p className="text-gray-500 mb-4">No hay video disponible</p>
-            )}
+              {exercise.video && exercise.video !== 'link_video' ? (
+                <div className="relative mb-4">
+                  <div className="relative w-300">
+                    <iframe
+                      className="inset-0"
+                      allow="autoplay"
+                      src={exercise.video}
+                      title={`Video de ${exercise.nombre_es}`}
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500 mb-4">No hay video disponible</p>
+              )}
 
             <p className="mt-4 text-gray-600">Notas: {exercise.comentarios}</p>
           </div>

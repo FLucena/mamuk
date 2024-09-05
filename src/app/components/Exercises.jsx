@@ -63,7 +63,7 @@ export default function ExerciseCarousel() {
       >
         {exercises.map((exercise, index) => (
           <SwiperSlide key={index}>
-            <div className="p-4 bg-white rounded-lg shadow-lg">
+            <div className="p-4 bg-white rounded-lg shadow-lg flex flex-col items-center">
               <h2 className="text-xl font-semibold mb-6 text-black dark:text-black">
                 {exercise.nombre_es} / {exercise.nombre_en}
               </h2>
@@ -84,13 +84,17 @@ export default function ExerciseCarousel() {
               )}
 
               {exercise.video && exercise.video !== 'link_video' ? (
-                <iframe
-                  allow="autoplay"
-                  height="480"
-                  src={exercise.video}
-                  width="640"
-                />
-
+                <div className="relative mb-4">
+                  <div className="relative w-300">
+                    <iframe
+                      className="inset-0"
+                      allow="autoplay"
+                      src={exercise.video}
+                      title={`Video de ${exercise.nombre_es}`}
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
               ) : (
                 <p className="text-gray-500 mb-4">No hay video disponible</p>
               )}
