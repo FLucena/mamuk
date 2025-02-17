@@ -8,7 +8,7 @@ const username = encodeURIComponent(process.env.MONGODB_USERNAME!);
 const password = encodeURIComponent(process.env.MONGODB_PASSWORD!);
 const db = process.env.MONGODB_DB;
 const cluster = process.env.MONGODB_CLUSTER;
-const uri = `mongodb+srv://${username}:${password}@${cluster}.mongodb.net/${db}?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${username}:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority&appName=${db}`;
 
 // Validate MongoDB URI format
 if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
