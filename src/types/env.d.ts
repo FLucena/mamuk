@@ -4,7 +4,8 @@ declare namespace NodeJS {
     NEXTAUTH_SECRET: string;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
-    MONGODB_URI: string;
+    MONGODB_USERNAME: string;
+    MONGODB_PASSWORD: string;
     NODE_ENV: 'development' | 'production' | 'test';
   }
 } 
