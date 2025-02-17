@@ -1,14 +1,12 @@
 import { MongoClient } from 'mongodb';
 
-if (!process.env.MONGODB_USERNAME || !process.env.MONGODB_PASSWORD || !process.env.MONGODB_DB || !process.env.MONGODB_CLUSTER) {
+if (!process.env.MONGODB_USERNAME || !process.env.MONGODB_PASSWORD) {
   throw new Error('Please add your MONGODB_URI to .env.local');
 } 
 
 const username = encodeURIComponent(process.env.MONGODB_USERNAME!);
 const password = encodeURIComponent(process.env.MONGODB_PASSWORD!);
-const db = process.env.MONGODB_DB;
-const cluster = process.env.MONGODB_CLUSTER;
-const uri = `mongodb+srv://${username}:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority&appName=${db}`;
+const uri = `mongodb+srv://${username}:${password}@mamukcluster.kr2k6.mongodb.net/?retryWrites=true&w=majority&appName=MamukCluster`;
 
 // Validate MongoDB URI format
 if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {

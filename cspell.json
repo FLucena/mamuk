@@ -20,7 +20,8 @@
     "Notas",
     "comentarios",
     "flucena",
-    "ejercicios"
+    "ejercicios",
+    "mamukcluster"
   ],
   "ignorePaths": [
     "node_modules/**",
