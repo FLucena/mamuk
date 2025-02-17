@@ -1,7 +1,7 @@
 import { MongoClient } from 'mongodb';
 
 if (!process.env.MONGODB_USERNAME || !process.env.MONGODB_PASSWORD) {
-  throw new Error('Please add your MONGODB_URI to .env.local');
+  throw new Error('Please add your username and password to .env.local');
 } 
 
 const username = encodeURIComponent(process.env.MONGODB_USERNAME!);
