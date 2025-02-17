@@ -1,10 +1,11 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 
-export const authOptions: NextAuthOptions = {
+// Move auth options to a separate config object
+const config: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
@@ -28,5 +29,8 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-const handler = NextAuth(authOptions);
+// Create handler with config
+const handler = NextAuth(config);
+
+// Export GET and POST handlers
 export { handler as GET, handler as POST }; 
