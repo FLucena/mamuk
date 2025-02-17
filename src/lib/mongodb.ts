@@ -1,10 +1,14 @@
 import { MongoClient } from 'mongodb';
 
-if (!process.env.NEXT_PUBLIC_MONGODB_URI) {
-  throw new Error('Please add your NEXT_PUBLIC_MONGODB_URI to .env.local');
-}
+if (!process.env.MONGODB_USERNAME || !process.env.MONGODB_PASSWORD || !process.env.MONGODB_DB || !process.env.MONGODB_CLUSTER) {
+  throw new Error('Please add your MONGODB_URI to .env.local');
+} 
 
-const uri = process.env.NEXT_PUBLIC_MONGODB_URI;
+const username = encodeURIComponent(process.env.MONGODB_USERNAME!);
+const password = encodeURIComponent(process.env.MONGODB_PASSWORD!);
+const db = process.env.MONGODB_DB;
+const cluster = process.env.MONGODB_CLUSTER;
+const uri = `mongodb+srv://${username}:${password}@${cluster}.mongodb.net/${db}?retryWrites=true&w=majority`;
 
 // Validate MongoDB URI format
 if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
