@@ -1,0 +1,32 @@
+{
+  "version": "0.2",
+  "language": "en,es",
+  "words": [
+    "mamuk",
+    "NEXTAUTH",
+    "vcla",
+    "googleusercontent",
+    "GOCSPX",
+    "Nbesa",
+    "Cargando",
+    "Hubo",
+    "problema",
+    "cargar",
+    "datos",
+    "nombre",
+    "foto",
+    "Imagen",
+    "imagen",
+    "Notas",
+    "comentarios",
+    "flucena",
+    "ejercicios"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "*.min.*",
+    "package-lock.json",
+    "public/**"
+  ]
+} 
