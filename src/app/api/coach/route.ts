@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getCoaches, createCoach } from '@/lib/services/coach';
+import { getAllCoaches, createCoach } from '@/lib/services/coach';
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
-
-    const coaches = await getCoaches();
+    
+    // Solo los admin pueden ver todos los coaches
+    if (session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
+    }
+    
+    const coaches = await getAllCoaches();
     return NextResponse.json(coaches);
   } catch (error) {
     console.error('Error obteniendo coaches:', error);
@@ -24,6 +30,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
+    
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -38,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { userId, ...coachData } = data;
+    const { userId, specialties = [], biography = '', ...restData } = data;
 
     if (!userId) {
       return NextResponse.json(
@@ -47,7 +54,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const coach = await createCoach(userId, coachData);
+    // Pasar los parámetros en un objeto como espera la función
+    const coach = await createCoach({
+      userId,
+      specialties,
+      biography
+    });
+    
     return NextResponse.json(coach);
   } catch (error: any) {
     console.error('Error creando coach:', error);

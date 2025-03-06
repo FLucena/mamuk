@@ -32,7 +32,7 @@ export default async function NewWorkoutPage() {
     const workout = await createWorkout({
       name,
       description,
-      dias: [
+      days: [
         {
           id: 'dia1',
           name: 'Día 1',

@@ -1,24 +1,19 @@
 'use server';
 
 import { getServerSession } from 'next-auth';
-import { revalidateTag } from 'next/cache';
+import { revalidatePath } from 'next/cache';
 import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/db';
-import { Rutina } from '@/lib/models/workout';
+import { Workout } from '@/lib/models/workout';
 import { Types } from 'mongoose';
 import { getCurrentUserRole } from '@/lib/utils/permissions';
 import User from '@/lib/models/user';
 import { ObjectId } from 'mongodb';
-import { sanitizeHtml } from '@/lib/utils/security';
-import { Rutina as Workout, Exercise } from '@/types/models';
+import { sanitizeHtml, validateMongoId } from '@/lib/utils/security';
+import { Workout as WorkoutType, Exercise } from '@/types/models';
 import { exerciseList } from '@/data/exercises';
 import { BodyZone, bodyZones } from '@/lib/constants/bodyZones';
 import mongoose from 'mongoose';
-
-// Helper function to validate MongoDB ObjectId
-function validateMongoId(id: string): boolean {
-  return Types.ObjectId.isValid(id);
-}
 
 // Helper function to convert exercise type to BodyZone tag
 function typeToBodyZone(type: string): BodyZone[] {
@@ -65,7 +60,7 @@ export async function addDay(workoutId: string, userId: string) {
 
   await dbConnect();
   try {
-    const workout = await Rutina.findOne({
+    const workout = await Workout.findOne({
       _id: new Types.ObjectId(workoutId),
       userId: userId.toString()
     });
@@ -85,7 +80,7 @@ export async function addDay(workoutId: string, userId: string) {
     workout.days.push(newDay);
     await workout.save();
 
-    revalidateTag(`workout-${workoutId}`);
+    revalidatePath(`workout-${workoutId}`);
     return JSON.parse(JSON.stringify(workout.toObject()));
   } catch (error) {
     console.error('Error adding day:', error);
@@ -93,7 +88,7 @@ export async function addDay(workoutId: string, userId: string) {
   }
 }
 
-export async function addBlock(workout: Workout, dayIndex: number) {
+export async function addBlock(workout: WorkoutType, dayIndex: number) {
   console.log('Starting addBlock function with:', {
     workoutId: workout.id,
     dayIndex,
@@ -148,7 +143,7 @@ export async function addBlock(workout: Workout, dayIndex: number) {
       userId: session.user.id
     });
 
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workoutId),
       userId: session.user.id.toString()
     });
@@ -193,7 +188,7 @@ export async function addBlock(workout: Workout, dayIndex: number) {
     await workoutDoc.save();
     console.log('Workout document saved successfully');
 
-    revalidateTag(`workout-${workoutId}`);
+    revalidatePath(`workout-${workoutId}`);
     console.log('Cache revalidated');
 
     // Convert to plain object to avoid React serialization issues
@@ -209,7 +204,7 @@ export async function addBlock(workout: Workout, dayIndex: number) {
   }
 }
 
-export async function addExercise(workout: Workout, dayIndex: number, blockIndex: number) {
+export async function addExercise(workout: WorkoutType, dayIndex: number, blockIndex: number) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     throw new Error('No autorizado');
@@ -217,7 +212,7 @@ export async function addExercise(workout: Workout, dayIndex: number, blockIndex
 
   await dbConnect();
   try {
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -235,7 +230,7 @@ export async function addExercise(workout: Workout, dayIndex: number, blockIndex
     workoutDoc.days[dayIndex].blocks[blockIndex].exercises.push(newExercise);
     await workoutDoc.save();
 
-    revalidateTag(`workout-${workout.id}`);
+    revalidatePath(`workout-${workout.id}`);
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
   } catch (error) {
     console.error('Error adding exercise:', error);
@@ -244,7 +239,7 @@ export async function addExercise(workout: Workout, dayIndex: number, blockIndex
 }
 
 export async function updateExercise(
-  workout: Workout,
+  workout: WorkoutType,
   dayIndex: number,
   blockIndex: number,
   exerciseIndex: number,
@@ -257,7 +252,7 @@ export async function updateExercise(
 
   await dbConnect();
   try {
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -268,7 +263,7 @@ export async function updateExercise(
     Object.assign(exercise, data);
     await workoutDoc.save();
 
-    revalidateTag(`workout-${workout.id}`);
+    revalidatePath(`workout-${workout.id}`);
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
   } catch (error) {
     console.error('Error updating exercise:', error);
@@ -277,7 +272,7 @@ export async function updateExercise(
 }
 
 export async function deleteExercise(
-  workout: Workout,
+  workout: WorkoutType,
   dayIndex: number,
   blockIndex: number,
   exerciseIndex: number
@@ -289,7 +284,7 @@ export async function deleteExercise(
 
   await dbConnect();
   try {
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -299,7 +294,7 @@ export async function deleteExercise(
     workoutDoc.days[dayIndex].blocks[blockIndex].exercises.splice(exerciseIndex, 1);
     await workoutDoc.save();
 
-    revalidateTag(`workout-${workout.id}`);
+    revalidatePath(`workout-${workout.id}`);
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
   } catch (error) {
     console.error('Error deleting exercise:', error);
@@ -307,15 +302,15 @@ export async function deleteExercise(
   }
 }
 
-export async function deleteDay(workout: Workout, dayIndex: number) {
+export async function deleteDay(workout: WorkoutType, dayIndex: number) {
   console.log('Server action: deleteDay started', {
-    workoutId: workout.id || workout._id?.toString(),
+    workoutId: workout.id || (workout as any)._id?.toString(),
     dayIndex
   });
 
   await dbConnect();
   try {
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workout.id),
       userId: workout.userId.toString()
     });
@@ -328,8 +323,8 @@ export async function deleteDay(workout: Workout, dayIndex: number) {
     console.log('Day deleted successfully, revalidating tags...');
     
     // Revalidate both the specific workout and the list
-    revalidateTag(`workout-${workout.id}`);
-    revalidateTag('workouts-list');
+    revalidatePath(`workout-${workout.id}`);
+    revalidatePath('workouts-list');
     
     console.log('Tags revalidated');
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
@@ -339,7 +334,13 @@ export async function deleteDay(workout: Workout, dayIndex: number) {
   }
 }
 
-export async function deleteBlock(workout: Workout, dayIndex: number, blockIndex: number) {
+export async function deleteBlock(workout: WorkoutType, dayIndex: number, blockIndex: number) {
+  console.log('Server action: deleteBlock started', {
+    workoutId: workout.id || (workout as any)._id?.toString(),
+    dayIndex,
+    blockIndex
+  });
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     throw new Error('No autorizado');
@@ -347,7 +348,7 @@ export async function deleteBlock(workout: Workout, dayIndex: number, blockIndex
 
   await dbConnect();
   try {
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -357,7 +358,7 @@ export async function deleteBlock(workout: Workout, dayIndex: number, blockIndex
     workoutDoc.days[dayIndex].blocks.splice(blockIndex, 1);
     await workoutDoc.save();
 
-    revalidateTag(`workout-${workout.id}`);
+    revalidatePath(`workout-${workout.id}`);
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
   } catch (error) {
     console.error('Error deleting block:', error);
@@ -377,7 +378,7 @@ export async function deleteWorkout(workoutId: string, userId: string) {
   await dbConnect();
   try {
     console.log('Connecting to database...');
-    const result = await Rutina.findOneAndDelete({
+    const result = await Workout.findOneAndDelete({
       _id: new Types.ObjectId(workoutId),
       userId: userId.toString()
     });
@@ -390,8 +391,8 @@ export async function deleteWorkout(workoutId: string, userId: string) {
     console.log('Workout deleted successfully, revalidating tags...');
     
     // Revalidate both the specific workout and the workouts list
-    revalidateTag(`workout-${workoutId}`);
-    revalidateTag('workouts-list');
+    revalidatePath(`workout-${workoutId}`);
+    revalidatePath('workouts-list');
     
     // Wait a moment to ensure revalidation is processed
     await new Promise(resolve => setTimeout(resolve, 50));
@@ -442,7 +443,7 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
     const isAdmin = userRole === 'admin';
     
     // Obtener el workout original
-    const originalWorkout = await Rutina.findById(workoutId);
+    const originalWorkout = await Workout.findById(workoutId);
     if (!originalWorkout) {
       console.error(`[SECURITY] Intento de duplicación de workout inexistente. ID: ${workoutId}`);
       throw new Error('Rutina no encontrada');
@@ -514,7 +515,7 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
     });
     
     // Crear la nueva rutina
-    const newWorkout = new Rutina({
+    const newWorkout = new Workout({
       ...workoutData,
       name: newName ? sanitizedName : `${sanitizedName} (Copia)`,
       description: sanitizedDescription,
@@ -612,7 +613,7 @@ export async function assignWorkoutToUser(workoutId: string, targetUserId: strin
     await dbConnect();
     
     // Obtener la rutina original
-    const originalWorkout = await Rutina.findById(workoutId);
+    const originalWorkout = await Workout.findById(workoutId);
     if (!originalWorkout) {
       console.error('[ASSIGN] Error: Rutina no encontrada', { workoutId });
       throw new Error('Rutina no encontrada');
@@ -644,7 +645,7 @@ export async function assignWorkoutToUser(workoutId: string, targetUserId: strin
     delete workoutData._id;
     
     // Crear una nueva rutina para el usuario destino
-    const newWorkout = new Rutina({
+    const newWorkout = new Workout({
       ...workoutData,
       userId: targetUserId,
       createdAt: new Date(),
@@ -696,7 +697,7 @@ export async function duplicateAndAssignWorkout(workoutId: string, targetUserId:
     const duplicatedWorkout = await duplicateWorkout(workoutId, newName);
     
     // Luego asignamos la rutina duplicada al usuario destino
-    const assignedWorkout = await Rutina.findByIdAndUpdate(
+    const assignedWorkout = await Workout.findByIdAndUpdate(
       duplicatedWorkout._id,
       { 
         userId: targetUserId,
@@ -711,8 +712,8 @@ export async function duplicateAndAssignWorkout(workoutId: string, targetUserId:
     }
 
     // Revalidar caché
-    revalidateTag(`workout-${assignedWorkout._id}`);
-    revalidateTag('workouts-list');
+    revalidatePath(`workout-${assignedWorkout._id}`);
+    revalidatePath('workouts-list');
     
     console.log('Rutina duplicada y asignada exitosamente');
     return JSON.parse(JSON.stringify(assignedWorkout.toObject()));
@@ -728,7 +729,7 @@ export async function duplicateAndAssignWorkout(workoutId: string, targetUserId:
  * @param dayIndex Índice del día a actualizar
  * @param newName Nuevo nombre para el día
  */
-export async function updateDayName(workout: Workout, dayIndex: number, newName: string) {
+export async function updateDayName(workout: WorkoutType, dayIndex: number, newName: string) {
   const session = await getServerSession(authOptions);
   console.log('Actualizando nombre del día:', {
     workoutId: workout.id,
@@ -759,7 +760,7 @@ export async function updateDayName(workout: Workout, dayIndex: number, newName:
     }
 
     // Buscar la rutina en la base de datos
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workoutId),
       userId: session.user.id
     });
@@ -783,7 +784,7 @@ export async function updateDayName(workout: Workout, dayIndex: number, newName:
     console.log('Nombre del día actualizado exitosamente');
     
     // Revalidar caché
-    revalidateTag(`workout-${workoutId}`);
+    revalidatePath(`workout-${workoutId}`);
     
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
   } catch (error) {
@@ -800,7 +801,7 @@ export async function updateDayName(workout: Workout, dayIndex: number, newName:
  * @param newName Nuevo nombre para el bloque
  */
 export async function updateBlockName(
-  workout: Workout, 
+  workout: WorkoutType, 
   dayIndex: number, 
   blockIndex: number, 
   newName: string
@@ -836,7 +837,7 @@ export async function updateBlockName(
     }
 
     // Buscar la rutina en la base de datos
-    const workoutDoc = await Rutina.findOne({
+    const workoutDoc = await Workout.findOne({
       _id: new Types.ObjectId(workoutId),
       userId: session.user.id
     });
@@ -866,7 +867,7 @@ export async function updateBlockName(
     console.log('Nombre del bloque actualizado exitosamente');
     
     // Revalidar caché
-    revalidateTag(`workout-${workoutId}`);
+    revalidatePath(`workout-${workoutId}`);
     
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
   } catch (error) {
@@ -885,7 +886,7 @@ export async function assignWorkout(workoutId: string, targetUserId: string, new
     const duplicatedWorkout = await duplicateWorkout(workoutId, newName);
     
     // Luego asignamos la rutina duplicada al usuario destino
-    const assignedWorkout = await Rutina.findByIdAndUpdate(
+    const assignedWorkout = await Workout.findByIdAndUpdate(
       duplicatedWorkout._id,
       { 
         userId: targetUserId,
@@ -930,7 +931,7 @@ export async function updateWorkoutName(workoutId: string, newName: string) {
     await dbConnect();
     
     // Buscar la rutina
-    const workout = await Rutina.findById(workoutId);
+    const workout = await Workout.findById(workoutId);
     if (!workout) {
       throw new Error('Rutina no encontrada');
     }
@@ -954,8 +955,8 @@ export async function updateWorkoutName(workoutId: string, newName: string) {
     await workout.save();
     
     // Revalidar caché
-    revalidateTag(`workout-${workoutId}`);
-    revalidateTag('workouts-list');
+    revalidatePath(`workout-${workoutId}`);
+    revalidatePath('workouts-list');
     
     // Convertir a objeto plano
     const serializedWorkout = JSON.parse(JSON.stringify(workout.toObject()));

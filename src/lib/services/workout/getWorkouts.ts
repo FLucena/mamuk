@@ -1,5 +1,5 @@
 import { dbConnect } from '@/lib/db';
-import { Rutina } from '@/lib/models/workout';
+import { Workout } from '@/lib/models/workout';
 import { Types } from 'mongoose';
 import { WORKOUT_STATUS } from '@/lib/constants/roles';
 
@@ -12,7 +12,7 @@ export async function getWorkouts(userId: string) {
   try {
     await dbConnect();
     
-    const workouts = await Rutina.find({
+    const workouts = await Workout.find({
       userId: userId,
       isArchived: { $ne: true },
     }).sort({ createdAt: -1 });

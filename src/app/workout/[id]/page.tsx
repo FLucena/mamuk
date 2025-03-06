@@ -7,7 +7,7 @@ import { getWorkout } from '@/lib/services/workout';
 import WorkoutClient from '@/components/workout/WorkoutClient';
 import * as actions from './actions';
 import { Types } from 'mongoose';
-import { Rutina } from '@/lib/models/workout';
+import { Workout } from '@/lib/models/workout';
 import { dbConnect } from '@/lib/db';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -27,7 +27,7 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
     redirect('/auth/signin');
   }
 
-  const workoutDoc = await getWorkout(params.id);
+  const workoutDoc = await getWorkout(params.id) as any;
   
   if (!workoutDoc) {
     redirect('/workout');
@@ -37,7 +37,9 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
   const workout = JSON.parse(JSON.stringify({
     ...workoutDoc,
     id: workoutDoc._id?.toString() || workoutDoc._id,
-    userId: typeof workoutDoc.userId === 'object' ? workoutDoc.userId.toString() : workoutDoc.userId,
+    userId: typeof workoutDoc.userId === 'object' && workoutDoc.userId !== null 
+      ? String(workoutDoc.userId) 
+      : workoutDoc.userId,
     // Asegurarse de que cada día, bloque y ejercicio tenga un ID válido
     days: (workoutDoc.days || []).map((day: any) => {
       // Generar un ID para el día si no existe

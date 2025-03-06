@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DiaRutina, Exercise, Rutina } from '@/types/models';
+import { useRouter } from 'next/navigation';
+import { WorkoutDay, Exercise, Workout } from '@/types/models';
 import WorkoutDetailHeader from '@/components/workout/WorkoutDetailHeader';
 import Link from 'next/link';
 import { ChevronLeft, Plus } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
-import WorkoutDay from '@/components/workout/WorkoutDay';
+import WorkoutDayComponent from '@/components/workout/WorkoutDay';
 
 /**
  * Hook personalizado para obtener el rol real del usuario desde la API
@@ -64,17 +64,17 @@ function useRealUserRole() {
 }
 
 interface WorkoutClientProps {
-  workout: Rutina;
+  workout: Workout;
   addDay: (workoutId: string, userId: string) => Promise<any>;
-  addBlock: (workout: Rutina, dayIndex: number) => Promise<any>;
-  addExercise: (workout: Rutina, dayIndex: number, blockIndex: number) => Promise<any>;
-  updateExercise: (workout: Rutina, dayIndex: number, blockIndex: number, exerciseIndex: number, data: Partial<Exercise>) => Promise<any>;
-  deleteExercise: (workout: Rutina, dayIndex: number, blockIndex: number, exerciseIndex: number) => Promise<any>;
-  deleteBlock: (workout: Rutina, dayIndex: number, blockIndex: number) => Promise<any>;
-  deleteDay: (workout: Rutina, dayIndex: number) => Promise<any>;
+  addBlock: (workout: Workout, dayIndex: number) => Promise<any>;
+  addExercise: (workout: Workout, dayIndex: number, blockIndex: number) => Promise<any>;
+  updateExercise: (workout: Workout, dayIndex: number, blockIndex: number, exerciseIndex: number, data: Partial<Exercise>) => Promise<any>;
+  deleteExercise: (workout: Workout, dayIndex: number, blockIndex: number, exerciseIndex: number) => Promise<any>;
+  deleteBlock: (workout: Workout, dayIndex: number, blockIndex: number) => Promise<any>;
+  deleteDay: (workout: Workout, dayIndex: number) => Promise<any>;
   deleteWorkout: (workoutId: string, userId: string) => Promise<any>;
-  updateDayName?: (workout: Rutina, dayIndex: number, newName: string) => Promise<any>;
-  updateBlockName?: (workout: Rutina, dayIndex: number, blockIndex: number, newName: string) => Promise<any>;
+  updateDayName?: (workout: Workout, dayIndex: number, newName: string) => Promise<any>;
+  updateBlockName?: (workout: Workout, dayIndex: number, blockIndex: number, newName: string) => Promise<any>;
   userId: string;
 }
 
@@ -92,9 +92,8 @@ export default function WorkoutClient({
   updateBlockName,
   userId
 }: WorkoutClientProps) {
-  const [workout, setWorkout] = useState<Rutina>(initialWorkout);
+  const [workout, setWorkout] = useState<Workout>(initialWorkout);
   const router = useRouter();
-  const params = useParams();
   const { data: session } = useSession();
   const { role: userRole, loading: roleLoading } = useRealUserRole();
   
@@ -112,7 +111,7 @@ export default function WorkoutClient({
   const handleAddDay = async () => {
     setIsLoading(true);
     try {
-      const workoutId = workout._id?.toString() || workout.id || '';
+      const workoutId = workout.id || '';
       if (!workoutId) {
         throw new Error('ID de rutina no válido');
       }
@@ -303,7 +302,7 @@ export default function WorkoutClient({
   const handleDeleteWorkout = async () => {
     try {
       console.log('Starting workout deletion...', {
-        workoutId: workout.id || workout._id?.toString(),
+        workoutId: workout.id || workout.id,
         userId
       });
 
@@ -333,7 +332,7 @@ export default function WorkoutClient({
       }
       
       await updateDayName(workout, dayIndex, newName);
-      setWorkout((prev: Rutina) => {
+      setWorkout((prev: Workout) => {
         const newWorkout = {...prev};
         if (newWorkout.days && newWorkout.days[dayIndex]) {
           newWorkout.days[dayIndex].name = newName;
@@ -358,7 +357,7 @@ export default function WorkoutClient({
       }
       
       await updateBlockName(workout, dayIndex, blockIndex, newName);
-      setWorkout((prev: Rutina) => {
+      setWorkout((prev: Workout) => {
         const newWorkout = {...prev};
         if (newWorkout.days && 
             newWorkout.days[dayIndex] && 
@@ -477,7 +476,7 @@ export default function WorkoutClient({
         {workout.days && workout.days.length > 0 ? (
           <>
             {workout.days.map((day, dayIndex) => (
-              <WorkoutDay
+              <WorkoutDayComponent
                 key={dayIndex}
                 title={day.name}
                 blocks={day.blocks || []}

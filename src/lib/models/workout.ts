@@ -50,6 +50,6 @@ const workoutSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-const Rutina = mongoose.models.Rutina || mongoose.model('Rutina', workoutSchema);
+const Workout = mongoose.models.Workout || mongoose.model('Workout', workoutSchema);
 
-export { Rutina }; 
+export { Workout }; 

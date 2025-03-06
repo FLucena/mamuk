@@ -1,19 +1,19 @@
 import { Progress } from '@/lib/models/progress';
-import { connectDB } from '@/lib/db';
+import { dbConnect } from '@/lib/db';
 import { WorkoutProgress, DayProgress } from '@/types/models';
 
 export async function getWorkoutProgress(workoutId: string, userId: string, weekNumber: number, year: number): Promise<WorkoutProgress | null> {
-  await connectDB();
+  await dbConnect();
   return Progress.findOne({ workoutId, userId, weekNumber, year });
 }
 
 export async function getWorkoutProgressHistory(workoutId: string, userId: string): Promise<WorkoutProgress[]> {
-  await connectDB();
+  await dbConnect();
   return Progress.find({ workoutId, userId }).sort({ year: -1, weekNumber: -1 });
 }
 
 export async function createWorkoutProgress(workoutId: string, userId: string, weekNumber: number, year: number, days: DayProgress[]): Promise<WorkoutProgress> {
-  await connectDB();
+  await dbConnect();
   return Progress.create({
     workoutId,
     userId,
@@ -24,7 +24,7 @@ export async function createWorkoutProgress(workoutId: string, userId: string, w
 }
 
 export async function updateWorkoutProgress(workoutId: string, userId: string, weekNumber: number, year: number, days: DayProgress[]): Promise<WorkoutProgress | null> {
-  await connectDB();
+  await dbConnect();
   return Progress.findOneAndUpdate(
     { workoutId, userId, weekNumber, year },
     { days },
@@ -40,7 +40,7 @@ export async function updateDayProgress(
   dayId: string,
   dayProgress: Partial<DayProgress>
 ): Promise<WorkoutProgress | null> {
-  await connectDB();
+  await dbConnect();
   return Progress.findOneAndUpdate(
     { workoutId, userId, weekNumber, year, 'days.dayId': dayId },
     { 

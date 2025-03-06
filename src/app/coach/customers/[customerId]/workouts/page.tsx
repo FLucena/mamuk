@@ -32,10 +32,38 @@ export default async function CustomerWorkoutsPage({ params }: CustomerWorkoutsP
     redirect('/coach/customers');
   }
 
-  const workouts = await getWorkoutsByUserId(params.customerId);
+  const workoutsData = await getWorkoutsByUserId(params.customerId);
   const customer = coach.customers.find(
     (customer) => customer._id === params.customerId
   );
+
+  // Adaptar los workouts al formato esperado por WorkoutList
+  const workouts = workoutsData.map(workout => ({
+    _id: workout.id || '',
+    name: workout.name,
+    description: workout.description,
+    days: workout.days.map(day => ({
+      _id: day.id || '',
+      name: day.name,
+      blocks: day.blocks.map(block => ({
+        _id: block.id || '',
+        name: block.name,
+        exercises: block.exercises.map(exercise => ({
+          _id: exercise.id || '',
+          name: exercise.name,
+          sets: exercise.sets,
+          reps: exercise.reps,
+          weight: exercise.weight,
+          notes: exercise.notes,
+          videoUrl: exercise.videoUrl
+        }))
+      }))
+    })),
+    userId: workout.userId,
+    createdAt: workout.createdAt,
+    updatedAt: workout.updatedAt,
+    id: workout.id
+  }));
 
   return (
     <div className="container mx-auto px-4 py-8">

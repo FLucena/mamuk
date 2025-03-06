@@ -29,22 +29,21 @@ export interface Block {
   exercises: Exercise[];
 }
 
-export interface DiaRutina {
-  id: string;
+export interface WorkoutDay {
+  id?: string;
   name: string;
   blocks: Block[];
 }
 
-export interface Rutina {
+export interface Workout {
   id?: string;
-  _id?: Types.ObjectId;
-  userId: string | Types.ObjectId;
   name: string;
-  description: string;
-  days: DiaRutina[];
-  status?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  description?: string;
+  days: WorkoutDay[];
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  status?: 'active' | 'archived' | 'completed';
 }
 
 export interface PredefinedExercise {

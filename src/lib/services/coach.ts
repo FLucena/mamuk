@@ -4,42 +4,185 @@ import Coach from '@/lib/models/coach';
 import User from '@/lib/models/user';
 import { validateMongoId } from '@/lib/utils/security';
 
-export async function getCoachByUserId(userId: string) {
-  if (!validateMongoId(userId)) {
-    throw new Error('ID de usuario inválido');
-  }
-
-  await dbConnect();
-  const coach = await Coach.findOne({ userId })
-    .populate('userId', 'name email image')
-    .populate('customers', 'name email image')
-    .lean();
-
-  return coach;
+// Definir interfaces para los tipos de respuesta
+interface CustomerUser {
+  _id: string;
+  name?: string;
+  email: string;
+  image?: string;
 }
 
-export async function getCoachById(coachId: string) {
-  if (!validateMongoId(coachId)) {
-    throw new Error('ID de coach inválido');
-  }
-
-  await dbConnect();
-  const coach = await Coach.findById(coachId)
-    .populate('userId', 'name email image')
-    .populate('customers', 'name email image')
-    .lean();
-
-  return coach;
+interface CoachUser {
+  _id: string;
+  name?: string;
+  email: string;
+  image?: string;
 }
 
-export async function getAllCoaches() {
-  await dbConnect();
-  const coaches = await Coach.find()
-    .populate('userId', 'name email image')
-    .populate('customers', 'name email image')
-    .lean();
+export interface CoachDocument {
+  _id: string;
+  userId: CoachUser | string;
+  specialties?: string[];
+  bio?: string;
+  customers: CustomerUser[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
-  return coaches;
+/**
+ * Obtiene un coach por su userId
+ * @param userId ID del usuario asociado al coach
+ * @returns Objeto coach con sus datos y clientes, o null si no existe
+ */
+export async function getCoachByUserId(userId: string): Promise<CoachDocument | null> {
+  try {
+    if (!validateMongoId(userId)) {
+      throw new Error('ID de usuario inválido');
+    }
+
+    await dbConnect();
+    const coachDoc = await Coach.findOne({ userId })
+      .populate('userId', 'name email image')
+      .populate('customers', 'name email image')
+      .lean();
+
+    if (!coachDoc) {
+      return null;
+    }
+
+    // Asegurarse de que coachDoc es un objeto y no un array
+    if (Array.isArray(coachDoc)) {
+      console.error('Error inesperado: getCoachByUserId devolvió un array');
+      return null;
+    }
+
+    // Convertir IDs a strings para consistencia
+    const coach = {
+      _id: coachDoc._id?.toString() || '',
+      userId: typeof coachDoc.userId === 'object' && coachDoc.userId !== null 
+        ? { 
+            ...coachDoc.userId,
+            _id: (coachDoc.userId as any)._id?.toString() || ''
+          } 
+        : (coachDoc.userId as any)?.toString() || '',
+      specialties: coachDoc.specialties || [],
+      bio: coachDoc.bio || '',
+      customers: Array.isArray(coachDoc.customers) 
+        ? coachDoc.customers.map((customer: any) => ({
+            ...customer,
+            _id: customer._id?.toString() || ''
+          }))
+        : [],
+      createdAt: coachDoc.createdAt,
+      updatedAt: coachDoc.updatedAt
+    };
+
+    return coach;
+  } catch (error) {
+    console.error('Error al obtener coach por userId:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene un coach por su ID de coach
+ * @param coachId ID del coach
+ * @returns Objeto coach con sus datos y clientes, o null si no existe
+ */
+export async function getCoachById(coachId: string): Promise<CoachDocument | null> {
+  try {
+    if (!validateMongoId(coachId)) {
+      throw new Error('ID de coach inválido');
+    }
+
+    await dbConnect();
+    const coachDoc = await Coach.findById(coachId)
+      .populate('userId', 'name email image')
+      .populate('customers', 'name email image')
+      .lean();
+
+    if (!coachDoc) {
+      return null;
+    }
+
+    // Asegurarse de que coachDoc es un objeto y no un array
+    if (Array.isArray(coachDoc)) {
+      console.error('Error inesperado: getCoachById devolvió un array');
+      return null;
+    }
+
+    // Convertir IDs a strings para consistencia
+    const coach = {
+      _id: coachDoc._id?.toString() || '',
+      userId: typeof coachDoc.userId === 'object' && coachDoc.userId !== null 
+        ? { 
+            ...coachDoc.userId,
+            _id: (coachDoc.userId as any)._id?.toString() || ''
+          } 
+        : (coachDoc.userId as any)?.toString() || '',
+      specialties: coachDoc.specialties || [],
+      bio: coachDoc.bio || '',
+      customers: Array.isArray(coachDoc.customers) 
+        ? coachDoc.customers.map((customer: any) => ({
+            ...customer,
+            _id: customer._id?.toString() || ''
+          }))
+        : [],
+      createdAt: coachDoc.createdAt,
+      updatedAt: coachDoc.updatedAt
+    };
+
+    return coach;
+  } catch (error) {
+    console.error('Error al obtener coach por ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene todos los coaches
+ * @returns Array de coaches con sus datos y clientes
+ */
+export async function getAllCoaches(): Promise<CoachDocument[]> {
+  try {
+    await dbConnect();
+    const coachDocs = await Coach.find()
+      .populate('userId', 'name email image')
+      .populate('customers', 'name email image')
+      .lean();
+
+    if (!coachDocs || !Array.isArray(coachDocs)) {
+      return [];
+    }
+
+    // Mapear y convertir IDs a strings para consistencia
+    const coaches = coachDocs.map(coachDoc => {
+      return {
+        _id: coachDoc._id?.toString() || '',
+        userId: typeof coachDoc.userId === 'object' && coachDoc.userId !== null 
+          ? { 
+              ...coachDoc.userId,
+              _id: (coachDoc.userId as any)._id?.toString() || ''
+            } 
+          : (coachDoc.userId as any)?.toString() || '',
+        specialties: coachDoc.specialties || [],
+        bio: coachDoc.bio || '',
+        customers: Array.isArray(coachDoc.customers) 
+          ? coachDoc.customers.map((customer: any) => ({
+              ...customer,
+              _id: customer._id?.toString() || ''
+            }))
+          : [],
+        createdAt: coachDoc.createdAt,
+        updatedAt: coachDoc.updatedAt
+      };
+    });
+
+    return coaches;
+  } catch (error) {
+    console.error('Error al obtener todos los coaches:', error);
+    return [];
+  }
 }
 
 export async function createCoach({

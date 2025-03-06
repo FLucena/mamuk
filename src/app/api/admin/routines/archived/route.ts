@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/db';
 import { Types } from 'mongoose';
-import { Rutina } from '@/lib/models/workout';
+import { Workout } from '@/lib/models/workout';
 
 interface DbRoutine {
   _id: Types.ObjectId;
@@ -32,7 +32,7 @@ export async function GET() {
     await dbConnect();
     
     // Consultar directamente la base de datos para rutinas archivadas
-    const archivedRoutines = await Rutina.find({ 
+    const archivedRoutines = await Workout.find({ 
       status: 'archived' 
     })
     .populate('userId', 'name email')

@@ -1,5 +1,5 @@
 import { dbConnect } from '@/lib/db';
-import { Rutina } from '@/lib/models/workout';
+import { Workout } from '@/lib/models/workout';
 import { Types } from 'mongoose';
 import { transformMongoWorkout } from '@/lib/utils/transformers';
 import { WORKOUT_STATUS, ROLES } from '@/lib/constants/roles';
@@ -28,7 +28,7 @@ export async function getArchivedWorkouts(userId: string) {
     }
 
     // Get all archived workouts
-    const workouts = await Rutina.find({
+    const workouts = await Workout.find({
       status: WORKOUT_STATUS.ARCHIVED
     }).sort({ updatedAt: -1 });
 

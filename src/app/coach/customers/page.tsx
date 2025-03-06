@@ -16,11 +16,35 @@ export default async function CustomersPage() {
     redirect('/');
   }
 
-  const coach = await getCoachByUserId(session.user.id);
-  if (!coach) {
+  const coachData = await getCoachByUserId(session.user.id);
+  if (!coachData) {
     // Si el usuario es coach pero no tiene perfil de coach, redirigir
     redirect('/');
   }
+
+  // Adaptar el coach al formato esperado por CustomerList
+  const coach = {
+    _id: coachData._id,
+    userId: typeof coachData.userId === 'string' 
+      ? { 
+          _id: coachData._id, // Usamos el _id del coach como fallback
+          name: 'Coach',
+          email: '',
+          image: undefined
+        }
+      : {
+          _id: coachData.userId._id,
+          name: coachData.userId.name || 'Coach',
+          email: coachData.userId.email,
+          image: coachData.userId.image
+        },
+    customers: coachData.customers.map(customer => ({
+      _id: customer._id,
+      name: customer.name || 'Cliente sin nombre',
+      email: customer.email,
+      image: customer.image
+    }))
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">

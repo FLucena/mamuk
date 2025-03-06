@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og';
 import mongoose from 'mongoose';
-import { dbConnect } from '@/lib/db';
 
 // Ruta: /workout/[id]/opengraph-image
 // Genera una imagen OpenGraph dinámica para compartir en redes sociales
@@ -13,18 +12,88 @@ export const size = {
 };
 export const contentType = 'image/png';
 
+// Definición de tipo simplificada para el workout
+interface WorkoutDocument {
+  name?: string;
+  description?: string;
+  days: Array<{
+    name?: string;
+    blocks: Array<{
+      name?: string;
+      exercises: Array<{
+        name?: string;
+        sets?: number;
+        reps?: string;
+        rest?: number;
+        notes?: string;
+      }>;
+    }>;
+  }>;
+  userId?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Función de conexión simplificada para Edge runtime
+async function connectToDatabase() {
+  const MONGODB_URI = process.env.MONGODB_URI;
+  if (!MONGODB_URI) {
+    throw new Error('Por favor define la variable de entorno MONGODB_URI');
+  }
+  
+  try {
+    // Conexión directa sin listeners ni cachés que causan problemas en Edge
+    const conn = await mongoose.connect(MONGODB_URI);
+    return conn;
+  } catch (error) {
+    console.error('Error conectando a MongoDB:', error);
+    throw error;
+  }
+}
+
+// Función simplificada para obtener un workout por ID compatible con Edge
+async function getWorkoutForEdge(id: string): Promise<any> {
+  try {
+    await connectToDatabase();
+    
+    // Definir el esquema de Workout si no existe
+    const Workout = mongoose.models.Workout || 
+      mongoose.model('Workout', new mongoose.Schema({
+        name: String,
+        description: String,
+        days: [{ 
+          name: String, 
+          blocks: [{
+            name: String,
+            exercises: [{
+              name: String,
+              sets: Number,
+              reps: String,
+              rest: Number,
+              notes: String
+            }]
+          }]
+        }],
+        userId: String,
+        createdAt: Date,
+        updatedAt: Date
+      }));
+    
+    // Buscar el workout por ID
+    const result = await Workout.findById(id).lean();
+    return result;
+  } catch (error) {
+    console.error(`Error obteniendo workout ${id}:`, error);
+    return null;
+  }
+}
+
 export default async function Image({ params }: { params: { id: string } }) {
   try {
-    // Conectar a la base de datos
-    await dbConnect();
+    // Usar la función compatible con Edge
+    const workout = await getWorkoutForEdge(params.id);
     
-    // Obtener el modelo de Rutina
-    const Rutina = mongoose.models.Rutina || mongoose.model('Rutina', new mongoose.Schema({}));
-    
-    // Obtener la rutina
-    const workout = await Rutina.findById(params.id);
-    
-    // Si no existe la rutina, mostrar una imagen genérica
+    // Si no existe el workout, mostrar una imagen genérica
     if (!workout) {
       return new ImageResponse(
         (
@@ -57,15 +126,15 @@ export default async function Image({ params }: { params: { id: string } }) {
     // Obtener datos de la rutina
     const name = workout.name || 'Rutina de entrenamiento';
     const description = workout.description || 'Rutina personalizada en Mamuk';
-    const exerciseCount = workout.days.reduce(
+    const exerciseCount = Array.isArray(workout.days) ? workout.days.reduce(
       (count: number, day: any) => 
-        count + day.blocks.reduce(
+        count + (Array.isArray(day.blocks) ? day.blocks.reduce(
           (blockCount: number, block: any) => 
-            blockCount + block.exercises.length, 
+            blockCount + (Array.isArray(block.exercises) ? block.exercises.length : 0), 
           0
-        ), 
+        ) : 0), 
       0
-    );
+    ) : 0;
     
     // Generar la imagen
     return new ImageResponse(
@@ -117,7 +186,7 @@ export default async function Image({ params }: { params: { id: string } }) {
           {/* Estadísticas */}
           <div style={{ display: 'flex', gap: '40px', marginTop: 20 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ fontSize: 48, fontWeight: 'bold', color: '#3b82f6' }}>{workout.days.length}</div>
+              <div style={{ fontSize: 48, fontWeight: 'bold', color: '#3b82f6' }}>{Array.isArray(workout.days) ? workout.days.length : 0}</div>
               <div style={{ fontSize: 20 }}>Días</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

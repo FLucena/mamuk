@@ -257,7 +257,16 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         onConfirm={handleEditConfirm}
-        coach={coach}
+        coach={{
+          _id: coach.id,
+          name: coach.userId.name,
+          email: coach.userId.email,
+          role: 'coach',
+          image: coach.userId.image,
+          specialties: coach.specialties,
+          bio: coach.biography,
+          customers: coach.customers.map(c => c.id)
+        }}
       />
 
       <DeleteCoachModal

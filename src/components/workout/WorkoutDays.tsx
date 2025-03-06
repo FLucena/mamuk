@@ -1,18 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, ChevronUp, Video } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Plus, ChevronDown, ChevronRight, X, ChevronUp, Video, Trash2, ArrowDownUp, Play, Pause, Settings } from 'lucide-react';
 import { LoadingOverlay } from '@/components/ui/loading';
 import { Button } from '@/components/ui/button';
-import { DiaRutina, Exercise } from '@/types/models';
+import { WorkoutDay, Exercise } from '@/types/models';
 import Modal from '@/components/ui/modal';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import WorkoutBlock from './WorkoutBlock';
 import { cn } from '@/lib/utils';
 import ExerciseModal from '../modals/ExerciseModal';
+import { useSession } from 'next-auth/react';
 
 interface WorkoutDaysProps {
-  days: DiaRutina[];
+  days: WorkoutDay[];
   onAddDay?: () => Promise<void>;
   onAddBlock?: (dayIndex: number) => Promise<void>;
   onAddExercise?: (dayIndex: number, blockIndex: number) => Promise<void>;
@@ -261,38 +264,35 @@ export default function WorkoutDays({
                 {day.blocks.map((block, blockIndex) => (
                   <WorkoutBlock 
                     key={blockIndex}
-                    block={block}
-                    dayIndex={dayIndex}
-                    blockIndex={blockIndex}
-                    expanded={expandedBlocks[`${dayIndex}-${blockIndex}`] || false}
+                    title={block.name}
+                    exercises={block.exercises}
+                    isExpanded={expandedBlocks[`${dayIndex}-${blockIndex}`] || false}
                     onToggle={() => toggleBlock(dayIndex, blockIndex)}
-                    onAddExercise={onAddExercise}
+                    onAddExercise={onAddExercise ? () => onAddExercise(dayIndex, blockIndex) : undefined}
                     onUpdateExercise={(exerciseIndex, data) => {
                       if (onUpdateExercise) {
-                        onUpdateExercise(dayIndex, blockIndex, exerciseIndex, data);
+                        return onUpdateExercise(dayIndex, blockIndex, exerciseIndex, data);
                       }
+                      return Promise.resolve();
                     }}
                     onDeleteExercise={(exerciseIndex) => {
                       if (onDeleteExercise) {
-                        onDeleteExercise(dayIndex, blockIndex, exerciseIndex);
+                        return onDeleteExercise(dayIndex, blockIndex, exerciseIndex);
                       }
+                      return Promise.resolve();
                     }}
                     onDeleteBlock={() => {
                       if (onDeleteBlock) {
-                        onDeleteBlock(dayIndex, blockIndex);
+                        return onDeleteBlock(dayIndex, blockIndex);
                       }
+                      return Promise.resolve();
                     }}
-                    onEditExercise={(exerciseIndex) => {
-                      setModalDayIndex(dayIndex);
-                      setModalBlockIndex(blockIndex);
-                      setModalExerciseIndex(exerciseIndex);
-                      setSelectedExercise(block.exercises[exerciseIndex]);
-                      setIsModalOpen(true);
+                    onUpdateTitle={(newName: string) => {
+                      if (onUpdateBlockName) {
+                        onUpdateBlockName(dayIndex, blockIndex, newName);
+                      }
+                      return Promise.resolve();
                     }}
-                    onUpdateBlockName={(newName) => {
-                      onUpdateBlockName(dayIndex, blockIndex, newName);
-                    }}
-                    isLoading={isLoading}
                   />
                 ))}
               </div>

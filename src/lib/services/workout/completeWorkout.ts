@@ -1,5 +1,5 @@
 import { dbConnect } from '@/lib/db';
-import { Rutina } from '@/lib/models/workout';
+import { Workout } from '@/lib/models/workout';
 import { Types } from 'mongoose';
 import { validateMongoId } from '@/lib/utils/security';
 import { transformMongoWorkout } from '@/lib/utils/transformers';
@@ -21,7 +21,7 @@ export async function completeWorkout(id: string, userId: string) {
   await dbConnect();
   try {
     // Check if workout exists and user has permission
-    const existingWorkout = await Rutina.findOne({ _id: new Types.ObjectId(id) });
+    const existingWorkout = await Workout.findOne({ _id: new Types.ObjectId(id) });
     if (!existingWorkout) {
       console.error('Service: Workout not found:', { id, userId });
       return null;
@@ -56,7 +56,7 @@ export async function completeWorkout(id: string, userId: string) {
       fromStatus: existingWorkout.status 
     });
 
-    const workout = await Rutina.findOneAndUpdate(
+    const workout = await Workout.findOneAndUpdate(
       { _id: new Types.ObjectId(id) },
       { $set: { status: WORKOUT_STATUS.COMPLETE } },
       { new: true }
