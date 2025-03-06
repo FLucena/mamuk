@@ -59,9 +59,9 @@ export default function ExerciseCarousel() {
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-        {currentItems.map((exercise, index) => (
+        {currentItems.map((exercise) => (
           <div
-            key={index}
+            key={`${exercise.nombre_es}_${exercise.nombre_en}`}
             className="p-6 bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 ease-in-out flex flex-col items-center"
           >
             <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
@@ -75,8 +75,10 @@ export default function ExerciseCarousel() {
                     alt={`Imagen de ${exercise.nombre_es}`}
                     width={300}
                     height={300}
-                    objectFit="cover"
+                    style={{ objectFit: 'cover' }}
                     className="rounded-md"
+                    priority={false}
+                    quality={75}
                   />
                 </div>
               ) : (
@@ -151,9 +153,11 @@ function ImageLoader({ src, alt }) {
         alt={alt}
         width={300}
         height={300}
-        objectFit="cover"
+        style={{ objectFit: 'cover' }}
         className="rounded-md"
         onLoadingComplete={() => setLoading(false)}
+        priority={false}
+        quality={75}
       />
     </div>
   );

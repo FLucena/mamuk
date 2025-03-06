@@ -7,18 +7,32 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "security-audit": "ts-node scripts/security-audit.ts",
+    "security-audit:cron": "ts-node scripts/cron-security-audit.ts"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.7.4",
+    "@headlessui/react": "^2.2.0",
+    "@types/node-cron": "^3.0.11",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "isomorphic-dompurify": "^2.22.0",
+    "lucide-react": "^0.477.0",
     "mongodb": "^6.3.0",
     "mongoose": "^8.1.0",
     "next": "14.2.24",
     "next-auth": "^4.24.5",
+    "next-themes": "^0.4.4",
+    "node-cron": "^3.0.3",
     "react": "^18",
     "react-dom": "^18",
+    "react-icons": "^5.5.0",
     "react-select": "^5.8.0",
-    "swiper": "^11.1.12"
+    "sonner": "^2.0.1",
+    "swiper": "^11.1.12",
+    "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
     "@types/node": "20.17.19",
