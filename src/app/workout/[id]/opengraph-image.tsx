@@ -1,5 +1,4 @@
 import { ImageResponse } from 'next/og';
-import mongoose from 'mongoose';
 
 // Ruta: /workout/[id]/opengraph-image
 // Genera una imagen OpenGraph dinámica para compartir en redes sociales
@@ -34,54 +33,30 @@ interface WorkoutDocument {
   updatedAt?: Date;
 }
 
-// Función de conexión simplificada para Edge runtime
-async function connectToDatabase() {
-  const MONGODB_URI = process.env.MONGODB_URI;
-  if (!MONGODB_URI) {
-    throw new Error('Por favor define la variable de entorno MONGODB_URI');
-  }
-  
+// Función ligera para obtener un workout por ID usando fetch
+async function getWorkoutForEdge(id: string): Promise<WorkoutDocument | null> {
   try {
-    // Conexión directa sin listeners ni cachés que causan problemas en Edge
-    const conn = await mongoose.connect(MONGODB_URI);
-    return conn;
-  } catch (error) {
-    console.error('Error conectando a MongoDB:', error);
-    throw error;
-  }
-}
-
-// Función simplificada para obtener un workout por ID compatible con Edge
-async function getWorkoutForEdge(id: string): Promise<any> {
-  try {
-    await connectToDatabase();
+    // Construir la URL absoluta a la API interna
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const host = process.env.VERCEL_URL || 'localhost:3000';
+    const url = `${protocol}://${host}/api/workout/${id}`;
     
-    // Definir el esquema de Workout si no existe
-    const Workout = mongoose.models.Workout || 
-      mongoose.model('Workout', new mongoose.Schema({
-        name: String,
-        description: String,
-        days: [{ 
-          name: String, 
-          blocks: [{
-            name: String,
-            exercises: [{
-              name: String,
-              sets: Number,
-              reps: String,
-              rest: Number,
-              notes: String
-            }]
-          }]
-        }],
-        userId: String,
-        createdAt: Date,
-        updatedAt: Date
-      }));
+    // Realizar la petición
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        // No incluimos autenticación ya que es una imagen pública
+      },
+      next: { revalidate: 60 } // Revalidar cada minuto
+    });
     
-    // Buscar el workout por ID
-    const result = await Workout.findById(id).lean();
-    return result;
+    if (!response.ok) {
+      console.error(`Error obteniendo workout ${id}: ${response.status}`);
+      return null;
+    }
+    
+    const workout = await response.json();
+    return workout;
   } catch (error) {
     console.error(`Error obteniendo workout ${id}:`, error);
     return null;
@@ -90,7 +65,7 @@ async function getWorkoutForEdge(id: string): Promise<any> {
 
 export default async function Image({ params }: { params: { id: string } }) {
   try {
-    // Usar la función compatible con Edge
+    // Usar la función ligera para obtener el workout
     const workout = await getWorkoutForEdge(params.id);
     
     // Si no existe el workout, mostrar una imagen genérica
