@@ -71,22 +71,32 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const storedTheme = localStorage.getItem('theme-preference');
+                  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  
+                  if (storedTheme === 'dark' || (storedTheme === null && systemPrefersDark)) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {
+                  console.error('Error applying theme:', e);
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={`${inter.className} antialiased`}>
         <SessionProvider session={session}>
           <AuthProvider>
-            <ThemeProvider 
-              attribute="class" 
-              defaultTheme="system" 
-              enableSystem={true}
-              storageKey="mamuk-theme"
-              disableTransitionOnChange
-              themes={['light', 'dark']}
-              value={{
-                light: 'light',
-                dark: 'dark',
-                system: 'system'
-              }}
-            >
+            <ThemeProvider>
               <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
                 <Navbar />
                 <main className="pb-16">

@@ -42,7 +42,6 @@ export default async function WorkoutPage() {
       {workouts.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            No tienes rutinas creadas
           </p>
         </div>
       )}

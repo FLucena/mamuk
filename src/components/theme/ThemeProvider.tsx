@@ -1,11 +1,29 @@
 'use client';
 
-import * as React from 'react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
+import { useEffect, useState } from 'react';
 
-// Simplificamos el componente usando React.ComponentProps
-type ThemeProviderProps = React.ComponentProps<typeof NextThemesProvider>;
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+  // Only render the provider after mounting to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <>{children}</>;
+  }
+
+  return (
+    <NextThemesProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem={true}
+      disableTransitionOnChange
+      storageKey="theme-preference"
+    >
+      {children}
+    </NextThemesProvider>
+  );
 } 

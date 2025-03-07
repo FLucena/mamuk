@@ -89,8 +89,20 @@ function NavbarContent() {
     try {
       if (!mounted) return;
       
-      // Force theme to opposite of current
-      const newTheme = theme === 'dark' ? 'light' : 'dark';
+      // Get the current theme
+      const currentTheme = theme === 'system' 
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        : theme;
+      
+      // Toggle to the opposite theme
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      console.log(`Switching theme from ${currentTheme} to ${newTheme}`);
+      
+      // Set the theme directly
+      document.documentElement.classList.toggle('dark', newTheme === 'dark');
+      
+      // Set the theme in next-themes
       setTheme(newTheme);
       
       // Store the preference in localStorage
@@ -102,6 +114,30 @@ function NavbarContent() {
       console.error('Error toggling theme:', error);
     }
   };
+
+  // Debug function to check theme state
+  const debugTheme = () => {
+    console.log({
+      currentTheme: theme,
+      isDarkMode,
+      systemPreference: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      localStorageTheme: localStorage.getItem('theme-preference'),
+      documentClassList: document.documentElement.classList.contains('dark') ? 'has dark' : 'no dark'
+    });
+  };
+
+  // Add this to the useEffect that runs on mount
+  useEffect(() => {
+    setMounted(true);
+    // Debug theme on mount
+    setTimeout(() => {
+      console.log('Initial theme state:', {
+        theme,
+        isDarkClass: document.documentElement.classList.contains('dark'),
+        storedTheme: localStorage.getItem('theme-preference')
+      });
+    }, 500);
+  }, []);
 
   const navLinks = [
     {
@@ -180,6 +216,20 @@ function NavbarContent() {
                 </Link>
               ))}
               
+              {/* Direct theme toggle button for testing */}
+              {process.env.NODE_ENV === 'development' && (
+                <button
+                  onClick={(e) => {
+                    console.log("Direct theme toggle clicked");
+                    e.stopPropagation();
+                    toggleDarkMode();
+                  }}
+                  className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {isDarkMode ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
+                </button>
+              )}
+              
               {/* Foto de perfil y menú desplegable */}
               <div className="relative ml-3" ref={profileMenuRef}>
                 <button
@@ -222,26 +272,6 @@ function NavbarContent() {
                           {session?.user?.email}
                         </p>
                       )}
-                    </div>
-                    
-                    {/* Toggle de modo oscuro - dentro del menú */}
-                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <button
-                        onClick={toggleDarkMode}
-                        className="flex w-full items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-                      >
-                        {isDarkMode ? (
-                          <>
-                            <FiSun className="w-5 h-5 mr-2" />
-                            Cambiar a modo claro
-                          </>
-                        ) : (
-                          <>
-                            <FiMoon className="w-5 h-5 mr-2" />
-                            Cambiar a modo oscuro
-                          </>
-                        )}
-                      </button>
                     </div>
                     
                     {/* Solo mostrar información de nivel y badges si hay sesión */}
@@ -351,7 +381,11 @@ function NavbarContent() {
                   {/* Toggle de modo oscuro - dentro del menú móvil */}
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <button
-                      onClick={toggleDarkMode}
+                      onClick={(e) => {
+                        console.log("Mobile theme toggle clicked");
+                        e.stopPropagation(); // Prevent event bubbling
+                        toggleDarkMode();
+                      }}
                       className="flex w-full items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                     >
                       {isDarkMode ? (
