@@ -229,5 +229,5 @@ export const authOptions: NextAuthOptions = {
       console.log('User signed out:', token.id);
     }
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: false,
 }; 

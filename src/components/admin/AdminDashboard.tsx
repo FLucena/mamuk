@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import UserList from '@/components/admin/UserList';
-import CoachList from '@/components/admin/CoachList';
 import ArchivedRoutines from '@/components/admin/ArchivedRoutines';
 import { Role, MongoUser } from '@/lib/types/user';
 
@@ -36,7 +35,7 @@ interface ArchivedRoutine {
   };
 }
 
-type AdminView = 'users' | 'coaches' | 'archived';
+type AdminView = 'users' | 'archived';
 
 interface AdminDashboardProps {
   initialView?: AdminView;
@@ -51,7 +50,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentView === 'users' || currentView === 'coaches') {
+    if (currentView === 'users') {
       fetchUsers();
     } else if (currentView === 'archived') {
       fetchArchivedRoutines();
@@ -130,16 +129,6 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
               Gestionar Usuarios
             </button>
             <button
-              onClick={() => setCurrentView('coaches')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
-                currentView === 'coaches'
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              Gestionar Coaches
-            </button>
-            <button
               onClick={() => setCurrentView('archived')}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
                 currentView === 'archived'
@@ -191,20 +180,6 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
               </p>
             </div>
             <UserList users={apiUsers} />
-          </div>
-        );
-      case 'coaches':
-        return (
-          <div>
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2 text-gray-900">
-                Gestionar Coaches
-              </h1>
-              <p className="text-gray-600">
-                Administra los coaches y sus permisos.
-              </p>
-            </div>
-            <CoachList users={mongoUsers} />
           </div>
         );
       case 'archived':
