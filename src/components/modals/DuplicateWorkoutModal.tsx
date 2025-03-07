@@ -10,7 +10,8 @@ interface DuplicateWorkoutModalProps {
   onClose: () => void;
   workoutId: string;
   workoutName: string;
-  onDuplicate: (newName: string, workoutId: string) => Promise<any>;
+  workoutDescription?: string;
+  onDuplicate: (newName: string, newDescription: string, workoutId: string) => Promise<any>;
 }
 
 export default function DuplicateWorkoutModal({
@@ -18,20 +19,23 @@ export default function DuplicateWorkoutModal({
   onClose,
   workoutId,
   workoutName,
+  workoutDescription = '',
   onDuplicate
 }: DuplicateWorkoutModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [newName, setNewName] = useState(`${workoutName} (Copia)`);
+  const [newDescription, setNewDescription] = useState(workoutDescription);
   const [error, setError] = useState<string | null>(null);
 
   // Reiniciar el nombre cuando cambia la rutina seleccionada
   useEffect(() => {
     if (isOpen) {
       setNewName(`${workoutName} (Copia)`);
+      setNewDescription(workoutDescription);
       setError('');
     }
-  }, [isOpen, workoutName]);
+  }, [isOpen, workoutName, workoutDescription]);
 
   async function handleDuplicate() {
     setLoading(true);
@@ -51,7 +55,7 @@ export default function DuplicateWorkoutModal({
         return;
       }
       
-      await onDuplicate(newName.trim(), workoutId);
+      await onDuplicate(newName.trim(), newDescription.trim(), workoutId);
       onClose();
     } catch (error) {
       console.error('Error al duplicar la rutina:', error);
@@ -103,6 +107,19 @@ export default function DuplicateWorkoutModal({
               className="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400"
               placeholder="Ingresa un nombre para la rutina"
               autoFocus
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Descripción
+            </label>
+            <textarea
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              disabled={loading}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[100px]"
+              placeholder="Descripción de la rutina (opcional)"
             />
           </div>
 

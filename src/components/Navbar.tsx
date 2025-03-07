@@ -72,17 +72,17 @@ function NavbarContent() {
   // Cambiar entre modo claro y oscuro
   const toggleDarkMode = () => {
     try {
-      // Guardar el nuevo tema en una variable para usarlo en el log
-      const newTheme = theme === 'dark' ? 'light' : 'dark';
+      // Obtener el tema actual del sistema
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      
+      // Si el tema actual es 'system', cambiar al tema opuesto del sistema
+      // Si no, alternar entre 'light' y 'dark'
+      const newTheme = theme === 'system' 
+        ? (systemTheme === 'dark' ? 'light' : 'dark')
+        : (theme === 'dark' ? 'light' : 'dark');
+      
       console.log('Cambiando tema de', theme, 'a', newTheme);
-      
-      // Aplicar el cambio de tema
       setTheme(newTheme);
-      
-      // Para ayudar a debuggear, agregar un log adicional después del cambio
-      setTimeout(() => {
-        console.log('Tema aplicado:', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-      }, 100);
       
       // Cerrar el menú después de cambiar el tema
       setProfileMenuOpen(false);
@@ -132,7 +132,8 @@ function NavbarContent() {
   // Si no está montado, no renderizar para evitar problemas de hidratación
   if (!mounted) return null;
 
-  const isDarkMode = theme === 'dark';
+  // Determinar si está en modo oscuro
+  const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   
   // Determinar si hay una sesión activa
   const isAuthenticated = !!session?.user;

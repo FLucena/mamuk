@@ -409,7 +409,7 @@ export async function deleteWorkout(workoutId: string, userId: string) {
  * Duplica un workout existente
  * Versión mejorada con validaciones adicionales y mejor manejo de errores
  */
-export async function duplicateWorkout(workoutId: string, newName?: string) {
+export async function duplicateWorkout(workoutId: string, newName?: string, newDescription?: string) {
   console.log(`[SECURITY] Intento de duplicación de workout. ID: ${workoutId}, Tipo: ${typeof workoutId}, Longitud: ${workoutId?.length}`);
   
   try {
@@ -457,7 +457,7 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
     
     // Sanitizar los datos antes de duplicar
     const sanitizedName = sanitizeHtml(newName || originalWorkout.name);
-    const sanitizedDescription = sanitizeHtml(originalWorkout.description);
+    const sanitizedDescription = sanitizeHtml(newDescription !== undefined ? newDescription : originalWorkout.description);
     
     // Crear el nuevo workout
     const workoutData = originalWorkout.toObject();
@@ -573,94 +573,49 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
 /**
  * Asigna una rutina a un usuario
  */
-export async function assignWorkoutToUser(workoutId: string, targetUserId: string) {
+export async function assignWorkoutToUser(workoutId: string, targetUserId: string, newDescription?: string) {
   try {
     console.log('[ASSIGN] Inicio de asignación. workoutId:', workoutId, 'targetUserId:', targetUserId);
     
     // Validar los IDs
     if (!workoutId || !targetUserId) {
-      console.error('[ASSIGN] Error: IDs faltantes', { workoutId, targetUserId });
-      throw new Error('IDs inválidos o faltantes');
+      console.error('[ASSIGN] Error: IDs no proporcionados', { workoutId, targetUserId });
+      throw new Error('IDs de rutina o usuario no proporcionados');
     }
     
-    // Comprobar si los IDs son strings
+    // Validar que los IDs sean strings
     if (typeof workoutId !== 'string' || typeof targetUserId !== 'string') {
-      console.error('[ASSIGN] Error: Los IDs deben ser strings', { 
+      console.error('[ASSIGN] Error: IDs con tipo incorrecto', { 
         workoutIdType: typeof workoutId, 
         targetUserIdType: typeof targetUserId 
       });
-      throw new Error('Los IDs deben ser strings');
+      throw new Error('IDs de rutina o usuario inválidos');
     }
     
-    // Validar formato de ID de MongoDB
-    if (!validateMongoId(workoutId)) {
-      console.error('[ASSIGN] Error: workoutId no es un ID de MongoDB válido', { workoutId });
-      throw new Error('ID de rutina inválido');
+    // Validar que los IDs tengan el formato correcto de MongoDB
+    if (!validateMongoId(workoutId) || !validateMongoId(targetUserId)) {
+      console.error('[ASSIGN] Error: IDs con formato inválido', { workoutId, targetUserId });
+      throw new Error('IDs de rutina o usuario inválidos');
     }
     
-    if (!validateMongoId(targetUserId)) {
-      console.error('[ASSIGN] Error: targetUserId no es un ID de MongoDB válido', { targetUserId });
-      throw new Error('ID de usuario inválido');
-    }
-    
-    // Obtener sesión
+    // Obtener la sesión del usuario
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       console.error('[ASSIGN] Error: No hay sesión de usuario');
       throw new Error('No autorizado');
     }
     
-    await dbConnect();
-    
-    // Obtener la rutina original
-    const originalWorkout = await Workout.findById(workoutId);
-    if (!originalWorkout) {
-      console.error('[ASSIGN] Error: Rutina no encontrada', { workoutId });
-      throw new Error('Rutina no encontrada');
-    }
-    
-    // Verificar que el usuario objetivo existe
+    // Verificar que el usuario destino existe
     const targetUser = await User.findById(targetUserId);
     if (!targetUser) {
       console.error('[ASSIGN] Error: Usuario destino no encontrado', { targetUserId });
       throw new Error('Usuario destino no encontrado');
     }
     
-    // Verificar que el usuario actual es el propietario de la rutina o es admin
-    const userRole = await getCurrentUserRole(session.user.email || '');
-    const isAdmin = userRole === 'admin';
-    const isCoach = userRole === 'coach' || isAdmin;
+    // Usar duplicateAndAssignWorkout para manejar la asignación
+    const result = await duplicateAndAssignWorkout(workoutId, targetUserId, undefined, newDescription);
     
-    if (originalWorkout.userId.toString() !== session.user.id && !isAdmin && !isCoach) {
-      console.error('[ASSIGN] Error: Usuario no autorizado', { 
-        currentUserId: session.user.id, 
-        workoutOwnerId: originalWorkout.userId.toString() 
-      });
-      throw new Error('No autorizado para asignar esta rutina');
-    }
-    
-    // Duplicar la rutina para el usuario destino
-    console.log('[ASSIGN] Duplicando rutina para usuario destino');
-    const workoutData = originalWorkout.toObject();
-    delete workoutData._id;
-    
-    // Crear una nueva rutina para el usuario destino
-    const newWorkout = new Workout({
-      ...workoutData,
-      userId: targetUserId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    
-    // Guardar la nueva rutina
-    await newWorkout.save();
-    console.log('[ASSIGN] Rutina duplicada y asignada exitosamente. Nueva rutina ID:', newWorkout._id);
-    
-    // Convertir a objeto serializable
-    const serializedWorkout = JSON.parse(JSON.stringify(newWorkout.toObject()));
-    serializedWorkout.id = serializedWorkout._id.toString();
-    
-    return serializedWorkout;
+    return result;
   } catch (error) {
     console.error('[ASSIGN] Error al asignar rutina:', error);
     throw error;
@@ -673,14 +628,16 @@ export async function assignWorkoutToUser(workoutId: string, targetUserId: strin
  * @param workoutId ID de la rutina a duplicar
  * @param targetUserId ID del usuario al que se asignará la rutina duplicada
  * @param newName Nombre opcional para la rutina duplicada
+ * @param newDescription Nueva descripción para la rutina duplicada
  * @returns La nueva rutina duplicada y asignada
  */
-export async function duplicateAndAssignWorkout(workoutId: string, targetUserId: string, newName?: string) {
+export async function duplicateAndAssignWorkout(workoutId: string, targetUserId: string, newName?: string, newDescription?: string) {
   const session = await getServerSession(authOptions);
   console.log('Iniciando duplicación y asignación de rutina:', {
     workoutId,
     targetUserId,
     newName,
+    newDescription,
     requesterEmail: session?.user?.email,
     requesterUserId: session?.user?.id
   });
@@ -694,7 +651,7 @@ export async function duplicateAndAssignWorkout(workoutId: string, targetUserId:
 
   try {
     // Primero duplicamos la rutina (se crea una copia asignada al usuario actual)
-    const duplicatedWorkout = await duplicateWorkout(workoutId, newName);
+    const duplicatedWorkout = await duplicateWorkout(workoutId, newName, newDescription);
     
     // Luego asignamos la rutina duplicada al usuario destino
     const assignedWorkout = await Workout.findByIdAndUpdate(
@@ -702,6 +659,7 @@ export async function duplicateAndAssignWorkout(workoutId: string, targetUserId:
       { 
         userId: targetUserId,
         name: newName || duplicatedWorkout.name,
+        description: newDescription !== undefined ? newDescription : duplicatedWorkout.description,
         updatedAt: new Date()
       },
       { new: true }
@@ -877,93 +835,54 @@ export async function updateBlockName(
 }
 
 /**
- * Asigna una rutina a un usuario
- * Primero duplica la rutina y luego la asigna al usuario destino
- */
-export async function assignWorkout(workoutId: string, targetUserId: string, newName: string) {
-  try {
-    // Primero duplicamos la rutina (se crea una copia asignada al usuario actual)
-    const duplicatedWorkout = await duplicateWorkout(workoutId, newName);
-    
-    // Luego asignamos la rutina duplicada al usuario destino
-    const assignedWorkout = await Workout.findByIdAndUpdate(
-      duplicatedWorkout._id,
-      { 
-        userId: targetUserId,
-        name: newName || duplicatedWorkout.name,
-        updatedAt: new Date()
-      },
-      { new: true }
-    );
-    
-    return assignedWorkout;
-  } catch (error) {
-    console.error('Error assigning workout:', error);
-    throw error;
-  }
-}
-
-/**
  * Actualiza el nombre de una rutina
  * @param workoutId ID de la rutina
  * @param newName Nuevo nombre para la rutina
+ * @param newDescription Nueva descripción para la rutina
  * @returns La rutina actualizada
  */
-export async function updateWorkoutName(workoutId: string, newName: string) {
+export async function updateWorkoutName(workoutId: string, newName: string, newDescription: string) {
+  if (!workoutId || !newName) {
+    throw new Error('Workout ID and new name are required');
+  }
+
   try {
-    // Validar que el ID de la rutina sea proporcionado
-    if (!workoutId) {
-      throw new Error('ID de rutina no definido');
-    }
-    
-    // Validar que el nombre no esté vacío
-    if (!newName || !newName.trim()) {
-      throw new Error('El nombre de la rutina no puede estar vacío');
-    }
-    
-    // Obtener la sesión del usuario
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
       throw new Error('No autorizado');
     }
-    
-    // Conectar a la base de datos
-    await dbConnect();
-    
-    // Buscar la rutina
+
     const workout = await Workout.findById(workoutId);
     if (!workout) {
       throw new Error('Rutina no encontrada');
     }
-    
-    // Verificar que el usuario es propietario o admin
-    const userRole = await getCurrentUserRole(session.user.email || '');
+
+    // Verificar permisos
+    const userRole = await getCurrentUserRole(session.user.id);
     const isAdmin = userRole === 'admin';
-    
-    if (workout.userId.toString() !== session.user.id && !isAdmin) {
-      throw new Error('No autorizado para modificar esta rutina');
+    const isCoach = userRole === 'coach';
+    const isOwner = workout.userId.toString() === session.user.id;
+
+    if (!isAdmin && !isCoach && !isOwner) {
+      throw new Error('No tienes permiso para modificar esta rutina');
     }
-    
-    // Sanitizar el nombre
-    const sanitizedName = sanitizeHtml(newName.trim());
-    
-    // Actualizar el nombre
-    workout.name = sanitizedName;
-    workout.updatedAt = new Date();
-    
-    // Guardar los cambios
+
+    // Actualizar nombre y descripción
+    workout.name = newName;
+    workout.description = newDescription;
     await workout.save();
-    
-    // Revalidar caché
-    revalidatePath(`workout-${workoutId}`);
-    revalidatePath('workouts-list');
-    
-    // Convertir a objeto plano
+
+    // Serializar el objeto antes de devolverlo
     const serializedWorkout = JSON.parse(JSON.stringify(workout.toObject()));
     
+    // Asegurarnos de que el ID esté disponible en ambos formatos
+    if (serializedWorkout._id) {
+      serializedWorkout.id = serializedWorkout._id.toString();
+    }
+
     return serializedWorkout;
   } catch (error) {
-    console.error('Error al actualizar el nombre de la rutina:', error);
+    console.error('Error updating workout:', error);
     throw error;
   }
 } 

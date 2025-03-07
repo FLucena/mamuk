@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiCalendar, FiEdit2, FiTrash2, FiEye, FiCopy, FiUsers, FiEdit } from 'react-icons/fi';
-import DeleteWorkoutModal from '../modals/DeleteWorkoutModal';
+import { FiEye, FiEdit, FiCopy, FiUsers, FiTrash2 } from 'react-icons/fi';
+import { toast } from 'sonner';
+
 import DuplicateWorkoutModal from '../modals/DuplicateWorkoutModal';
 import AssignWorkoutModal from '../modals/AssignWorkoutModal';
 import RenameWorkoutModal from '../modals/RenameWorkoutModal';
-import { handleArchiveWorkout } from '@/app/workout/actions';
-import { duplicateWorkout, assignWorkoutToUser, updateWorkoutName } from '@/app/workout/[id]/actions';
-import { toast } from 'sonner';
+import DeleteWorkoutModal from '../modals/DeleteWorkoutModal';
+import { duplicateWorkout, assignWorkoutToUser, updateWorkoutName, deleteWorkout } from '@/app/workout/[id]/actions';
 
 interface Exercise {
   _id: string;
@@ -55,10 +55,10 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
   
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,50 +82,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     return null;
   }
 
-  const handleDeleteClick = (workout: Workout) => {
-    const workoutId = getValidWorkoutId(workout);
-    if (!workoutId) {
-      toast.error('No se puede eliminar esta rutina: ID inválido');
-      return;
-    }
-    
-    setSelectedWorkout(workout);
-    setShowDeleteModal(true);
-    setError(null);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedWorkout) return;
-    
-    const workoutId = getValidWorkoutId(selectedWorkout);
-    if (!workoutId) {
-      toast.error('No se puede eliminar esta rutina: ID inválido');
-      setShowDeleteModal(false);
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      await handleArchiveWorkout(workoutId);
-      
-      setWorkouts(prevWorkouts => 
-        prevWorkouts.filter(w => getValidWorkoutId(w) !== workoutId)
-      );
-      
-      setShowDeleteModal(false);
-      toast.success('Rutina eliminada exitosamente');
-      
-      router.refresh();
-    } catch (error) {
-      setError('Error al eliminar la rutina. Por favor, inténtalo de nuevo.');
-      toast.error('Error al eliminar la rutina');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDuplicateClick = (workout: Workout) => {
     const workoutId = getValidWorkoutId(workout);
     if (!workoutId) {
@@ -138,7 +94,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
   };
 
-  const handleDuplicate = async (newName: string, workoutId: string) => {
+  const handleDuplicate = async (newName: string, newDescription: string, workoutId: string) => {
     if (!workoutId || !newName) {
       console.error('ID de rutina o nuevo nombre no definido', { workoutId, newName });
       setError('ID de rutina o nuevo nombre no definido');
@@ -150,7 +106,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
     try {
       console.log('Intentando duplicar rutina:', workoutId);
-      const duplicated = await duplicateWorkout(workoutId, newName);
+      const duplicated = await duplicateWorkout(workoutId, newName, newDescription);
       console.log('Rutina duplicada con éxito:', duplicated);
       
       // Verificar que el objeto devuelto tiene la estructura esperada
@@ -186,7 +142,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
   };
 
-  const handleAssign = async (targetUserId: string) => {
+  const handleAssign = async (targetUserId: string, newDescription?: string) => {
     if (!selectedWorkout) return;
 
     const workoutId = getValidWorkoutId(selectedWorkout);
@@ -197,7 +153,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
     try {
       console.log('Asignando rutina con ID:', workoutId, 'a usuario:', targetUserId);
-      const assigned = await assignWorkoutToUser(workoutId, targetUserId);
+      const assigned = await assignWorkoutToUser(workoutId, targetUserId, newDescription);
       
       // Actualizar la lista local de rutinas (opcional, ya que hacemos refresh)
       setWorkouts(currentWorkouts => 
@@ -235,7 +191,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
   };
 
-  const handleRename = async (workoutId: string, newName: string) => {
+  const handleRename = async (workoutId: string, newName: string, newDescription: string) => {
     if (!workoutId || !newName) {
       console.error('ID de rutina o nuevo nombre no definido', { workoutId, newName });
       setError('ID de rutina o nuevo nombre no definido');
@@ -246,24 +202,74 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
 
     try {
-      console.log('Renombrando rutina:', workoutId, 'Nuevo nombre:', newName);
-      const updatedWorkout = await updateWorkoutName(workoutId, newName);
-      
+      console.log('Actualizando rutina:', workoutId, 'Nuevo nombre:', newName, 'Nueva descripción:', newDescription);
+      const updatedWorkout = await updateWorkoutName(workoutId, newName, newDescription);
+
       // Actualizar la lista de rutinas
-      setWorkouts(prevWorkouts => 
+      setWorkouts(prevWorkouts =>
         prevWorkouts.map(w => 
-          getValidWorkoutId(w) === workoutId ? { ...w, name: newName } : w
+          getValidWorkoutId(w) === workoutId 
+            ? { ...w, name: newName, description: newDescription } 
+            : w
         )
       );
-      
+
       setShowRenameModal(false);
-      toast.success('Rutina renombrada exitosamente');
+      toast.success('Rutina actualizada exitosamente');
       
       router.refresh();
     } catch (error) {
-      console.error('Error al renombrar la rutina:', error);
-      setError('Error al renombrar la rutina. Por favor, inténtalo de nuevo.');
-      toast.error(error instanceof Error ? error.message : 'Error al renombrar la rutina');
+      console.error('Error al actualizar la rutina:', error);
+      setError('Error al actualizar la rutina. Por favor, inténtalo de nuevo.');
+      toast.error(error instanceof Error ? error.message : 'Error al actualizar la rutina');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (workout: Workout) => {
+    const workoutId = getValidWorkoutId(workout);
+    if (!workoutId) {
+      toast.error('No se puede eliminar esta rutina: ID inválido');
+      return;
+    }
+    
+    setSelectedWorkout(workout);
+    setShowDeleteModal(true);
+    setError(null);
+  };
+
+  const handleDelete = async (workoutId: string) => {
+    if (!workoutId) {
+      console.error('ID de rutina no definido', { workoutId });
+      setError('ID de rutina no definido');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('Eliminando rutina:', workoutId);
+      
+      // Obtener el ID del usuario de la rutina seleccionada
+      const userId = selectedWorkout?.userId || '';
+      
+      await deleteWorkout(workoutId, userId);
+      
+      // Actualizar la lista local de rutinas
+      setWorkouts(prevWorkouts => 
+        prevWorkouts.filter(w => getValidWorkoutId(w) !== workoutId)
+      );
+      
+      setShowDeleteModal(false);
+      toast.success('Rutina eliminada exitosamente');
+      
+      router.refresh();
+    } catch (error) {
+      console.error('Error al eliminar la rutina:', error);
+      setError('Error al eliminar la rutina. Por favor, inténtalo de nuevo.');
+      toast.error(error instanceof Error ? error.message : 'Error al eliminar la rutina');
     } finally {
       setLoading(false);
     }
@@ -286,7 +292,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
             const isValidId = !!workoutId;
             
             return (
-              <div 
+              <div
                 key={workout._id || workout.id} 
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col"
               >
@@ -332,6 +338,14 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
                     <FiCopy className="w-5 h-5" />
                   </button>
                   
+                  <button
+                    onClick={() => handleDeleteClick(workout)}
+                    className="p-2 text-red-600 hover:bg-red-100 rounded-full"
+                    title="Eliminar rutina"
+                  >
+                    <FiTrash2 className="w-5 h-5" />
+                  </button>
+                  
                   {isCoach && (
                     <button
                       onClick={() => handleAssignClick(workout)}
@@ -341,14 +355,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
                       <FiUsers className="w-5 h-5" />
                     </button>
                   )}
-                  
-                  <button
-                    onClick={() => handleDeleteClick(workout)}
-                    className="p-2 text-red-600 hover:bg-red-100 rounded-full"
-                    title="Eliminar rutina"
-                  >
-                    <FiTrash2 className="w-5 h-5" />
-                  </button>
                 </div>
               </div>
             );
@@ -358,19 +364,12 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
       {selectedWorkout && (
         <>
-          <DeleteWorkoutModal
-            isOpen={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            onConfirm={handleDeleteConfirm}
-            isDeleting={loading}
-            error={error}
-          />
-
           <DuplicateWorkoutModal
             isOpen={showDuplicateModal}
             onClose={() => setShowDuplicateModal(false)}
             workoutId={getValidWorkoutId(selectedWorkout) || ''}
             workoutName={selectedWorkout.name}
+            workoutDescription={selectedWorkout.description || ''}
             onDuplicate={handleDuplicate}
           />
 
@@ -379,7 +378,16 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
             onClose={() => setShowRenameModal(false)}
             workoutId={getValidWorkoutId(selectedWorkout) || ''}
             currentName={selectedWorkout.name}
+            currentDescription={selectedWorkout.description || ''}
             onRename={handleRename}
+          />
+
+          <DeleteWorkoutModal
+            isOpen={showDeleteModal}
+            onClose={() => setShowDeleteModal(false)}
+            workoutId={getValidWorkoutId(selectedWorkout) || ''}
+            workoutName={selectedWorkout.name}
+            onDelete={handleDelete}
           />
 
           {isCoach && (
@@ -388,6 +396,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
               onClose={() => setShowAssignModal(false)}
               workoutId={getValidWorkoutId(selectedWorkout) || ''}
               workoutName={selectedWorkout.name}
+              workoutDescription={selectedWorkout.description || ''}
               onAssign={handleAssign}
             />
           )}

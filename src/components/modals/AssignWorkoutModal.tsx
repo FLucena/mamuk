@@ -17,7 +17,8 @@ interface AssignWorkoutModalProps {
   onClose: () => void;
   workoutId: string;
   workoutName: string;
-  onAssign: (targetUserId: string) => Promise<any>;
+  workoutDescription?: string;
+  onAssign: (targetUserId: string, newDescription?: string) => Promise<any>;
 }
 
 export default function AssignWorkoutModal({
@@ -25,11 +26,14 @@ export default function AssignWorkoutModal({
   onClose,
   workoutId,
   workoutName,
+  workoutDescription = '',
   onAssign
 }: AssignWorkoutModalProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [newDescription, setNewDescription] = useState(workoutDescription);
   const [users, setUsers] = useState<ExtendedUser[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,12 +41,13 @@ export default function AssignWorkoutModal({
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
+      setNewDescription(workoutDescription);
     }
-  }, [isOpen]);
+  }, [isOpen, workoutDescription]);
 
   async function fetchUsers() {
     try {
-      setLoading(true);
+      setIsLoadingUsers(true);
       // Usar la ruta específica para clientes
       console.log('AssignWorkoutModal - Solicitando clientes para asignación');
       const response = await fetch('/api/users/customers');
@@ -71,7 +76,7 @@ export default function AssignWorkoutModal({
       setError(error instanceof Error ? error.message : 'Error al cargar clientes');
       setUsers([]);
     } finally {
-      setLoading(false);
+      setIsLoadingUsers(false);
     }
   }
 
@@ -81,12 +86,12 @@ export default function AssignWorkoutModal({
       return;
     }
 
-    setLoading(true);
+    setIsAssigning(true);
     setError(null);
 
     try {
       console.log('Asignando rutina:', workoutId, 'al usuario:', selectedUserId);
-      await onAssign(selectedUserId);
+      await onAssign(selectedUserId, newDescription);
       toast.success('Rutina asignada exitosamente');
       router.refresh();
       onClose();
@@ -95,7 +100,7 @@ export default function AssignWorkoutModal({
       setError(error instanceof Error ? error.message : 'Error al asignar la rutina');
       toast.error('Error al asignar la rutina');
     } finally {
-      setLoading(false);
+      setIsAssigning(false);
     }
   }
 
@@ -110,7 +115,8 @@ export default function AssignWorkoutModal({
           </h3>
           <button 
             onClick={onClose}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            disabled={isAssigning}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
           >
             <X size={20} />
           </button>
@@ -125,7 +131,7 @@ export default function AssignWorkoutModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Selecciona un usuario
             </label>
-            {loading ? (
+            {isLoadingUsers ? (
               <div className="flex items-center justify-center py-3">
                 <div className="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
                 <p className="text-gray-600 dark:text-gray-400">Cargando usuarios...</p>
@@ -134,8 +140,8 @@ export default function AssignWorkoutModal({
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                disabled={loading}
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                disabled={isAssigning}
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Selecciona un usuario</option>
                 {users.map((user) => (
@@ -157,6 +163,19 @@ export default function AssignWorkoutModal({
             )}
           </div>
 
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Descripción
+            </label>
+            <textarea
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              disabled={isAssigning}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[100px]"
+              placeholder="Descripción de la rutina (opcional)"
+            />
+          </div>
+
           {error && (
             <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md">
               {error}
@@ -166,19 +185,19 @@ export default function AssignWorkoutModal({
           <div className="flex justify-end gap-2 mt-4">
             <button
               onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              disabled={isAssigning}
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
             <button
               onClick={handleAssign}
-              disabled={loading || !selectedUserId}
+              disabled={isAssigning || !selectedUserId}
               className="px-4 py-2 text-sm text-white bg-blue-600 dark:bg-blue-700 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
+              {isAssigning ? (
                 <>
-                  <span className="animate-spin mr-2">⏳</span>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
                   Asignando...
                 </>
               ) : (

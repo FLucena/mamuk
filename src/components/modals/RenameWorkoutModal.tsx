@@ -10,7 +10,8 @@ interface RenameWorkoutModalProps {
   onClose: () => void;
   workoutId: string;
   currentName: string;
-  onRename: (workoutId: string, newName: string) => Promise<any>;
+  currentDescription?: string;
+  onRename: (workoutId: string, newName: string, newDescription: string) => Promise<any>;
 }
 
 export default function RenameWorkoutModal({
@@ -18,20 +19,23 @@ export default function RenameWorkoutModal({
   onClose,
   workoutId,
   currentName,
+  currentDescription = '',
   onRename
 }: RenameWorkoutModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [newName, setNewName] = useState(currentName);
+  const [newDescription, setNewDescription] = useState(currentDescription);
   const [error, setError] = useState<string | null>(null);
 
-  // Reiniciar el nombre cuando cambia la rutina seleccionada
+  // Reiniciar los valores cuando cambia la rutina seleccionada
   useEffect(() => {
     if (isOpen) {
       setNewName(currentName);
+      setNewDescription(currentDescription);
       setError(null);
     }
-  }, [isOpen, currentName]);
+  }, [isOpen, currentName, currentDescription]);
 
   async function handleRename() {
     if (!newName.trim()) {
@@ -39,7 +43,7 @@ export default function RenameWorkoutModal({
       return;
     }
 
-    if (newName.trim() === currentName) {
+    if (newName.trim() === currentName && newDescription.trim() === currentDescription) {
       onClose();
       return;
     }
@@ -48,13 +52,13 @@ export default function RenameWorkoutModal({
     setError(null);
 
     try {
-      await onRename(workoutId, newName.trim());
+      await onRename(workoutId, newName.trim(), newDescription.trim());
       router.refresh();
       onClose();
     } catch (error) {
-      console.error('Error al renombrar la rutina:', error);
-      setError(error instanceof Error ? error.message : 'Error al renombrar la rutina');
-      toast.error('Error al renombrar la rutina');
+      console.error('Error al actualizar la rutina:', error);
+      setError(error instanceof Error ? error.message : 'Error al actualizar la rutina');
+      toast.error('Error al actualizar la rutina');
     } finally {
       setLoading(false);
     }
@@ -67,33 +71,43 @@ export default function RenameWorkoutModal({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-auto overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Renombrar Rutina
+            Editar Rutina
           </h3>
-          <button 
+          <button
             onClick={onClose}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            disabled={loading}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
           >
             <X size={20} />
           </button>
         </div>
 
         <div className="p-4">
-          <p className="mb-4 text-gray-700 dark:text-gray-300">
-            Introduce un nuevo nombre para la rutina "{currentName}".
-          </p>
-
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Nuevo nombre
+              Nombre
             </label>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               disabled={loading}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="Nombre de la rutina"
               autoFocus
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Descripción
+            </label>
+            <textarea
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              disabled={loading}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed min-h-[100px]"
+              placeholder="Descripción de la rutina (opcional)"
             />
           </div>
 
@@ -107,24 +121,24 @@ export default function RenameWorkoutModal({
             <button
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
             <button
               onClick={handleRename}
-              disabled={loading || !newName.trim() || newName.trim() === currentName}
+              disabled={loading || !newName.trim() || (newName.trim() === currentName && newDescription.trim() === currentDescription)}
               className="px-4 py-2 text-sm text-white bg-blue-600 dark:bg-blue-700 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
-                  <span className="animate-spin mr-2">⏳</span>
-                  Renombrando...
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                  Guardando...
                 </>
               ) : (
                 <>
                   <CheckCircle size={16} className="mr-2" />
-                  Renombrar
+                  Guardar Cambios
                 </>
               )}
             </button>
