@@ -436,17 +436,6 @@ export default function WorkoutClient({
         description={workout.description}
       />
       
-      <div className="flex items-center justify-end mt-4 mb-6">
-        {isAdmin || isCoach ? (
-          <button
-            onClick={handleDeleteWorkout}
-            className="ml-4 px-4 py-2 bg-red-600 text-white dark:bg-red-700 dark:hover:bg-red-800 rounded-md hover:bg-red-700 transition-colors"
-          >
-            Eliminar Rutina
-          </button>
-        ) : null}
-      </div>
-      
       <div className="container max-w-5xl mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <Link 
