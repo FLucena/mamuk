@@ -4,6 +4,7 @@ import { signOut } from 'next-auth/react';
 import { useState } from 'react';
 import { FiLogOut } from 'react-icons/fi';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface SignOutButtonProps {
   className?: string;
@@ -58,50 +59,27 @@ export default function SignOutButton({
       e.preventDefault();
       e.stopPropagation();
       
+      if (loading) return;
       setLoading(true);
-      console.log('Attempting to sign out...');
+      
+      toast.loading('Cerrando sesión...');
 
-      // Sign out from NextAuth with redirect disabled
+      // Instead of our complex approach, let's use the standard NextAuth signOut
+      // with redirect enabled to ensure proper session cleanup
       await signOut({
-        redirect: false,
+        redirect: true,
         callbackUrl: '/auth/signin'
       });
 
-      // Clear all auth-related cookies
-      const cookiesToClear = [
-        'next-auth.session-token',
-        'next-auth.csrf-token',
-        'next-auth.callback-url',
-        'next-auth.state',
-        'next-auth.pkce',
-        '__Secure-next-auth.session-token',
-        '__Secure-next-auth.callback-url',
-        '__Host-next-auth.csrf-token',
-        'g_state',
-        'g_auth',
-        'gid'
-      ];
-
-      cookiesToClear.forEach(cookieName => {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}; secure; samesite=lax`;
-      });
-
-      // Sign out from Google (this will open in a hidden iframe)
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = 'https://accounts.google.com/logout';
-      document.body.appendChild(iframe);
-
-      // Remove the iframe after a short delay
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-        // Redirect to sign-in page
-        window.location.href = '/auth/signin';
-      }, 1000);
+      // The code below won't execute due to the redirect, but we'll keep it
+      // as a fallback in case the redirect doesn't happen
+      toast.success('Sesión cerrada correctamente');
 
     } catch (err) {
       console.error('Error during sign out:', err);
-      // Fallback redirect
+      toast.error('Error al cerrar sesión');
+      
+      // Force a clean reload on error
       window.location.href = '/auth/signin';
     } finally {
       setLoading(false);

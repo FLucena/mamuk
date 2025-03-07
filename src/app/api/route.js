@@ -18,6 +18,6 @@ export async function GET(req, res) {
   } catch (error) {
     // Maneja los errores
     console.error(error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch data' }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Fallo al obtener datos' }), { status: 500 });
   }
 }

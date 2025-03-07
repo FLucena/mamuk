@@ -1,30 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { NextResponse } from 'next/server';
 import { authOptions } from '@/lib/auth';
 
-export async function POST(req: NextRequest) {
+export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session) {
-      return NextResponse.json({ success: false, message: 'No active session' }, { status: 401 });
+    if (session) {
+      console.log('Signing out user:', session.user?.email);
     }
-    
-    const body = await req.json();
-    const callbackUrl = body.callbackUrl || '/auth/signin';
-    
-    // Devolver una respuesta exitosa con la URL de redirección
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Logout successful',
-      url: callbackUrl
+
+    // Get the callback URL from the request
+    const searchParams = new URL(request.url).searchParams;
+    const callbackUrl = searchParams.get('callbackUrl') || '/auth/signin';
+
+    // Set cookies to expire
+    const cookiesToClear = [
+      'next-auth.session-token',
+      'next-auth.csrf-token',
+      'next-auth.callback-url',
+      '__Secure-next-auth.session-token',
+      '__Host-next-auth.csrf-token'
+    ];
+
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+
+    cookiesToClear.forEach(cookie => {
+      headers.append(
+        'Set-Cookie',
+        `${cookie}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`
+      );
     });
+
+    // Return a JSON response with the callback URL
+    return NextResponse.json(
+      { url: callbackUrl },
+      { status: 200, headers }
+    );
   } catch (error) {
     console.error('Error in signout API:', error);
-    return NextResponse.json({ 
-      success: false, 
-      message: 'Error processing logout request' 
-    }, { status: 500 });
+    return NextResponse.json(
+      { url: '/auth/signin' },
+      { status: 200 }
+    );
   }
 }
 

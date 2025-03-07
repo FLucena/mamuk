@@ -12,6 +12,19 @@ import Image from 'next/image';
 import { NIVELES_USUARIO } from './user/UserLevel';
 import { INSIGNIAS } from './user/UserBadges';
 import SignOutButton from '@/components/auth/SignOutButton';
+import { Session } from 'next-auth';
+import { Role } from '@/lib/types/user';
+
+// Define a type for the user object
+type UserType = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role: Role;
+  coachId?: string;
+  emailVerified?: Date | null;
+} | null;
 
 function NavbarContent() {
   const { isAdmin, isCoach } = useAuth();
@@ -25,6 +38,7 @@ function NavbarContent() {
   const [userPuntos, setUserPuntos] = useState(25); // Puntos de ejemplo
   const [insigniasObtenidas, setInsigniasObtenidas] = useState(['constancia', 'progreso']); // Ejemplo
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [user, setUser] = useState<UserType>(null);
   
   // Asegurarse de que el componente está montado para evitar problemas de hidratación
   useEffect(() => {
@@ -66,6 +80,7 @@ function NavbarContent() {
       setUserNivel(0); // Monito
       setUserPuntos(25);
       setInsigniasObtenidas(['constancia', 'progreso']);
+      setUser(session.user as UserType);
     }
   }, [session]);
   

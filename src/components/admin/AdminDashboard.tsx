@@ -62,7 +62,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       setLoading(true);
       const response = await fetch('/api/admin/users');
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        throw new Error('Fallo al obtener usuarios');
       }
       const data = await response.json();
       
@@ -100,7 +100,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       setLoading(true);
       const response = await fetch('/api/admin/routines/archived');
       if (!response.ok) {
-        throw new Error('Failed to fetch archived routines');
+        throw new Error('Fallo al obtener rutinas archivadas');
       }
       const data = await response.json();
       setArchivedRoutines(data);

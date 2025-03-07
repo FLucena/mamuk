@@ -18,7 +18,7 @@ interface AssignWorkoutModalProps {
   workoutId: string;
   workoutName: string;
   workoutDescription?: string;
-  onAssign: (targetUserId: string, newDescription?: string) => Promise<any>;
+  onAssign: (targetUserId: string) => Promise<any>;
 }
 
 export default function AssignWorkoutModal({
@@ -91,7 +91,7 @@ export default function AssignWorkoutModal({
 
     try {
       console.log('Asignando rutina:', workoutId, 'al usuario:', selectedUserId);
-      await onAssign(selectedUserId, newDescription);
+      await onAssign(selectedUserId);
       toast.success('Rutina asignada exitosamente');
       router.refresh();
       onClose();
@@ -161,19 +161,6 @@ export default function AssignWorkoutModal({
                 {error ? 'Error al cargar usuarios' : 'No hay usuarios disponibles'}
               </div>
             )}
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Descripción
-            </label>
-            <textarea
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-              disabled={isAssigning}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[100px]"
-              placeholder="Descripción de la rutina (opcional)"
-            />
           </div>
 
           {error && (

@@ -142,7 +142,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
   };
 
-  const handleAssign = async (targetUserId: string, newDescription?: string) => {
+  const handleAssign = async (targetUserId: string) => {
     if (!selectedWorkout) return;
 
     const workoutId = getValidWorkoutId(selectedWorkout);
@@ -153,7 +153,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
     try {
       console.log('Asignando rutina con ID:', workoutId, 'a usuario:', targetUserId);
-      const assigned = await assignWorkoutToUser(workoutId, targetUserId, newDescription);
+      const assigned = await assignWorkoutToUser(workoutId, targetUserId);
       
       // Actualizar la lista local de rutinas (opcional, ya que hacemos refresh)
       setWorkouts(currentWorkouts => 
@@ -161,7 +161,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       );
       
       router.refresh();
-      toast.success(`Rutina "${selectedWorkout.name}" asignada correctamente`);
       setShowAssignModal(false);
     } catch (error) {
       console.error('Error durante la asignación de rutina:', error);

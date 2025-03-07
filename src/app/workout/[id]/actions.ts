@@ -573,7 +573,7 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
 /**
  * Asigna una rutina a un usuario
  */
-export async function assignWorkoutToUser(workoutId: string, targetUserId: string, newDescription?: string) {
+export async function assignWorkoutToUser(workoutId: string, targetUserId: string) {
   try {
     console.log('[ASSIGN] Inicio de asignación. workoutId:', workoutId, 'targetUserId:', targetUserId);
     
@@ -613,7 +613,7 @@ export async function assignWorkoutToUser(workoutId: string, targetUserId: strin
     }
     
     // Usar duplicateAndAssignWorkout para manejar la asignación
-    const result = await duplicateAndAssignWorkout(workoutId, targetUserId, undefined, newDescription);
+    const result = await duplicateAndAssignWorkout(workoutId, targetUserId, undefined);
     
     return result;
   } catch (error) {
@@ -631,13 +631,12 @@ export async function assignWorkoutToUser(workoutId: string, targetUserId: strin
  * @param newDescription Nueva descripción para la rutina duplicada
  * @returns La nueva rutina duplicada y asignada
  */
-export async function duplicateAndAssignWorkout(workoutId: string, targetUserId: string, newName?: string, newDescription?: string) {
+export async function duplicateAndAssignWorkout(workoutId: string, targetUserId: string, newName?: string) {
   const session = await getServerSession(authOptions);
   console.log('Iniciando duplicación y asignación de rutina:', {
     workoutId,
     targetUserId,
     newName,
-    newDescription,
     requesterEmail: session?.user?.email,
     requesterUserId: session?.user?.id
   });
@@ -651,7 +650,7 @@ export async function duplicateAndAssignWorkout(workoutId: string, targetUserId:
 
   try {
     // Primero duplicamos la rutina (se crea una copia asignada al usuario actual)
-    const duplicatedWorkout = await duplicateWorkout(workoutId, newName, newDescription);
+    const duplicatedWorkout = await duplicateWorkout(workoutId, newName);
     
     // Luego asignamos la rutina duplicada al usuario destino
     const assignedWorkout = await Workout.findByIdAndUpdate(
@@ -659,7 +658,7 @@ export async function duplicateAndAssignWorkout(workoutId: string, targetUserId:
       { 
         userId: targetUserId,
         name: newName || duplicatedWorkout.name,
-        description: newDescription !== undefined ? newDescription : duplicatedWorkout.description,
+        description: duplicatedWorkout.description,
         updatedAt: new Date()
       },
       { new: true }
