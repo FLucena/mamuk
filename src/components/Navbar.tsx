@@ -72,22 +72,19 @@ function NavbarContent() {
   // Cambiar entre modo claro y oscuro
   const toggleDarkMode = () => {
     try {
-      // Obtener el tema actual del sistema
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      if (!mounted) return;
       
-      // Si el tema actual es 'system', cambiar al tema opuesto del sistema
-      // Si no, alternar entre 'light' y 'dark'
-      const newTheme = theme === 'system' 
-        ? (systemTheme === 'dark' ? 'light' : 'dark')
-        : (theme === 'dark' ? 'light' : 'dark');
-      
-      console.log('Cambiando tema de', theme, 'a', newTheme);
+      // Force theme to opposite of current
+      const newTheme = theme === 'dark' ? 'light' : 'dark';
       setTheme(newTheme);
       
-      // Cerrar el menú después de cambiar el tema
+      // Store the preference in localStorage
+      localStorage.setItem('theme-preference', newTheme);
+      
+      // Close the menu
       setProfileMenuOpen(false);
     } catch (error) {
-      console.error('Error al cambiar el tema:', error);
+      console.error('Error toggling theme:', error);
     }
   };
 
@@ -276,7 +273,7 @@ function NavbarContent() {
                     <div className="px-4 py-2">
                       {isAuthenticated ? (
                         <div className="signout-button">
-                          <SignOutButton useLink={true} />
+                          <SignOutButton useLink={false} />
                         </div>
                       ) : (
                         <Link href="/auth/signin" className="flex w-full items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
@@ -359,7 +356,7 @@ function NavbarContent() {
                   <div className="px-4 py-2">
                     {isAuthenticated ? (
                       <div className="signout-button">
-                        <SignOutButton useLink={true} />
+                        <SignOutButton useLink={false} />
                       </div>
                     ) : (
                       <Link href="/auth/signin" className="flex w-full items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">

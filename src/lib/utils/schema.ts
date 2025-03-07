@@ -13,12 +13,12 @@ export function generateOrganizationSchema() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'Mamuk',
-    url: process.env.NEXT_PUBLIC_APP_URL || 'https://mamuk.vercel.app',
-    logo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://mamuk.vercel.app'}/logo.png`,
+    url: process.env.NEXT_PUBLIC_APP_URL || 'https://mamuk.com.ar',
+    logo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://mamuk.com.ar'}/logo.png`,
     sameAs: [
       'https://facebook.com/mamuk',
       'https://twitter.com/mamuk',
-      'https://instagram.com/mamuk',
+      'https://www.instagram.com/mamuk_fa/',
     ],
     contactPoint: {
       '@type': 'ContactPoint',

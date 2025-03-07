@@ -9,6 +9,8 @@ import { Providers } from '@/providers'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from 'sonner'
 import { Metadata, Viewport } from 'next'
+import CookieConsent from '@/components/CookieConsent'
+import Footer from '@/components/Footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -78,11 +80,21 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               enableSystem={true}
               storageKey="mamuk-theme"
               disableTransitionOnChange
+              themes={['light', 'dark']}
+              value={{
+                light: 'light',
+                dark: 'dark',
+                system: 'system'
+              }}
             >
               <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
                 <Navbar />
-                {children}
+                <main className="pb-16">
+                  {children}
+                </main>
+                <Footer />
                 <Toaster richColors position="top-center" />
+                <CookieConsent />
               </div>
             </ThemeProvider>
           </AuthProvider>

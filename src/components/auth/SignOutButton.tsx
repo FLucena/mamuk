@@ -55,24 +55,54 @@ export default function SignOutButton({
 
   const handleSignOut = async (e: React.MouseEvent) => {
     try {
-      // Prevenir que el evento se propague y cierre el modal
       e.preventDefault();
       e.stopPropagation();
       
       setLoading(true);
-      console.log('Intentando cerrar sesión con callbackUrl:', callbackUrl);
-      
-      // Usar directamente signOut de next-auth
-      await signOut({ 
-        callbackUrl,
-        redirect: true
+      console.log('Attempting to sign out...');
+
+      // Sign out from NextAuth with redirect disabled
+      await signOut({
+        redirect: false,
+        callbackUrl: '/auth/signin'
       });
-      
-      console.log('Sesión cerrada exitosamente');
+
+      // Clear all auth-related cookies
+      const cookiesToClear = [
+        'next-auth.session-token',
+        'next-auth.csrf-token',
+        'next-auth.callback-url',
+        'next-auth.state',
+        'next-auth.pkce',
+        '__Secure-next-auth.session-token',
+        '__Secure-next-auth.callback-url',
+        '__Host-next-auth.csrf-token',
+        'g_state',
+        'g_auth',
+        'gid'
+      ];
+
+      cookiesToClear.forEach(cookieName => {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}; secure; samesite=lax`;
+      });
+
+      // Sign out from Google (this will open in a hidden iframe)
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = 'https://accounts.google.com/logout';
+      document.body.appendChild(iframe);
+
+      // Remove the iframe after a short delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        // Redirect to sign-in page
+        window.location.href = '/auth/signin';
+      }, 1000);
+
     } catch (err) {
-      console.error('Error al cerrar sesión:', err);
-      // Si hay un error, intentar redirigir manualmente
-      window.location.href = callbackUrl;
+      console.error('Error during sign out:', err);
+      // Fallback redirect
+      window.location.href = '/auth/signin';
     } finally {
       setLoading(false);
     }
