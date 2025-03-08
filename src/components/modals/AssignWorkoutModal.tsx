@@ -86,7 +86,6 @@ export default function AssignWorkoutModal({
       const invalidIds = allIds.filter(id => !validateMongoId(id));
       
       if (invalidIds.length > 0) {
-        console.error('IDs inválidos detectados:', invalidIds);
         throw new Error(`IDs inválidos: ${invalidIds.join(', ')}`);
       }
 
@@ -97,12 +96,6 @@ export default function AssignWorkoutModal({
 
       setIsAssigning(true);
       setError(null);
-
-      console.log('Asignando rutina:', { 
-        workoutId,
-        coaches: selectedCoachIds,
-        customers: selectedCustomerIds
-      });
       
       const result = await onAssign({
         coachIds: selectedCoachIds,
@@ -129,23 +122,14 @@ export default function AssignWorkoutModal({
         result.assignedCustomers.includes(id)
       );
       
-      console.log('Assignment verification result:', {
-        allAssigned,
-        requested: selectedCustomerIds,
-        received: result.assignedCustomers
-      });
-
       if (!allAssigned) {
         throw new Error('Not all selected customers were assigned');
       }
-
-      console.log('[Assignment] Successfully processed response', result);
 
       toast.success('Rutina asignada exitosamente');
       router.refresh();
       onClose();
     } catch (error) {
-      console.error('Error assigning workout:', error);
       const errorMessage = error instanceof Error ? 
         error.message : 
         'Error de comunicación con el servidor. Verifica tu conexión e intenta nuevamente.';

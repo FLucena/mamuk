@@ -26,24 +26,18 @@ function useRealUserRole() {
       }
 
       try {
-        console.log('Fetching user role for:', session.user.email);
         // Endpoint que consultará el rol del usuario en la base de datos
         const response = await fetch(`/api/users/role?email=${encodeURIComponent(session.user.email)}`);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Role API response:', data);
           setRole(data.role);
         } else {
-          console.error('Error fetching user role:', response.statusText);
           // Fallback al rol de la sesión si no podemos obtener el rol actualizado
-          console.log('Falling back to session role:', session.user.role);
           setRole(session.user.role || null);
         }
       } catch (error) {
-        console.error('Error fetching user role:', error);
         // Fallback al rol de la sesión
-        console.log('Falling back to session role after error:', session.user.role);
         setRole(session.user.role || null);
       } finally {
         setLoading(false);
@@ -51,14 +45,7 @@ function useRealUserRole() {
     }
 
     fetchUserRole();
-    
-    // Recargar el rol cada 30 segundos para mantenerlo actualizado
-    const intervalId = setInterval(fetchUserRole, 30000);
-    
-    return () => clearInterval(intervalId);
   }, [session]);
-  
-  console.log('Current user role from hook:', { role, loading, sessionRole: session?.user?.role });
 
   return { role, loading };
 }
@@ -103,6 +90,7 @@ export default function WorkoutClient({
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
   const [expandExercises, setExpandExercises] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setWorkout(initialWorkout);
@@ -300,26 +288,17 @@ export default function WorkoutClient({
   };
 
   const handleDeleteWorkout = async () => {
+    if (!workout?.id) return;
+    
+    setIsDeleting(true);
+    
     try {
-      console.log('Starting workout deletion...', {
-        workoutId: workout.id || workout.id,
-        userId
-      });
-
-      await deleteWorkout(workout.id!, userId);
-      console.log('Workout deleted successfully');
-      
-      // First refresh the current page data
-      router.refresh();
-      
-      // Wait a brief moment to ensure revalidation completes
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Then navigate back to the workouts list
+      await deleteWorkout(workout.id, userId);
+      toast.success('Rutina eliminada exitosamente');
       router.push('/workout');
-      
     } catch (error) {
-      console.error('Error deleting workout:', error);
+      toast.error('Error al eliminar la rutina');
+      setIsDeleting(false);
     }
   };
 

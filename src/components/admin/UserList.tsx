@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { toast } from 'sonner';
 import EditUserModal from './EditUserModal';
 import DeleteUserModal from './DeleteUserModal';
 
@@ -24,18 +25,12 @@ export default function UserList({ users }: UserListProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  useEffect(() => {
-    console.log('UserList - Received users:', users);
-  }, [users]);
-
   const handleEditClick = (user: User) => {
-    console.log('UserList - Edit clicked for user:', user);
     setSelectedUser(user);
     setShowEditModal(true);
   };
 
   const handleDeleteClick = (user: User) => {
-    console.log('UserList - Delete clicked for user:', user);
     setSelectedUser(user);
     setShowDeleteModal(true);
   };
@@ -46,8 +41,7 @@ export default function UserList({ users }: UserListProps) {
     role: string;
   }) => {
     if (!selectedUser) return;
-    console.log('UserList - Confirming edit for user:', selectedUser, 'with data:', data);
-
+    
     try {
       const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'PUT',
@@ -58,37 +52,34 @@ export default function UserList({ users }: UserListProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Error al actualizar el usuario');
+        throw new Error('Failed to update user');
       }
 
-      router.refresh();
       setShowEditModal(false);
-      setSelectedUser(null);
+      toast.success('Usuario actualizado exitosamente');
+      router.refresh();
     } catch (error) {
-      console.error('UserList - Error updating user:', error);
-      // TODO: Mostrar error al usuario
+      toast.error('Error al actualizar usuario');
     }
   };
 
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;
-    console.log('UserList - Confirming delete for user:', selectedUser);
-
+    
     try {
       const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        throw new Error('Error al eliminar el usuario');
+        throw new Error('Failed to delete user');
       }
 
-      router.refresh();
       setShowDeleteModal(false);
-      setSelectedUser(null);
+      toast.success('Usuario eliminado exitosamente');
+      router.refresh();
     } catch (error) {
-      console.error('UserList - Error deleting user:', error);
-      // TODO: Mostrar error al usuario
+      toast.error('Error al eliminar usuario');
     }
   };
 

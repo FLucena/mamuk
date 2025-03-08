@@ -96,7 +96,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
   const handleDuplicate = async (newName: string, newDescription: string, workoutId: string) => {
     if (!workoutId || !newName) {
-      console.error('ID de rutina o nuevo nombre no definido', { workoutId, newName });
       setError('ID de rutina o nuevo nombre no definido');
       return;
     }
@@ -105,9 +104,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
 
     try {
-      console.log('Intentando duplicar rutina:', workoutId);
       const duplicated = await duplicateWorkout(workoutId, newName, newDescription);
-      console.log('Rutina duplicada con éxito:', duplicated);
       
       // Verificar que el objeto devuelto tiene la estructura esperada
       if (!duplicated || !duplicated.id) {
@@ -121,7 +118,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       
       router.refresh();
     } catch (error) {
-      console.error('Error al duplicar la rutina:', error);
       setError('Error al duplicar la rutina. Por favor, inténtalo de nuevo.');
       toast.error(error instanceof Error ? error.message : 'Error al duplicar la rutina');
       // No cerramos el modal en caso de error para permitir reintentar
@@ -152,7 +148,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     }
 
     try {
-      console.log('Asignando rutina con ID:', workoutId, 'a usuarios:', data);
       await assignWorkoutToUser(workoutId, data);
       
       // Actualizar la lista local de rutinas (opcional, ya que hacemos refresh)
@@ -164,7 +159,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       setShowAssignModal(false);
       toast.success('Rutina asignada exitosamente');
     } catch (error) {
-      console.error('Error durante la asignación de rutina:', error);
       setError('Error al asignar la rutina. Por favor, inténtalo de nuevo.');
       toast.error(error instanceof Error ? error.message : 'Error al asignar la rutina');
     }
@@ -193,7 +187,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
   const handleRename = async (workoutId: string, newName: string, newDescription: string) => {
     if (!workoutId || !newName) {
-      console.error('ID de rutina o nuevo nombre no definido', { workoutId, newName });
       setError('ID de rutina o nuevo nombre no definido');
       return;
     }
@@ -202,7 +195,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
 
     try {
-      console.log('Actualizando rutina:', workoutId, 'Nuevo nombre:', newName, 'Nueva descripción:', newDescription);
       const updatedWorkout = await updateWorkoutName(workoutId, newName, newDescription);
 
       // Actualizar la lista de rutinas
@@ -219,7 +211,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       
       router.refresh();
     } catch (error) {
-      console.error('Error al actualizar la rutina:', error);
       setError('Error al actualizar la rutina. Por favor, inténtalo de nuevo.');
       toast.error(error instanceof Error ? error.message : 'Error al actualizar la rutina');
     } finally {
@@ -241,14 +232,14 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
   const handleDelete = async (workoutId: string) => {
     if (!workoutId) {
-      console.error('ID de rutina no definido', { workoutId });
       setError('ID de rutina no definido');
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      console.log('Eliminando rutina:', workoutId);
-      
       // Obtener el ID del usuario de la rutina seleccionada
       const userId = selectedWorkout?.userId || '';
       
@@ -264,9 +255,10 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       
       router.refresh();
     } catch (error) {
-      console.error('Error al eliminar la rutina:', error);
       setError('Error al eliminar la rutina. Por favor, inténtalo de nuevo.');
       toast.error(error instanceof Error ? error.message : 'Error al eliminar la rutina');
+    } finally {
+      setLoading(false);
     }
   };
 
