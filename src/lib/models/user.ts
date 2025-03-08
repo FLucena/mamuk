@@ -5,6 +5,11 @@ export interface IUser extends Document {
   name?: string;
   email?: string;
   role: 'admin' | 'coach' | 'customer';
+  emailVerified?: Date;
+  image?: string;
+  coach?: mongoose.Types.ObjectId;
+  sub?: string;
+  provider?: string;
   // ... other fields
 }
 

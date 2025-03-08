@@ -11,6 +11,10 @@ import { Toaster } from 'sonner'
 import { Metadata, Viewport } from 'next'
 import CookieConsent from '@/components/CookieConsent'
 import Footer from '@/components/Footer'
+import dynamic from 'next/dynamic'
+
+// Dynamically import the LoadingLogo component with no SSR
+const LoadingLogo = dynamic(() => import('@/components/ui/LoadingLogo'), { ssr: false })
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -105,6 +109,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                 <Footer />
                 <Toaster richColors position="top-center" />
                 <CookieConsent />
+                <LoadingLogo />
               </div>
             </ThemeProvider>
           </AuthProvider>

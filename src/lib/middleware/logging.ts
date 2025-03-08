@@ -1,3 +1,5 @@
+import { validateMongoId } from '@/lib/utils/security';
+
 export function idValidationLogger(context: string) {
   return function (id: string) {
     if (!validateMongoId(id)) {
