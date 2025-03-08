@@ -14,28 +14,38 @@ interface CustomerWorkoutsPageProps {
 export default async function CustomerWorkoutsPage({ params }: CustomerWorkoutsPageProps) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || session.user.role !== 'coach') {
+  if (!session?.user || (session.user.role !== 'coach' && session.user.role !== 'admin')) {
     redirect('/auth/signin');
   }
 
   const coach = await getCoachByUserId(session.user.id);
-  if (!coach) {
+  
+  // For coaches, we need a coach profile
+  if (session.user.role === 'coach' && !coach) {
     redirect('/');
   }
 
-  // Verificar que el cliente pertenece al coach
-  const isCustomerOfCoach = coach.customers.some(
-    (customer) => customer._id === params.customerId
-  );
+  // For coaches, verify that the customer belongs to the coach
+  // Admins can access any customer's workouts
+  if (session.user.role === 'coach' && coach) {
+    const isCustomerOfCoach = coach.customers.some(
+      (customer) => customer._id === params.customerId
+    );
 
-  if (!isCustomerOfCoach) {
-    redirect('/coach/customers');
+    if (!isCustomerOfCoach) {
+      redirect('/coach/customers');
+    }
   }
 
   const workoutsData = await getWorkoutsByUserId(params.customerId);
-  const customer = coach.customers.find(
-    (customer) => customer._id === params.customerId
-  );
+  
+  // Get customer info - for admins, we might not have coach.customers
+  let customer;
+  if (coach) {
+    customer = coach.customers.find(
+      (customer) => customer._id === params.customerId
+    );
+  }
 
   // Adaptar los workouts al formato esperado por WorkoutList
   const workouts = workoutsData.map(workout => ({
@@ -68,10 +78,10 @@ export default async function CustomerWorkoutsPage({ params }: CustomerWorkoutsP
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">
-          Rutinas de {customer?.name}
+        <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+          Rutinas de {customer?.name || 'Cliente'}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-gray-600 dark:text-gray-200">
           Aquí puedes ver y gestionar las rutinas de tu cliente.
         </p>
       </div>

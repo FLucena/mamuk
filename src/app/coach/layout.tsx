@@ -25,35 +25,29 @@ export default async function CoachLayout({
     redirect('/auth/signin');
   }
 
-  // Verificar que el usuario es coach
-  if (session.user.role !== 'coach') {
+  // Verificar que el usuario es coach o admin
+  if (session.user.role !== 'coach' && session.user.role !== 'admin') {
     redirect('/');
   }
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <nav className="bg-white dark:bg-gray-900 shadow-lg mb-8 rounded-lg">
+        <nav className="bg-white dark:bg-gray-800 shadow-lg mb-8 rounded-lg">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 justify-start items-center">
               <div className="flex space-x-1">
                 <Link
                   href="/coach"
-                  className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                 >
                   Dashboard
                 </Link>
                 <Link
                   href="/coach/customers"
-                  className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                 >
                   Mis Clientes
-                </Link>
-                <Link
-                  href="/workout"
-                  className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
-                >
-                  Mis Rutinas
                 </Link>
               </div>
             </div>

@@ -11,22 +11,53 @@ export default async function CoachDashboardPage() {
   if (!session?.user) {
     return (
       <div className="text-center py-10">
-        <h2 className="text-xl font-semibold text-red-600">Sesión no encontrada</h2>
-        <p className="mt-2">Por favor, inicia sesión para acceder a esta página.</p>
+        <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">Sesión no encontrada</h2>
+        <p className="mt-2 dark:text-gray-300">Por favor, inicia sesión para acceder a esta página.</p>
       </div>
     );
   }
   
-  const coachData = await getCoachByUserId(session.user.id);
+  // Only fetch coach data if user is a coach
+  const coachData = session.user.role === 'coach' ? await getCoachByUserId(session.user.id) : null;
   
+  // Admin view
+  if (session.user.role === 'admin') {
+    return (
+      <div>
+        <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">Panel de Coach (Vista de Administrador)</h1>
+        <p className="mb-6 text-gray-600 dark:text-gray-200">
+          Como administrador, tienes acceso a todas las funcionalidades de coach.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-700 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-600">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Clientes</h2>
+            <p className="text-gray-600 dark:text-gray-200 mb-4">
+              Accede a todos los clientes de la plataforma.
+            </p>
+            <div className="mt-4">
+              <Link 
+                href="/coach/customers" 
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Ver Clientes
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Coach view
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">Panel de Coach</h1>
+      <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">Panel de Coach</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4">Mis Clientes</h2>
-          <p className="text-gray-600 mb-4">
+        <div className="bg-white dark:bg-gray-700 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-600">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Mis Clientes</h2>
+          <p className="text-gray-600 dark:text-gray-200 mb-4">
             Gestiona tus clientes y crea rutinas personalizadas para ellos.
           </p>
           <div className="mt-4">
@@ -38,24 +69,9 @@ export default async function CoachDashboardPage() {
             </Link>
           </div>
           <div className="mt-4">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-300">
               {coachData?.customers?.length || 0} clientes asignados
             </p>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4">Mis Rutinas</h2>
-          <p className="text-gray-600 mb-4">
-            Accede a todas las rutinas que has creado para tus clientes.
-          </p>
-          <div className="mt-4">
-            <Link 
-              href="/workout" 
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Ver Rutinas
-            </Link>
           </div>
         </div>
       </div>
