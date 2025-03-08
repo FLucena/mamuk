@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import UserList from '@/components/admin/UserList';
 import ArchivedRoutines from '@/components/admin/ArchivedRoutines';
 import { Role, MongoUser } from '@/lib/types/user';
+import { AdminNavLink } from '@/components/navigation/AdminNavigation';
 
 // Interfaz para usuarios en formato MongoDB (con _id)
 interface MongoUserWithRole extends MongoUser {
@@ -114,7 +115,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   };
 
   const renderNavigation = () => (
-    <nav className="bg-gray-900 shadow-lg mb-8 rounded-lg">
+    <nav className="bg-white dark:bg-gray-900 shadow-lg mb-8 rounded-lg">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 justify-start items-center">
           <div className="flex space-x-1">
@@ -122,8 +123,8 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
               onClick={() => setCurrentView('users')}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
                 currentView === 'users'
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-blue-600 dark:bg-blue-700 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               Gestionar Usuarios
@@ -132,15 +133,15 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
               onClick={() => setCurrentView('archived')}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
                 currentView === 'archived'
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-blue-600 dark:bg-blue-700 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               Rutinas Archivadas
             </button>
             <a
               href="/workout"
-              className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-300 hover:bg-gray-800 hover:text-white"
+              className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
             >
               Mis Rutinas
             </a>
@@ -153,15 +154,15 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="text-center text-red-600 p-4">
+        <div className="text-center text-red-600 dark:text-red-400 p-4">
           {error}
         </div>
       );
@@ -172,10 +173,10 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
         return (
           <div>
             <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2 text-gray-900">
+              <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
                 Gestionar Usuarios
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-400">
                 Aquí puedes ver y gestionar los usuarios de la plataforma.
               </p>
             </div>
@@ -186,10 +187,10 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
         return (
           <div>
             <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2 text-gray-900">
+              <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
                 Rutinas Archivadas
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-400">
                 Visualiza y gestiona las rutinas archivadas.
               </p>
             </div>
@@ -202,10 +203,10 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderNavigation()}
-        <div className="bg-white shadow-sm rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
           {renderContent()}
         </div>
       </div>

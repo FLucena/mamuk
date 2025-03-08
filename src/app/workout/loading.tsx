@@ -2,7 +2,6 @@
 
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { LoadingPage } from '@/components/ui/loading';
 
 export default function WorkoutLoading() {
   return (
@@ -20,17 +19,11 @@ export default function WorkoutLoading() {
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 animate-pulse"
-          >
-            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-            <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-          </div>
-        ))}
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-t-transparent border-blue-600 dark:border-blue-400"></div>
+        <p className="mt-4 text-gray-600 dark:text-gray-400 animate-pulse">
+          Cargando rutinas...
+        </p>
       </div>
     </div>
   );

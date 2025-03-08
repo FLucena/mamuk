@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import LoadingLogo from './LoadingLogo';
 
 interface LoadingStateProps {
   /**
@@ -40,29 +39,61 @@ export default function LoadingState({
   const [shouldShow, setShouldShow] = useState(isLoading);
   
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    
     if (isLoading) {
-      // When loading starts, show immediately
       setShouldShow(true);
-    } else if (shouldShow) {
-      // When loading ends, wait for minDuration before hiding
-      timer = setTimeout(() => {
-        setShouldShow(false);
-      }, minDuration);
+      
+      // If loading completes too quickly, still show the loading state for minDuration
+      // to avoid flickering
+      if (!isLoading && minDuration > 0) {
+        const timer = setTimeout(() => {
+          setShouldShow(false);
+        }, minDuration);
+        
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setShouldShow(false);
     }
-    
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [isLoading, minDuration, shouldShow]);
+  }, [isLoading, minDuration]);
+  
+  // Determine size class based on prop
+  const sizeClass = {
+    sm: 'h-6 w-6',
+    md: 'h-8 w-8',
+    lg: 'h-12 w-12'
+  }[size];
   
   if (shouldShow) {
-    return <LoadingLogo fullScreen={fullScreen} size={size} />;
+    if (fullScreen) {
+      return (
+        <div className="fixed inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 z-50">
+          <div className="flex flex-col items-center">
+            <div className={`animate-spin rounded-full ${sizeClass} border-2 border-t-transparent border-blue-600 dark:border-blue-400`}></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-300 animate-pulse">Loading...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className={`animate-spin rounded-full ${sizeClass} border-2 border-t-transparent border-blue-600 dark:border-blue-400`}></div>
+      </div>
+    );
   }
   
   return <>{children}</>;
 }
 
-// Export the LoadingLogo component as well for direct use
-export { LoadingLogo }; 
+// Export a simple spinner component for direct use
+export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const sizeClass = {
+    sm: 'h-6 w-6',
+    md: 'h-8 w-8',
+    lg: 'h-12 w-12'
+  }[size];
+  
+  return (
+    <div className={`animate-spin rounded-full ${sizeClass} border-2 border-t-transparent border-blue-600 dark:border-blue-400`}></div>
+  );
+} 

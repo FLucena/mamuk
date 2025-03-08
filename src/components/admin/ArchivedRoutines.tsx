@@ -138,69 +138,72 @@ export default function ArchivedRoutines({ routines = [] }: ArchivedRoutinesProp
   return (
     <div>
       <div className="mb-4">
-        <div className="flex justify-between items-center">
-          <div className="relative flex-1 max-w-lg">
-            <input
-              type="text"
-              placeholder="Buscar rutinas archivadas..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Buscar por nombre, coach o cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 pl-10 pr-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+          />
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+            <svg className="h-5 w-5 text-gray-400 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            <svg className="h-5 w-5 text-gray-400 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Rutina
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Coach
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Cliente
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Fecha de Archivo
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {filteredRoutines.length > 0 ? (
               filteredRoutines.map((routine) => (
-                <tr key={routine.id}>
+                <tr key={routine.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
                         {routine.name}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {routine.description}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{routine.coach.name}</div>
-                    <div className="text-sm text-gray-500">{routine.coach.email}</div>
+                    <div className="text-sm text-gray-900 dark:text-white">{routine.coach.name}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{routine.coach.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{routine.customer.name}</div>
-                    <div className="text-sm text-gray-500">{routine.customer.email}</div>
+                    <div className="text-sm text-gray-900 dark:text-white">{routine.customer.name}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{routine.customer.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-white">
                       {formatDate(routine.archivedAt)}
                     </div>
                   </td>
@@ -208,14 +211,14 @@ export default function ArchivedRoutines({ routines = [] }: ArchivedRoutinesProp
                     <button
                       onClick={() => openRestoreModal(routine.id, routine.name)}
                       disabled={loading[routine.id]}
-                      className="text-blue-600 hover:text-blue-900 mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading[routine.id] ? 'Procesando...' : 'Restaurar'}
                     </button>
                     <button
                       onClick={() => openDeleteModal(routine.id, routine.name)}
                       disabled={loading[routine.id]}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading[routine.id] ? 'Procesando...' : 'Eliminar'}
                     </button>
@@ -224,7 +227,7 @@ export default function ArchivedRoutines({ routines = [] }: ArchivedRoutinesProp
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron rutinas archivadas
                 </td>
               </tr>

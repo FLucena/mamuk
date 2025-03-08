@@ -32,8 +32,8 @@ export function Loading({ className = '', size = 24 }: LoadingProps) {
 
 export function LoadingPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-      <Loading size={32} />
+    <div className="min-h-[60vh] flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="animate-spin rounded-full h-12 w-12 border-2 border-t-transparent border-blue-600 dark:border-blue-400"></div>
     </div>
   );
 }
@@ -41,7 +41,7 @@ export function LoadingPage() {
 export function LoadingOverlay() {
   return (
     <div className="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent border-blue-600 dark:border-blue-400"></div>
     </div>
   );
 } 

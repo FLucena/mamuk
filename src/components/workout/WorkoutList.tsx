@@ -162,6 +162,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       
       router.refresh();
       setShowAssignModal(false);
+      toast.success('Rutina asignada exitosamente');
     } catch (error) {
       console.error('Error durante la asignación de rutina:', error);
       setError('Error al asignar la rutina. Por favor, inténtalo de nuevo.');
@@ -245,9 +246,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
       console.log('Eliminando rutina:', workoutId);
       
@@ -269,8 +267,6 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
       console.error('Error al eliminar la rutina:', error);
       setError('Error al eliminar la rutina. Por favor, inténtalo de nuevo.');
       toast.error(error instanceof Error ? error.message : 'Error al eliminar la rutina');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -312,13 +308,13 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
 
                 <div className="flex justify-end space-x-2 p-4 border-t border-gray-200 dark:border-gray-700">
                   {isValidId && (
-                    <Link
-                      href={`/workout/${workoutId}`}
+                    <button
+                      onClick={() => handleViewWorkout(workoutId)}
                       className="p-2 text-blue-600 hover:bg-blue-100 rounded-full"
                       title="Ver rutina"
                     >
                       <FiEye className="w-5 h-5" />
-                    </Link>
+                    </button>
                   )}
                   
                   <button
