@@ -46,6 +46,24 @@ const workoutSchema = new mongoose.Schema({
     default: 'active',
     required: true,
   },
+  assignedCoaches: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: [],
+    validate: {
+      validator: (ids: mongoose.Types.ObjectId[]) => ids.every(id => mongoose.isValidObjectId(id)),
+      message: 'ID de coach inválido detectado'
+    }
+  },
+  assignedCustomers: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: [],
+    validate: {
+      validator: (ids: mongoose.Types.ObjectId[]) => ids.every(id => mongoose.isValidObjectId(id)),
+      message: 'ID de cliente inválido detectado'
+    }
+  }
 }, {
   timestamps: true,
 });

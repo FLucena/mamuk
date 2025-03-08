@@ -2,7 +2,7 @@ import { dbConnect } from '@/lib/db';
 import { Workout } from '@/lib/models/workout';
 import { Workout as WorkoutType, WorkoutDay, Block, Exercise } from '@/types/models';
 import { Types } from 'mongoose';
-import { sanitizeHtml, sanitizeVideoUrl, validateMongoId } from '@/lib/utils/security';
+import { sanitizeHtml, sanitizeVideoUrl, validateMongoId, validateIds } from '@/lib/utils/security';
 import { ObjectId } from 'mongodb';
 import User from '../models/user';
 import Coach from '../models/coach';
@@ -144,6 +144,7 @@ export function mapWorkoutToResponse(doc: MongoWorkout): WorkoutType {
 
 export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   if (!userId) throw new Error('User ID is required');
+  validateMongoId(userId);
 
   await dbConnect();
   
@@ -183,46 +184,9 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   return workouts.map(mapWorkoutToResponse);
 }
 
-/**
- * Obtiene un workout por su ID.
- * Si se proporciona userId, verifica que el usuario tenga acceso al workout.
- * @param id ID del workout
- * @param userId ID del usuario (opcional)
- * @returns El workout o null si no se encuentra o el usuario no tiene acceso
- * @throws Error si el ID es inválido o el usuario no tiene acceso
- */
 export async function getWorkout(id: string, userId?: string) {
   try {
-    // Validar que el ID sea proporcionado
-    if (!id) {
-      console.error('[SECURITY] Intento de acceso a workout sin ID');
-      throw new Error('ID de workout no definido');
-    }
-    
-    // Validar que el ID sea un string
-    if (typeof id !== 'string') {
-      console.error(`[SECURITY] ID de workout con tipo incorrecto: ${typeof id}`);
-      throw new Error('ID de workout inválido');
-    }
-    
-    // Validar que el ID tenga el formato correcto de MongoDB
-    if (!validateMongoId(id)) {
-      console.error(`[SECURITY] ID de workout con formato inválido: ${id}`);
-      throw new Error('ID de workout inválido');
-    }
-    
-    // Si se proporciona userId, validar que sea un string y tenga formato correcto
-    if (userId !== undefined) {
-      if (typeof userId !== 'string') {
-        console.error(`[SECURITY] userId con tipo incorrecto: ${typeof userId}`);
-        throw new Error('ID de usuario inválido');
-      }
-      
-      if (!validateMongoId(userId)) {
-        console.error(`[SECURITY] userId con formato inválido: ${userId}`);
-        throw new Error('ID de usuario inválido');
-      }
-    }
+    validateIds(id);
     
     await dbConnect();
     
@@ -269,9 +233,6 @@ export async function getWorkout(id: string, userId?: string) {
   }
 }
 
-/**
- * Verifica si un usuario es coach de otro usuario
- */
 async function isUserCoach(coachUserId: string, studentUserId: string): Promise<boolean> {
   try {
     const coach = await Coach.findOne({ userId: coachUserId }).lean();
@@ -424,25 +385,11 @@ export async function archiveWorkout(id: string, userId: string): Promise<Workou
   }
 }
 
-/**
- * Obtiene todos los workouts de un usuario específico
- * @param userId ID del usuario del que obtener los workouts
- * @returns Array de workouts del usuario
- */
 export async function getWorkoutsByUserId(userId: string): Promise<WorkoutType[]> {
   try {
     console.log(`[WORKOUT] Obteniendo workouts para el usuario: ${userId}`);
     
-    // Validar ID de usuario
-    if (!userId) {
-      console.error('[WORKOUT] ID de usuario no proporcionado');
-      throw new Error('ID de usuario no definido');
-    }
-    
-    if (!validateMongoId(userId)) {
-      console.error(`[WORKOUT] ID de usuario con formato inválido: ${userId}`);
-      throw new Error('ID de usuario inválido');
-    }
+    validateMongoId(userId);
     
     await dbConnect();
     
@@ -461,4 +408,13 @@ export async function getWorkoutsByUserId(userId: string): Promise<WorkoutType[]
     // En caso de error, devolver un array vacío
     return [];
   }
+}
+
+export async function getWorkoutById(id: string): Promise<WorkoutType> {
+  validateIds(id);
+  
+  await dbConnect();
+  const workout = await Workout.findById(id);
+  if (!workout) throw new Error('Workout not found');
+  return mapWorkoutToResponse(workout);
 } 

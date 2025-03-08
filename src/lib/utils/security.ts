@@ -179,33 +179,16 @@ export function sanitizeUrl(url: string | null | undefined): string {
  * @returns true si el ID es válido, false en caso contrario
  */
 export function validateMongoId(id: string): boolean {
-  // Verificar que el ID no sea nulo o indefinido
-  if (!id) {
-    console.warn('[SECURITY] Intento de validación de ID nulo o indefinido');
-    return false;
+  if (!id || typeof id !== 'string') return false;
+  return /^[0-9a-fA-F]{24}$/.test(id);
+}
+
+export function validateIds(...ids: string[]): void {
+  for (const id of ids) {
+    if (!validateMongoId(id)) {
+      throw new Error(`Invalid ID format: ${id}`);
+    }
   }
-  
-  // Verificar que el ID sea un string
-  if (typeof id !== 'string') {
-    console.warn(`[SECURITY] ID con tipo incorrecto: ${typeof id}`);
-    return false;
-  }
-  
-  // Verificar la longitud exacta (24 caracteres)
-  if (id.length !== 24) {
-    console.warn(`[SECURITY] ID con longitud incorrecta: ${id.length}`);
-    return false;
-  }
-  
-  // Verificar que solo contenga caracteres hexadecimales
-  const hexRegex = /^[0-9a-fA-F]{24}$/;
-  const isValid = hexRegex.test(id);
-  
-  if (!isValid) {
-    console.warn(`[SECURITY] ID con formato incorrecto: ${id}`);
-  }
-  
-  return isValid;
 }
 
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {

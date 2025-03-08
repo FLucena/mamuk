@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getWorkout, updateWorkout, archiveWorkout } from '@/lib/services/workout';
+import { getWorkout, updateWorkout, archiveWorkout, getWorkoutById } from '@/lib/services/workout';
+import { validateIds } from '@/lib/utils/security';
 
 interface RouteParams {
   params: {
@@ -10,24 +11,20 @@ interface RouteParams {
 }
 
 // GET /api/workout/[id] - Get a specific workout
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(req: Request, { params }: RouteParams) {
   try {
+    validateIds(params.id);
+    
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user) return new NextResponse(null, { status: 401 });
 
-    const workout = await getWorkout(params.id, session.user.id);
-    if (!workout) {
-      return NextResponse.json({ error: 'Workout not found' }, { status: 404 });
-    }
-
+    const workout = await getWorkoutById(params.id);
     return NextResponse.json(workout);
   } catch (error) {
     console.error('Error fetching workout:', error);
     return NextResponse.json(
-      { error: 'Error fetching workout' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Invalid workout ID' },
+      { status: 400 }
     );
   }
 }

@@ -7,11 +7,12 @@ import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/db';
 import { Workout } from '@/lib/models/workout';
 import { Types } from 'mongoose';
-import { getCurrentUserRole } from '@/lib/utils/permissions';
+import { getCurrentUserRole, canModifyWorkout } from '@/lib/utils/permissions';
 import User from '@/lib/models/user';
-import { sanitizeHtml, validateMongoId } from '@/lib/utils/security';
+import { sanitizeHtml, validateMongoId, validateIds } from '@/lib/utils/security';
 import mongoose from 'mongoose';
 import { toast } from 'sonner';
+import { WorkoutAssignment } from '@/lib/models/workoutAssignment';
 
 // Duplicate workout function
 export async function duplicateWorkout(workoutId: string, newName?: string) {
@@ -182,101 +183,58 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
 }
 
 // Assign workout to user function
-export async function assignWorkoutToUser(workoutId: string, targetUserId: string) {
+export async function assignWorkoutToUser(workoutId: string, data: { 
+  coachIds: string[]; 
+  customerIds: string[];
+}) {
   try {
-    console.log('[ASSIGN] Inicio de asignación. workoutId:', workoutId, 'targetUserId:', targetUserId);
-
-    // Validar los IDs
-    if (!workoutId || !targetUserId) {
-      console.error('[ASSIGN] Error: IDs faltantes', { workoutId, targetUserId });
-      throw new Error('IDs inválidos o faltantes');
-    }
-
-    // Comprobar si los IDs son strings
-    if (typeof workoutId !== 'string' || typeof targetUserId !== 'string') {
-      console.error('[ASSIGN] Error: Los IDs deben ser strings', {
-        workoutIdType: typeof workoutId,
-        targetUserIdType: typeof targetUserId
-      });
-      throw new Error('Los IDs deben ser strings');
-    }
-
-    // Validar formato de ID de MongoDB
-    if (!validateMongoId(workoutId)) {
-      console.error('[ASSIGN] Error: workoutId no es un ID de MongoDB válido', { workoutId });
-      throw new Error('ID de rutina inválido');
-    }
-
-    if (!validateMongoId(targetUserId)) {
-      console.error('[ASSIGN] Error: targetUserId no es un ID de MongoDB válido', { targetUserId });
-      throw new Error('ID de usuario inválido');
-    }
-
-    // Obtener sesión
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      console.error('[ASSIGN] Error: No hay sesión de usuario');
-      throw new Error('No autorizado');
-    }
-
-    await dbConnect();
-
-    // Obtener la rutina original
-    const originalWorkout = await Workout.findById(workoutId);
-    if (!originalWorkout) {
-      console.error('[ASSIGN] Error: Rutina no encontrada', { workoutId });
-      throw new Error('Rutina no encontrada');
-    }
-
-    // Verificar que el usuario objetivo existe
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-      console.error('[ASSIGN] Error: Usuario destino no encontrado', { targetUserId });
-      throw new Error('Usuario destino no encontrado');
-    }
-
-    // Verificar que el usuario actual es el propietario de la rutina o es admin
-    const userRole = await getCurrentUserRole(session.user.email || '');
-    const isAdmin = userRole === 'admin';
-    const isCoach = userRole === 'coach' || isAdmin;
+    validateIds(workoutId, ...data.coachIds, ...data.customerIds);
     
-    if (originalWorkout.userId.toString() !== session.user.id && !isAdmin && !isCoach) {
-      console.error('[ASSIGN] Error: Usuario no autorizado', {
-        currentUserId: session.user.id,
-        workoutOwnerId: originalWorkout.userId.toString()
-      });
-      throw new Error('No autorizado para asignar esta rutina');
+    const session = await getServerSession(authOptions);
+    if (!session?.user) throw new Error('Unauthorized');
+
+    // Verify permissions
+    const workout = await Workout.findById(workoutId);
+    if (!workout) {
+      throw new Error('Workout not found');
     }
 
-    // Duplicar la rutina para el usuario destino
-    console.log('[ASSIGN] Duplicando rutina para usuario destino');
-    const workoutData = originalWorkout.toObject();
-    delete workoutData._id;
+    const canAssign = await canModifyWorkout(
+      session.user.id, 
+      workout
+    );
+    if (!canAssign) throw new Error('Insufficient permissions');
 
-    // Crear una nueva rutina para el usuario destino
-    const newWorkout = new Workout({
-      ...workoutData,
-      userId: targetUserId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    // Update workout with new assignments
+    const updatedWorkout = await Workout.findByIdAndUpdate(
+      workoutId,
+      {
+        $addToSet: {
+          assignedCoaches: { $each: data.coachIds },
+          assignedCustomers: { $each: data.customerIds }
+        }
+      },
+      { new: true }
+    );
 
-    // Guardar la nueva rutina
-    await newWorkout.save();
-    console.log('[ASSIGN] Rutina duplicada y asignada exitosamente. Nueva rutina ID:', newWorkout._id);
+    // Create assignment records
+    const assignments = data.customerIds.flatMap(customerId => 
+      data.coachIds.map(coachId => ({
+        workoutId,
+        customerId,
+        coachId,
+        assignedAt: new Date(),
+        status: 'pending'
+      }))
+    );
 
-    // Revalidar la caché
-    revalidatePath(`/workout/${newWorkout._id}`);
+    await WorkoutAssignment.insertMany(assignments);
+
     revalidatePath('/workout');
-
-    // Convertir a objeto serializable
-    const serializedWorkout = JSON.parse(JSON.stringify(newWorkout.toObject()));
-    serializedWorkout.id = serializedWorkout._id.toString();
-
-    return serializedWorkout;
+    return updatedWorkout;
   } catch (error) {
-    console.error('[ASSIGN] Error al asignar rutina:', error);
-    throw error;
+    console.error('Assignment error:', error);
+    throw new Error(error instanceof Error ? error.message : 'Invalid assignment request');
   }
 }
 

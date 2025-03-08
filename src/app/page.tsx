@@ -6,6 +6,7 @@ import Link from 'next/link';
 import SchemaOrg from '@/components/SchemaOrg';
 import { generateOrganizationSchema, generateWebPageSchema, generateFAQSchema } from '@/lib/utils/schema';
 import type { Viewport } from 'next';
+import { SignInButtons } from '@/components/auth/SignInButtons';
 
 // Configuración de viewport para la página principal
 export const viewport: Viewport = {
@@ -76,18 +77,7 @@ export default async function Home() {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/auth/signin"
-              className="inline-block bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
-            >
-              Iniciar Sesión
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Registrarse
-            </Link>
+            <SignInButtons />
           </div>
         </div>
       </main>

@@ -15,6 +15,15 @@ import { exerciseList } from '@/data/exercises';
 import { BodyZone, bodyZones } from '@/lib/constants/bodyZones';
 import mongoose from 'mongoose';
 
+// First, add this interface near the top of the file
+interface WorkoutAssignment {
+  _id: Types.ObjectId;
+  assignedCoaches: Types.ObjectId[];
+  assignedCustomers: Types.ObjectId[];
+  name: string;
+  __v?: number;
+}
+
 // Helper function to convert exercise type to BodyZone tag
 function typeToBodyZone(type: string): BodyZone[] {
   const typeLower = type.toLowerCase();
@@ -573,52 +582,130 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
 /**
  * Asigna una rutina a un usuario
  */
-export async function assignWorkoutToUser(workoutId: string, targetUserId: string) {
+export async function assignWorkoutToUser(
+  workoutId: string, 
+  data: { coachIds: string[]; customerIds: string[] }
+) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  const startTime = Date.now();
+  
   try {
-    console.log('[ASSIGN] Inicio de asignación. workoutId:', workoutId, 'targetUserId:', targetUserId);
+    console.log('[Assignment] Starting database transaction', {
+      workoutId,
+      coachCount: data.coachIds.length,
+      customerCount: data.customerIds.length,
+      sessionId: session.id
+    });
+
+    // Validación mejorada de IDs
+    const allIds = [workoutId, ...data.coachIds, ...data.customerIds];
+    const invalidIds = allIds.filter(id => !validateMongoId(id));
     
-    // Validar los IDs
-    if (!workoutId || !targetUserId) {
-      console.error('[ASSIGN] Error: IDs no proporcionados', { workoutId, targetUserId });
-      throw new Error('IDs de rutina o usuario no proporcionados');
+    if (invalidIds.length > 0) {
+      console.error('[ASSIGN] Error: IDs con formato inválido', { invalidIds });
+      throw new Error(`IDs inválidos detectados: ${invalidIds.join(', ')}`);
     }
-    
-    // Validar que los IDs sean strings
-    if (typeof workoutId !== 'string' || typeof targetUserId !== 'string') {
-      console.error('[ASSIGN] Error: IDs con tipo incorrecto', { 
-        workoutIdType: typeof workoutId, 
-        targetUserIdType: typeof targetUserId 
-      });
-      throw new Error('IDs de rutina o usuario inválidos');
+
+    // 1. Update workout assignments
+    console.log('[Assignment] Updating workout document', {
+      workoutId,
+      updateOperation: 'addToSet',
+      coachIds: data.coachIds.slice(0, 5), // Log first 5 to avoid overflow
+      customerIds: data.customerIds.slice(0, 5)
+    });
+
+    const updatedWorkout = await Workout.findByIdAndUpdate(
+      workoutId,
+      {
+        $addToSet: {
+          assignedCoaches: { $each: data.coachIds.map(id => new Types.ObjectId(id)) },
+          assignedCustomers: { $each: data.customerIds.map(id => new Types.ObjectId(id)) }
+        }
+      },
+      { new: true, runValidators: true, session }
+    ).lean<WorkoutAssignment>();
+
+    if (!updatedWorkout) {
+      throw new Error('Workout no encontrado o actualización fallida');
     }
-    
-    // Validar que los IDs tengan el formato correcto de MongoDB
-    if (!validateMongoId(workoutId) || !validateMongoId(targetUserId)) {
-      console.error('[ASSIGN] Error: IDs con formato inválido', { workoutId, targetUserId });
-      throw new Error('IDs de rutina o usuario inválidos');
+
+    // 2. Update user documents
+    const updateOperations = [
+      ...data.coachIds.map(userId => 
+        User.findByIdAndUpdate(
+          userId,
+          { $addToSet: { coachedWorkouts: workoutId } },
+          { session }
+        )
+      ),
+      ...data.customerIds.map(userId => 
+        User.findByIdAndUpdate(
+          userId,
+          { $addToSet: { assignedWorkouts: workoutId } },
+          { session }
+        )
+      )
+    ];
+
+    console.log('[Assignment] User documents update started', {
+      totalOperations: updateOperations.length,
+      sampleCoachId: data.coachIds[0] || 'none',
+      sampleCustomerId: data.customerIds[0] || 'none'
+    });
+
+    await Promise.all(updateOperations);
+
+    console.log('[Assignment] All user updates completed', {
+      workoutId,
+      duration: Date.now() - startTime + 'ms'
+    });
+
+    // Remove the manual conversion and use type assertion
+    const result = {
+      success: true,
+      id: workoutId,
+      assignedCoaches: data.coachIds,
+      assignedCustomers: data.customerIds,
+      name: (updatedWorkout as unknown as WorkoutAssignment).name || 'Unknown Workout',
+      error: null
+    };
+
+    // Add validation before returning:
+    if (!result.id) {
+      throw new Error('Failed to construct valid server response');
     }
+
+    // Commit transaction BEFORE returning
+    await session.commitTransaction();
+    console.log('[Assignment] Transaction committed successfully');
     
-    // Obtener la sesión del usuario
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      console.error('[ASSIGN] Error: No hay sesión de usuario');
-      throw new Error('No autorizado');
-    }
+    // Stringify here to ensure serialization
+    const finalResponse = JSON.parse(JSON.stringify(result));
+    console.log('[Assignment] Final server response', finalResponse);
     
-    // Verificar que el usuario destino existe
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-      console.error('[ASSIGN] Error: Usuario destino no encontrado', { targetUserId });
-      throw new Error('Usuario destino no encontrado');
-    }
+    return finalResponse;
     
-    // Usar duplicateAndAssignWorkout para manejar la asignación
-    const result = await duplicateAndAssignWorkout(workoutId, targetUserId, undefined);
-    
-    return result;
   } catch (error) {
+    console.error('[Assignment] Database transaction failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      workoutId,
+      sessionStatus: session.id,  // Changed from session.state
+      duration: Date.now() - startTime + 'ms'
+    });
+    await session.abortTransaction();
     console.error('[ASSIGN] Error al asignar rutina:', error);
-    throw error;
+    return {
+      success: false,
+      id: workoutId,
+      assignedCoaches: [],
+      assignedCustomers: [],
+      name: '',
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    };
+  } finally {
+    session.endSession();
   }
 }
 
@@ -631,52 +718,33 @@ export async function assignWorkoutToUser(workoutId: string, targetUserId: strin
  * @param newDescription Nueva descripción para la rutina duplicada
  * @returns La nueva rutina duplicada y asignada
  */
-export async function duplicateAndAssignWorkout(workoutId: string, targetUserId: string, newName?: string) {
-  const session = await getServerSession(authOptions);
-  console.log('Iniciando duplicación y asignación de rutina:', {
-    workoutId,
-    targetUserId,
-    newName,
-    requesterEmail: session?.user?.email,
-    requesterUserId: session?.user?.id
-  });
-
-  if (!session?.user?.id || !session?.user?.email) {
-    console.log('No autorizado para duplicar y asignar rutina');
-    throw new Error('No autorizado');
-  }
-
-  await dbConnect();
-
+export async function duplicateAndAssignWorkout(
+  workoutId: string, 
+  data: { coachIds: string[]; customerIds: string[] }, 
+  newName?: string
+) {
   try {
-    // Primero duplicamos la rutina (se crea una copia asignada al usuario actual)
     const duplicatedWorkout = await duplicateWorkout(workoutId, newName);
     
-    // Luego asignamos la rutina duplicada al usuario destino
-    const assignedWorkout = await Workout.findByIdAndUpdate(
-      duplicatedWorkout._id,
-      { 
-        userId: targetUserId,
-        name: newName || duplicatedWorkout.name,
-        description: duplicatedWorkout.description,
-        updatedAt: new Date()
-      },
-      { new: true }
-    );
-
-    if (!assignedWorkout) {
-      throw new Error('Error al asignar la rutina duplicada');
-    }
-
-    // Revalidar caché
-    revalidatePath(`workout-${assignedWorkout._id}`);
-    revalidatePath('workouts-list');
-    
-    console.log('Rutina duplicada y asignada exitosamente');
-    return JSON.parse(JSON.stringify(assignedWorkout.toObject()));
+    // Return simplified response
+    return {
+      success: true,
+      id: duplicatedWorkout.id,
+      assignedCoaches: data.coachIds,
+      assignedCustomers: data.customerIds,
+      name: duplicatedWorkout.name,
+      error: null
+    };
   } catch (error) {
     console.error('Error duplicando y asignando rutina:', error);
-    throw error;
+    return {
+      success: false,
+      id: workoutId,
+      assignedCoaches: [],
+      assignedCustomers: [],
+      name: '',
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    };
   }
 }
 

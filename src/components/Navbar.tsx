@@ -144,7 +144,7 @@ function NavbarContent() {
       href: '/',
       label: 'Inicio',
       icon: FiHome,
-      show: true
+      show: pathname !== '/' && pathname !== '/auth/signin'
     },
     {
       href: '/admin',

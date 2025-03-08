@@ -142,7 +142,7 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     setError(null);
   };
 
-  const handleAssign = async (targetUserId: string) => {
+  const handleAssign = async (data: { coachIds: string[]; customerIds: string[] }) => {
     if (!selectedWorkout) return;
 
     const workoutId = getValidWorkoutId(selectedWorkout);
@@ -152,8 +152,8 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
     }
 
     try {
-      console.log('Asignando rutina con ID:', workoutId, 'a usuario:', targetUserId);
-      const assigned = await assignWorkoutToUser(workoutId, targetUserId);
+      console.log('Asignando rutina con ID:', workoutId, 'a usuarios:', data);
+      await assignWorkoutToUser(workoutId, data);
       
       // Actualizar la lista local de rutinas (opcional, ya que hacemos refresh)
       setWorkouts(currentWorkouts => 

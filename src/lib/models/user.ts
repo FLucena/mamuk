@@ -1,8 +1,16 @@
-import mongoose from 'mongoose';
+import mongoose, { Document } from 'mongoose';
+
+export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
+  name?: string;
+  email?: string;
+  role: 'admin' | 'coach' | 'customer';
+  // ... other fields
+}
 
 export type UserRole = 'admin' | 'coach' | 'customer';
 
-const userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema<IUser>({
   name: {
     type: String,
     required: true
@@ -50,6 +58,6 @@ const userSchema = new mongoose.Schema({
 // Only add index for role since it's not unique
 userSchema.index({ role: 1 });
 
-const User = mongoose.models.User || mongoose.model('User', userSchema);
+const User = mongoose.models.User || mongoose.model<IUser>('User', userSchema);
 
 export default User; 

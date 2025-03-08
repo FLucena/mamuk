@@ -5,6 +5,8 @@ import { CheckCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { MongoUser, User } from '@/lib/types/user';
+import { MultiSelect } from '@/components/MultiSelect';
+import { validateMongoId } from '@/lib/utils/security';
 
 // Tipo extendido que puede manejar tanto MongoUser como User (con _id o id)
 interface ExtendedUser extends Omit<MongoUser, '_id'> {
@@ -18,7 +20,11 @@ interface AssignWorkoutModalProps {
   workoutId: string;
   workoutName: string;
   workoutDescription?: string;
-  onAssign: (targetUserId: string) => Promise<any>;
+  onAssign: (data: { coachIds: string[]; customerIds: string[] }) => Promise<any>;
+  existingAssignments?: {
+    coaches: string[];
+    customers: string[];
+  };
 }
 
 export default function AssignWorkoutModal({
@@ -27,12 +33,14 @@ export default function AssignWorkoutModal({
   workoutId,
   workoutName,
   workoutDescription = '',
-  onAssign
+  onAssign,
+  existingAssignments
 }: AssignWorkoutModalProps) {
   const router = useRouter();
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedCoachIds, setSelectedCoachIds] = useState<string[]>(existingAssignments?.coaches || []);
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>(existingAssignments?.customers || []);
   const [newDescription, setNewDescription] = useState(workoutDescription);
   const [users, setUsers] = useState<ExtendedUser[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -48,57 +56,102 @@ export default function AssignWorkoutModal({
   async function fetchUsers() {
     try {
       setIsLoadingUsers(true);
-      // Usar la ruta específica para clientes
-      console.log('AssignWorkoutModal - Solicitando clientes para asignación');
-      const response = await fetch('/api/users/customers');
+      setError(null);
+      
+      const response = await fetch('/api/users?roles=admin,coach,customer');
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || `Error ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('AssignWorkoutModal - Clientes cargados:', data.length);
-      
-      // Ya no necesitamos filtrar pues la API solo devuelve clientes
-      
-      // Asegurarse de que cada usuario tenga tanto id como _id
-      const normalizedUsers: ExtendedUser[] = data.map((user: any) => ({
+      const normalizedUsers = data.map((user: any) => ({
         ...user,
-        id: user.id || (user._id ? user._id.toString() : undefined),
-        _id: user._id || user.id
+        id: user.id || user._id?.toString(),
       }));
       
       setUsers(normalizedUsers);
-      setError(normalizedUsers.length === 0 ? 'No hay clientes disponibles para asignar la rutina' : null);
     } catch (error) {
-      console.error('Error al cargar clientes:', error);
-      setError(error instanceof Error ? error.message : 'Error al cargar clientes');
-      setUsers([]);
+      console.error('Error loading users:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load users');
     } finally {
       setIsLoadingUsers(false);
     }
   }
 
   async function handleAssign() {
-    if (!selectedUserId) {
-      setError('Selecciona un usuario para asignar la rutina');
-      return;
-    }
-
-    setIsAssigning(true);
-    setError(null);
-
     try {
-      console.log('Asignando rutina:', workoutId, 'al usuario:', selectedUserId);
-      await onAssign(selectedUserId);
+      // Validar formato de IDs antes de enviar
+      const allIds = [workoutId, ...selectedCoachIds, ...selectedCustomerIds];
+      const invalidIds = allIds.filter(id => !validateMongoId(id));
+      
+      if (invalidIds.length > 0) {
+        console.error('IDs inválidos detectados:', invalidIds);
+        throw new Error(`IDs inválidos: ${invalidIds.join(', ')}`);
+      }
+
+      // Additional check for at least one customer
+      if (selectedCustomerIds.length === 0) {
+        throw new Error('Debes seleccionar al menos un cliente');
+      }
+
+      setIsAssigning(true);
+      setError(null);
+
+      console.log('Asignando rutina:', { 
+        workoutId,
+        coaches: selectedCoachIds,
+        customers: selectedCustomerIds
+      });
+      
+      const result = await onAssign({
+        coachIds: selectedCoachIds,
+        customerIds: selectedCustomerIds
+      });
+
+      // Add null check first
+      if (!result) {
+        throw new Error('Server returned empty response');
+      }
+
+      // Then check type
+      if (typeof result !== 'object') {
+        throw new Error(`Invalid server response type: ${typeof result}`);
+      }
+
+      // Then check structure
+      if (!('success' in result)) {
+        throw new Error('Server response missing success flag');
+      }
+
+      // Verify assignments
+      const allAssigned = selectedCustomerIds.every(id => 
+        result.assignedCustomers.includes(id)
+      );
+      
+      console.log('Assignment verification result:', {
+        allAssigned,
+        requested: selectedCustomerIds,
+        received: result.assignedCustomers
+      });
+
+      if (!allAssigned) {
+        throw new Error('Not all selected customers were assigned');
+      }
+
+      console.log('[Assignment] Successfully processed response', result);
+
       toast.success('Rutina asignada exitosamente');
       router.refresh();
       onClose();
     } catch (error) {
       console.error('Error assigning workout:', error);
-      setError(error instanceof Error ? error.message : 'Error al asignar la rutina');
-      toast.error('Error al asignar la rutina');
+      const errorMessage = error instanceof Error ? 
+        error.message : 
+        'Error de comunicación con el servidor. Verifica tu conexión e intenta nuevamente.';
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsAssigning(false);
     }
@@ -124,43 +177,73 @@ export default function AssignWorkoutModal({
 
         <div className="p-4">
           <p className="mb-4 text-gray-700 dark:text-gray-300">
-            Vas a asignar la rutina "{workoutName}" a otro usuario.
+            Vas a asignar la rutina "{workoutName}" a otros usuarios.
           </p>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Selecciona un usuario
+            <label className="block text-sm font-medium mb-2">
+              Select Coaches/Admins
             </label>
-            {isLoadingUsers ? (
-              <div className="flex items-center justify-center py-3">
-                <div className="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
-                <p className="text-gray-600 dark:text-gray-400">Cargando usuarios...</p>
-              </div>
-            ) : users.length > 0 ? (
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                disabled={isAssigning}
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">Selecciona un usuario</option>
-                {users.map((user) => (
-                  <option 
-                    key={user.id || user._id} 
-                    value={user.id || user._id || ''}
-                  >
-                    {user.name || user.email} 
-                    {user.role === 'admin' ? ' (Administrador)' : 
-                     user.role === 'coach' ? ' (Coach)' : 
-                     ' (Cliente)'}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-md p-3 text-gray-700 dark:text-gray-300 text-center">
-                {error ? 'Error al cargar usuarios' : 'No hay usuarios disponibles'}
-              </div>
-            )}
+            <MultiSelect
+              options={users
+                .filter(u => ['admin', 'coach'].includes(u.role) && u.id)
+                .map(user => ({
+                  value: user.id as string,
+                  label: `${user.name} (${user.role})`
+                }))}
+              selectedValues={selectedCoachIds}
+              onChange={setSelectedCoachIds}
+              isLoading={isLoadingUsers}
+            >
+              {isLoadingUsers ? (
+                <div className="p-2 text-center text-gray-500">
+                  Loading options...
+                </div>
+              ) : (
+                users.filter(u => ['admin', 'coach'].includes(u.role) && u.id)
+                  .map(user => (
+                    <option 
+                      key={user.id} 
+                      value={user.id as string}
+                    >
+                      {`${user.name} (${user.role})`}
+                    </option>
+                  ))
+              )}
+            </MultiSelect>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">
+              Select Customers
+            </label>
+            <MultiSelect
+              options={users
+                .filter(u => u.role === 'customer' && u.id)
+                .map(user => ({
+                  value: user.id as string,
+                  label: user.name
+                }))}
+              selectedValues={selectedCustomerIds}
+              onChange={setSelectedCustomerIds}
+              isLoading={isLoadingUsers}
+            >
+              {isLoadingUsers ? (
+                <div className="p-2 text-center text-gray-500">
+                  Loading options...
+                </div>
+              ) : (
+                users.filter(u => u.role === 'customer' && u.id)
+                  .map(user => (
+                    <option 
+                      key={user.id} 
+                      value={user.id as string}
+                    >
+                      {user.name}
+                    </option>
+                  ))
+              )}
+            </MultiSelect>
           </div>
 
           {error && (
@@ -179,7 +262,7 @@ export default function AssignWorkoutModal({
             </button>
             <button
               onClick={handleAssign}
-              disabled={isAssigning || !selectedUserId}
+              disabled={isAssigning || (selectedCoachIds.length === 0 && selectedCustomerIds.length === 0)}
               className="px-4 py-2 text-sm text-white bg-blue-600 dark:bg-blue-700 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAssigning ? (
