@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getCurrentUserRole } from '@/lib/utils/permissions';
+import { ensureCoachExists } from './coach';
 
 interface MongoDoc {
   _id: Types.ObjectId;
@@ -143,9 +144,6 @@ export function mapWorkoutToResponse(doc: MongoWorkout): WorkoutType {
 }
 
 export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
-  if (!userId) throw new Error('User ID is required');
-  validateMongoId(userId);
-
   await dbConnect();
   
   let currentUser = await User.findOne({ email: userId });
@@ -166,7 +164,27 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
 
   if (currentUser.role === 'coach') {
     const coach = await Coach.findOne({ userId: currentUser._id });
-    if (!coach) throw new Error('Coach no encontrado');
+    
+    // If coach profile doesn't exist, create it
+    if (!coach) {
+      const newCoach = await ensureCoachExists(currentUser._id.toString());
+      
+      // If we still couldn't create a coach, just return workouts created by this user
+      if (!newCoach) {
+        const workouts = await Workout.find({
+          status: 'active',
+          userId: currentUser._id.toString()
+        }).lean<MongoWorkout[]>();
+        return workouts.map(mapWorkoutToResponse);
+      }
+      
+      // Use the newly created coach
+      const workouts = await Workout.find({
+        status: 'active',
+        userId: currentUser._id.toString()
+      }).lean<MongoWorkout[]>();
+      return workouts.map(mapWorkoutToResponse);
+    }
 
     const coachData = coach as any;
     const customerIds = coachData.customers.map((id: Types.ObjectId) => id.toString());
@@ -178,7 +196,7 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   }
 
   const workouts = await Workout.find({ 
-    userId: { $in: [currentUser._id.toString(), userId] },
+    userId: currentUser._id.toString(),
     status: 'active'
   }).lean<MongoWorkout[]>();
   return workouts.map(mapWorkoutToResponse);
@@ -208,7 +226,7 @@ export async function getWorkout(id: string, userId?: string) {
       // Permitir acceso si:
       // 1. El usuario es el propietario
       // 2. El usuario es admin
-      // 3. El usuario es coach y es el entrenador del propietario
+      // 3. El usuario es coach y es el coach del propietario
       if (
         workout.userId.toString() !== userId && 
         !isAdmin &&
@@ -283,106 +301,133 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string):
 }
 
 export async function updateWorkout(id: string, data: Partial<WorkoutType>, userId: string): Promise<WorkoutType | null> {
-  if (!id || !userId) throw new Error('Workout ID and User ID are required');
-  if (!validateMongoId(id)) throw new Error('Invalid workout ID');
-
   await dbConnect();
-  try {
-    const { id: _, ...updateData } = data;
-    const sanitizedData = {
-      ...updateData,
-      name: updateData.name ? sanitizeHtml(updateData.name) : undefined,
-      description: updateData.description ? sanitizeHtml(updateData.description) : undefined,
-      days: updateData.days?.map(sanitizeWorkoutDay),
-    };
-
-    const user = await User.findOne({ _id: new Types.ObjectId(userId) });
-    if (!user) throw new Error('Usuario no encontrado');
-
-    if (user.role === 'admin') {
-      const workout = await Workout.findOneAndUpdate(
-        { _id: new Types.ObjectId(id), userId },
-        { $set: sanitizedData },
-        { new: true }
-      ).lean<MongoWorkout>();
-
-      return workout ? mapWorkoutToResponse(workout) : null;
-    }
-
-    if (user.role === 'coach') {
-      const coach = await Coach.findOne({ userId: new Types.ObjectId(userId) });
-      if (!coach) throw new Error('Coach no encontrado');
-
-      const coachData = coach as any;
-      const customerIds = coachData.customers.map((id: Types.ObjectId) => id.toString());
-      if (id === userId || customerIds.includes(id)) {
-        const workout = await Workout.findOneAndUpdate(
-          { _id: new Types.ObjectId(id), userId },
-          { $set: sanitizedData },
-          { new: true }
-        ).lean<MongoWorkout>();
-
-        return workout ? mapWorkoutToResponse(workout) : null;
-      }
-    }
-
-    throw new Error('No tienes permiso para actualizar esta rutina');
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('Cast to ObjectId failed')) {
-      return null;
-    }
-    throw error;
+  
+  // Validate workout ID
+  if (!Types.ObjectId.isValid(id)) {
+    throw new Error('ID de rutina inválido');
   }
+  
+  // Get the workout
+  const workout = await Workout.findById(id);
+  if (!workout) {
+    throw new Error('Rutina no encontrada');
+  }
+  
+  // Check permissions
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+  
+  // Admin can update any workout
+  if (user.role === 'admin') {
+    // Update the workout
+    Object.assign(workout, data);
+    await workout.save();
+    return mapWorkoutToResponse(workout);
+  }
+  
+  // Coach can update workouts they created or for their clients
+  if (user.role === 'coach') {
+    const coach = await Coach.findOne({ userId: user._id });
+    
+    // If coach profile doesn't exist, they can only update their own workouts
+    if (!coach) {
+      if (workout.userId !== userId) {
+        throw new Error('No tienes permiso para actualizar esta rutina');
+      }
+      
+      // Update the workout
+      Object.assign(workout, data);
+      await workout.save();
+      return mapWorkoutToResponse(workout);
+    }
+    
+    // Check if the workout belongs to the coach or one of their clients
+    const customerIds = coach.customers.map((id: Types.ObjectId) => id.toString());
+    if (workout.userId !== userId && !customerIds.includes(workout.userId)) {
+      throw new Error('No tienes permiso para actualizar esta rutina');
+    }
+    
+    // Update the workout
+    Object.assign(workout, data);
+    await workout.save();
+    return mapWorkoutToResponse(workout);
+  }
+  
+  // Regular users can only update their own workouts
+  if (workout.userId !== userId) {
+    throw new Error('No tienes permiso para actualizar esta rutina');
+  }
+  
+  // Update the workout
+  Object.assign(workout, data);
+  await workout.save();
+  return mapWorkoutToResponse(workout);
 }
 
 export async function archiveWorkout(id: string, userId: string): Promise<WorkoutType | null> {
-  if (!id || !userId) throw new Error('Workout ID and User ID are required');
-  if (!validateMongoId(id)) throw new Error('Invalid workout ID');
-
   await dbConnect();
-  try {
-    const user = await User.findOne({ _id: new Types.ObjectId(userId) });
-    if (!user) throw new Error('Usuario no encontrado');
-
-    if (user.role === 'admin') {
-      const workout = await Workout.findOneAndUpdate(
-        { _id: new Types.ObjectId(id), userId },
-        { $set: { status: 'archived' } },
-        { new: true }
-      ).lean<MongoWorkout>();
-
-      return workout ? mapWorkoutToResponse(workout) : null;
-    }
-
-    if (user.role === 'coach') {
-      const coach = await Coach.findOne({ userId: new Types.ObjectId(userId) });
-      if (!coach) throw new Error('Coach no encontrado');
-
-      const coachData = coach as any;
-      const customerIds = coachData.customers.map((id: Types.ObjectId) => id.toString());
-      const existingWorkout = await Workout.findOne({ _id: new Types.ObjectId(id) }).lean<MongoWorkout>();
-      
-      if (!existingWorkout) return null;
-
-      if (existingWorkout.userId === userId || customerIds.includes(existingWorkout.userId)) {
-        const workout = await Workout.findOneAndUpdate(
-          { _id: new Types.ObjectId(id), userId },
-          { $set: { status: 'archived' } },
-          { new: true }
-        ).lean<MongoWorkout>();
-
-        return workout ? mapWorkoutToResponse(workout) : null;
+  
+  // Validate workout ID
+  if (!Types.ObjectId.isValid(id)) {
+    throw new Error('ID de rutina inválido');
+  }
+  
+  // Get the workout
+  const workout = await Workout.findById(id);
+  if (!workout) {
+    throw new Error('Rutina no encontrada');
+  }
+  
+  // Check permissions
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+  
+  // Admin can archive any workout
+  if (user.role === 'admin') {
+    workout.status = 'archived';
+    await workout.save();
+    return mapWorkoutToResponse(workout);
+  }
+  
+  // Coach can archive workouts they created or for their clients
+  if (user.role === 'coach') {
+    const coach = await Coach.findOne({ userId: user._id });
+    
+    // If coach profile doesn't exist, they can only archive their own workouts
+    if (!coach) {
+      if (workout.userId !== userId) {
+        throw new Error('No tienes permiso para archivar esta rutina');
       }
+      
+      workout.status = 'archived';
+      await workout.save();
+      return mapWorkoutToResponse(workout);
+    }
+    
+    // Check if the workout belongs to the coach or one of their clients
+    const customerIds = coach.customers.map((id: Types.ObjectId) => id.toString());
+    if (workout.userId !== userId && !customerIds.includes(workout.userId)) {
       throw new Error('No tienes permiso para archivar esta rutina');
     }
-
-    throw new Error('No tienes permiso para archivar esta rutina');
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('Cast to ObjectId failed')) {
-      return null;
-    }
-    throw error;
+    
+    workout.status = 'archived';
+    await workout.save();
+    return mapWorkoutToResponse(workout);
   }
+  
+  // Regular users can only archive their own workouts
+  if (workout.userId !== userId) {
+    throw new Error('No tienes permiso para archivar esta rutina');
+  }
+  
+  workout.status = 'archived';
+  await workout.save();
+  return mapWorkoutToResponse(workout);
 }
 
 export async function getWorkoutsByUserId(userId: string): Promise<WorkoutType[]> {

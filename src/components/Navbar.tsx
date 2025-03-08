@@ -255,9 +255,26 @@ function NavbarContent() {
                         {isAuthenticated ? 'Conectado como' : 'No has iniciado sesión'}
                       </p>
                       {isAuthenticated && (
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {session?.user?.email}
-                        </p>
+                        <>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {session?.user?.email}
+                          </p>
+                          <div className="mt-2 flex items-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              session?.user?.role === 'admin' 
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' 
+                                : session?.user?.role === 'coach'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            }`}>
+                              {session?.user?.role === 'admin' 
+                                ? 'Administrador' 
+                                : session?.user?.role === 'coach' 
+                                ? 'Coach' 
+                                : 'Cliente'}
+                            </span>
+                          </div>
+                        </>
                       )}
                     </div>
                     
@@ -359,9 +376,26 @@ function NavbarContent() {
                       {isAuthenticated ? 'Conectado como' : 'No has iniciado sesión'}
                     </p>
                     {isAuthenticated && (
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {session?.user?.email}
-                      </p>
+                      <>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {session?.user?.email}
+                        </p>
+                        <div className="mt-2 flex items-center">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            session?.user?.role === 'admin' 
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' 
+                              : session?.user?.role === 'coach'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          }`}>
+                            {session?.user?.role === 'admin' 
+                              ? 'Administrador' 
+                              : session?.user?.role === 'coach' 
+                              ? 'Coach' 
+                              : 'Cliente'}
+                          </span>
+                        </div>
+                      </>
                     )}
                   </div>
                   

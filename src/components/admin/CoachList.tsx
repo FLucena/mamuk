@@ -8,6 +8,10 @@ import DeleteCoachModal from './DeleteCoachModal';
 import Image from 'next/image';
 import { MongoUser } from '@/lib/types/user';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import { UserPlus } from 'lucide-react';
+import AssignCustomerModal from './AssignCustomerModal';
 
 interface Coach extends MongoUser {
   specialties?: string[];
@@ -26,6 +30,7 @@ export default function CoachList({ users = [], isLoading = false }: CoachListPr
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
   const coaches = users.filter(user => user.role === 'coach') as Coach[];
   const filteredCoaches = coaches.filter(coach => 
@@ -92,6 +97,37 @@ export default function CoachList({ users = [], isLoading = false }: CoachListPr
     } catch (error) {
       console.error('Error al eliminar el coach:', error);
       // TODO: Show error toast
+    }
+  };
+
+  const handleAssignCustomers = (coach: Coach) => {
+    setSelectedCoach(coach);
+    setIsAssignModalOpen(true);
+  };
+
+  const handleAssignSubmit = async (coachId: string, customerIds: string[]) => {
+    try {
+      const response = await fetch('/api/admin/coach/assign-customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ coachId, customerIds }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al asignar clientes');
+      }
+
+      toast.success('Clientes asignados correctamente');
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Error al asignar clientes');
+      }
+      throw error;
     }
   };
 
@@ -197,6 +233,13 @@ export default function CoachList({ users = [], isLoading = false }: CoachListPr
                     <FiTrash2 className="inline-block w-4 h-4 mr-1" />
                     Eliminar
                   </button>
+                  <button
+                    onClick={() => handleAssignCustomers(coach)}
+                    className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 ml-4"
+                  >
+                    <UserPlus className="inline-block w-4 h-4 mr-1" />
+                    Asignar Clientes
+                  </button>
                 </td>
               </tr>
             ))}
@@ -223,6 +266,18 @@ export default function CoachList({ users = [], isLoading = false }: CoachListPr
               setSelectedCoach(null);
             }}
             onConfirm={handleDeleteConfirm}
+          />
+
+          <AssignCustomerModal
+            isOpen={isAssignModalOpen}
+            onClose={() => setIsAssignModalOpen(false)}
+            coach={{
+              id: selectedCoach._id || '',
+              name: selectedCoach.name || '',
+              email: selectedCoach.email || '',
+              image: selectedCoach.image
+            }}
+            onAssign={handleAssignSubmit}
           />
         </>
       )}

@@ -1,13 +1,13 @@
 'use client';
 
-import LoadingLogo from '@/components/ui/LoadingLogo';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
-export default function AdminCoachesLoading() {
+export default function Loading() {
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center">
-      <LoadingLogo size="lg" />
-      <p className="mt-4 text-gray-600 dark:text-gray-400 animate-pulse">
-        Cargando entrenadores...
+    <div className="flex flex-col items-center justify-center min-h-[60vh]">
+      <LoadingSpinner size="lg" />
+      <p className="mt-4 text-gray-600 dark:text-gray-400">
+        Cargando Coaches...
       </p>
     </div>
   );

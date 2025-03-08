@@ -13,7 +13,7 @@ interface DbUser {
   role: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -35,7 +35,17 @@ export async function GET() {
 
     await dbConnect();
     
-    const users = await User.find()
+    // Get query parameters
+    const url = new URL(request.url);
+    const roleFilter = url.searchParams.get('role');
+    
+    // Build query
+    const query: any = {};
+    if (roleFilter) {
+      query.role = roleFilter;
+    }
+    
+    const users = await User.find(query)
       .select('name email image role')
       .lean<DbUser[]>();
 

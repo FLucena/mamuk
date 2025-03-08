@@ -3,6 +3,7 @@ import User from '../models/user';
 import Coach from '../models/coach';
 import { Workout } from '@/types/workouts';
 import { dbConnect } from '../db';
+import { ensureCoachExists } from '../services/coach';
 
 interface UserWithRole {
   _id: Types.ObjectId;
@@ -10,27 +11,31 @@ interface UserWithRole {
   [key: string]: any;
 }
 
-export async function getUserWithRole(userId: string) {
+export async function getUserWithRole(userId: string): Promise<UserWithRole> {
+  await dbConnect();
   
-  // First try to find user by email
-  let user = await User.findOne({ email: userId });
+  let user: any = null;
   
-  // If not found, try to find by MongoDB ID
-  if (!user && Types.ObjectId.isValid(userId)) {
-    user = await User.findOne({ _id: new Types.ObjectId(userId) });
+  // Try to find by ID first
+  if (Types.ObjectId.isValid(userId)) {
+    user = await User.findById(userId).select('_id role').lean();
   }
   
-  // If still not found, try to find by Google ID (sub)
+  // If not found, try by email
   if (!user) {
-    user = await User.findOne({ 'sub': userId });
+    user = await User.findOne({ email: userId }).select('_id role').lean();
+  }
+  
+  // If still not found, try by sub (for OAuth)
+  if (!user) {
+    user = await User.findOne({ sub: userId }).select('_id role').lean();
   }
   
   if (!user) {
-    console.error('Permissions: User not found:', userId);
     throw new Error('Usuario no encontrado');
   }
-
-  return user;
+  
+  return user as UserWithRole;
 }
 
 /**
@@ -40,23 +45,15 @@ export async function getUserWithRole(userId: string) {
  */
 export async function getCurrentUserRole(email: string): Promise<string | null> {
   if (!email) {
-    console.error('Permissions: No email provided for getCurrentUserRole');
     return null;
   }
-
-  await dbConnect();
   
   try {
-    const user = await User.findOne({ email }).select('role').lean() as UserWithRole | null;
-    
-    if (!user) {
-      console.error('Permissions: User not found for email:', email);
-      return null;
-    }
-    
-    return user.role;
+    await dbConnect();
+    const user = await User.findOne({ email }).select('role');
+    return user?.role || null;
   } catch (error) {
-    console.error('Permissions: Error fetching user role:', error);
+    console.error('Error getting user role:', error);
     return null;
   }
 }
@@ -72,8 +69,26 @@ export async function canAccessWorkout(userId: string, workout: Workout) {
   // Coach can access their own workouts and their clients' workouts
   if (user.role === 'coach') {
     const coach = await Coach.findOne({ userId: user._id });
+    
+    // If coach profile doesn't exist, try to create it
     if (!coach) {
-      throw new Error('Coach no encontrado');
+      try {
+        const newCoach = await ensureCoachExists(user._id.toString());
+        
+        // If we successfully created a coach, check access with the new coach
+        if (newCoach) {
+          const customerIds = newCoach.customers.map((customer: any) => 
+            typeof customer === 'string' ? customer : customer._id.toString()
+          );
+          return workout.userId === userId || customerIds.includes(workout.userId);
+        }
+        
+        // If we couldn't create a coach, only allow access to own workouts
+        return workout.userId === userId;
+      } catch (error) {
+        // If there was an error creating the coach, only allow access to own workouts
+        return workout.userId === userId;
+      }
     }
 
     const customerIds = coach.customers.map((id: Types.ObjectId) => id.toString());

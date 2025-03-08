@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider'
 import { authOptions } from '@/lib/auth'
 import { Providers } from '@/providers'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { Toaster } from 'sonner'
+import { Toaster } from 'react-hot-toast'
 import { Metadata, Viewport } from 'next'
 import CookieConsent from '@/components/CookieConsent'
 import Footer from '@/components/Footer'
@@ -23,8 +23,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: '#f9fafb',
-  colorScheme: 'light'
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f3f4f6' }, // Light mode color
+    { media: '(prefers-color-scheme: dark)', color: '#111827' }   // Dark mode color
+  ],
+  colorScheme: 'light dark'
 };
 
 export const metadata: Metadata = {
@@ -103,7 +106,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                   {children}
                 </main>
                 <Footer />
-                <Toaster richColors position="top-center" />
+                <Toaster position="top-right" />
                 <CookieConsent />
               </div>
             </ThemeProvider>

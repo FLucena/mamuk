@@ -47,6 +47,12 @@ export async function getCoachByUserId(userId: string): Promise<CoachDocument | 
       .lean();
 
     if (!coachDoc) {
+      // Check if the user has the coach role
+      const user = await User.findById(userId);
+      if (user && user.role === 'coach') {
+        // Create a coach document if the user has the coach role
+        return await ensureCoachExists(userId);
+      }
       return null;
     }
 
@@ -333,4 +339,40 @@ export async function removeCustomerFromCoach({
   }
 
   return coach;
+}
+
+export async function ensureCoachExists(userId: string): Promise<CoachDocument | null> {
+  if (!validateMongoId(userId)) {
+    throw new Error('ID de usuario inválido');
+  }
+
+  await dbConnect();
+  
+  // Check if user exists and has coach role
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  if (user.role !== 'coach') {
+    throw new Error('El usuario no tiene el rol de coach');
+  }
+
+  // Check if coach document already exists
+  let coach = await Coach.findOne({ userId });
+  
+  // If coach doesn't exist, create it
+  if (!coach) {
+    coach = await Coach.create({
+      userId,
+      specialties: [],
+      bio: '',
+      customers: []
+    });
+  }
+
+  return await coach.populate([
+    { path: 'userId', select: 'name email image' },
+    { path: 'customers', select: 'name email image' }
+  ]);
 } 
