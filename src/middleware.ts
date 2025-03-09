@@ -15,7 +15,6 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   const securityHeaders = {
     'X-DNS-Prefetch-Control': 'on',
     'X-XSS-Protection': '1; mode=block',
-    'X-Frame-Options': 'SAMEORIGIN',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
@@ -26,15 +25,26 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     response.headers.set(key, value);
   });
   
-  // Implementar Content-Security-Policy para rutas específicas
+  // Permitir iframes para videos en rutas específicas
   if (
     request.nextUrl.pathname.startsWith('/workout') ||
+    request.nextUrl.pathname.startsWith('/coach')
+  ) {
+    // No establecer X-Frame-Options para permitir iframes
+    response.headers.delete('X-Frame-Options');
+    
+    // Configurar CSP para permitir iframes de YouTube y Vimeo
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com https://*.firebasestorage.googleapis.com https://*.amazonaws.com https://*.cloudfront.net https://*.cloudinary.com; object-src 'none'; base-uri 'self';"
+    );
+  } else if (
     request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/profile')
   ) {
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.example.com; frame-src 'none'; object-src 'none'; base-uri 'self';"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*; frame-src 'none'; object-src 'none'; base-uri 'self';"
     );
   }
   

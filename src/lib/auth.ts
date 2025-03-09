@@ -67,10 +67,14 @@ export const authOptions: NextAuthOptions = {
   ],
   logger: {
     error(code: string, metadata: any) {
-      console.error('AUTH ERROR:', code, metadata);
+      if (process.env.NODE_ENV !== 'production' || code !== 'CLIENT_FETCH_ERROR') {
+        console.error('AUTH ERROR:', code, metadata);
+      }
     },
     warn(code: string) {
-      console.warn('AUTH WARNING:', code);
+      if (code !== 'DEBUG_ENABLED') {
+        console.warn('AUTH WARNING:', code);
+      }
     },
     debug(code: string, metadata: any) {
       if (process.env.NODE_ENV === 'development') {
@@ -87,6 +91,18 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
@@ -229,5 +245,5 @@ export const authOptions: NextAuthOptions = {
       console.log('User signed out:', token.id);
     }
   },
-  debug: false,
+  debug: process.env.NODE_ENV === 'development',
 }; 

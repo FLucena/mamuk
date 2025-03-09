@@ -25,6 +25,7 @@ interface WorkoutDaysProps {
   onDeleteDay?: (dayIndex: number) => Promise<void>;
   onUpdateDayName: (dayIndex: number, newName: string) => void;
   onUpdateBlockName: (dayIndex: number, blockIndex: number, newName: string) => void;
+  showVideosInline?: boolean;
 }
 
 type BlockKey = `${number}-${number}`;
@@ -39,7 +40,8 @@ export default function WorkoutDays({
   onDeleteBlock,
   onDeleteDay,
   onUpdateDayName,
-  onUpdateBlockName
+  onUpdateBlockName,
+  showVideosInline = true
 }: WorkoutDaysProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
@@ -293,6 +295,7 @@ export default function WorkoutDays({
                       }
                       return Promise.resolve();
                     }}
+                    showVideosInline={showVideosInline}
                   />
                 ))}
               </div>

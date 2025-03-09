@@ -63,6 +63,7 @@ interface WorkoutClientProps {
   updateDayName?: (workout: Workout, dayIndex: number, newName: string) => Promise<any>;
   updateBlockName?: (workout: Workout, dayIndex: number, blockIndex: number, newName: string) => Promise<any>;
   userId: string;
+  showVideosInline?: boolean;
 }
 
 export default function WorkoutClient({
@@ -77,7 +78,8 @@ export default function WorkoutClient({
   deleteWorkout,
   updateDayName,
   updateBlockName,
-  userId
+  userId,
+  showVideosInline = true
 }: WorkoutClientProps) {
   const [workout, setWorkout] = useState<Workout>(initialWorkout);
   const router = useRouter();
@@ -465,6 +467,7 @@ export default function WorkoutClient({
                 onUpdateBlockTitle={(blockIndex, newName) => handleUpdateBlockName(dayIndex, blockIndex, newName)}
                 onDeleteBlock={(blockIndex) => handleDeleteBlock(dayIndex, blockIndex)}
                 onDeleteDay={() => handleDeleteDay(dayIndex)}
+                showVideosInline={showVideosInline}
               />
             ))}
             

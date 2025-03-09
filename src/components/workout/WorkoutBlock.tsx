@@ -19,6 +19,7 @@ interface WorkoutBlockProps {
   onDeleteExercise?: (index: number) => Promise<void>;
   onUpdateTitle?: (newTitle: string) => Promise<void>;
   onDeleteBlock?: () => Promise<void>;
+  showVideosInline?: boolean;
 }
 
 export default function WorkoutBlock({ 
@@ -34,6 +35,7 @@ export default function WorkoutBlock({
   onDeleteExercise,
   onUpdateTitle,
   onDeleteBlock,
+  showVideosInline = true
 }: WorkoutBlockProps) {
   const [expanded, setExpanded] = useState(isExpanded);
   const [isLoading, setIsLoading] = useState(false);
@@ -234,6 +236,7 @@ export default function WorkoutBlock({
                   onToggle={() => toggleExerciseExpansion(index)}
                   onUpdate={(data) => handleUpdateExercise(index, data)}
                   onDelete={() => handleDeleteExercise(index)}
+                  showVideoInline={showVideosInline}
                 />
               ))}
             </div>

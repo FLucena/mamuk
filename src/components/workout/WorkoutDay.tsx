@@ -24,6 +24,7 @@ interface WorkoutDayProps {
   onUpdateBlockTitle?: (blockIndex: number, newTitle: string) => Promise<void>;
   onDeleteBlock?: (blockIndex: number) => Promise<void>;
   onDeleteDay?: () => Promise<void>;
+  showVideosInline?: boolean;
 }
 
 export default function WorkoutDay({ 
@@ -44,6 +45,7 @@ export default function WorkoutDay({
   onUpdateBlockTitle,
   onDeleteBlock,
   onDeleteDay,
+  showVideosInline = true
 }: WorkoutDayProps) {
   const [expanded, setExpanded] = useState(isExpanded);
   const [isLoading, setIsLoading] = useState(false);
@@ -298,9 +300,10 @@ export default function WorkoutDay({
               onToggle={() => toggleBlockExpansion(blockIndex)}
               onAddExercise={onAddExercise ? () => handleAddExercise(blockIndex) : undefined}
               onUpdateExercise={(exerciseIndex, data) => handleUpdateExercise(blockIndex, exerciseIndex, data)}
-              onDeleteExercise={onDeleteExercise ? (exerciseIndex) => handleDeleteExercise(blockIndex, exerciseIndex) : undefined}
-              onUpdateTitle={onUpdateBlockTitle ? (newTitle) => handleUpdateBlockTitle(blockIndex, newTitle) : undefined}
-              onDeleteBlock={onDeleteBlock ? () => handleDeleteBlock(blockIndex) : undefined}
+              onDeleteExercise={(exerciseIndex) => handleDeleteExercise(blockIndex, exerciseIndex)}
+              onUpdateTitle={(newTitle) => handleUpdateBlockTitle(blockIndex, newTitle)}
+              onDeleteBlock={() => handleDeleteBlock(blockIndex)}
+              showVideosInline={showVideosInline}
             />
           ))}
         </div>

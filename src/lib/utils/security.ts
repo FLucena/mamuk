@@ -6,12 +6,43 @@ const ALLOWED_VIDEO_DOMAINS = [
   'www.youtube.com',
   'youtu.be',
   'vimeo.com',
-  'player.vimeo.com'
+  'player.vimeo.com',
+  // Permitir dominios comunes para videos directos
+  'storage.googleapis.com',
+  'firebasestorage.googleapis.com',
+  'amazonaws.com',
+  's3.amazonaws.com',
+  'cloudfront.net',
+  'res.cloudinary.com'
 ];
+
+// Extensiones de archivo de video permitidas
+const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg', '.mov'];
 
 export function sanitizeVideoUrl(url: string): string | null {
   try {
+    // Verificar si es una URL válida
     const videoUrl = new URL(url);
+    
+    // Verificar si es un archivo de video directo
+    const isDirectVideo = ALLOWED_VIDEO_EXTENSIONS.some(ext => 
+      videoUrl.pathname.toLowerCase().endsWith(ext)
+    );
+    
+    // Si es un video directo y el dominio está permitido, permitirlo
+    if (isDirectVideo) {
+      const domain = videoUrl.hostname;
+      // Verificar si el dominio está en la lista de permitidos o es un subdominio de uno permitido
+      const isDomainAllowed = ALLOWED_VIDEO_DOMAINS.some(allowedDomain => 
+        domain === allowedDomain || domain.endsWith(`.${allowedDomain}`)
+      );
+      
+      if (isDomainAllowed && videoUrl.protocol === 'https:') {
+        return url;
+      }
+    }
+    
+    // Verificar si el dominio está permitido para videos de plataformas
     if (!ALLOWED_VIDEO_DOMAINS.includes(videoUrl.hostname)) {
       return null;
     }
@@ -21,23 +52,43 @@ export function sanitizeVideoUrl(url: string): string | null {
       return null;
     }
 
-    // Asegurarse de que es un embed de YouTube o Vimeo
-    if (videoUrl.hostname.includes('youtube.com') && !videoUrl.pathname.startsWith('/embed/')) {
+    // Convertir URLs de YouTube a formato embed
+    if (videoUrl.hostname.includes('youtube.com')) {
+      // Si ya es un embed, devolverlo tal cual
+      if (videoUrl.pathname.startsWith('/embed/')) {
+        return url;
+      }
+      
+      // Convertir URL normal a embed
       const videoId = videoUrl.searchParams.get('v');
       return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
     }
 
+    // Convertir URLs cortas de YouTube
     if (videoUrl.hostname === 'youtu.be') {
       const videoId = videoUrl.pathname.slice(1);
       return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
     }
 
-    if (videoUrl.hostname.includes('vimeo.com') && !videoUrl.pathname.startsWith('/video/')) {
+    // Convertir URLs de Vimeo a formato embed
+    if (videoUrl.hostname === 'vimeo.com') {
+      // Si ya es un embed, devolverlo tal cual
+      if (videoUrl.pathname.startsWith('/video/')) {
+        return url;
+      }
+      
+      // Convertir URL normal a embed
       const videoId = videoUrl.pathname.slice(1);
       return videoId ? `https://player.vimeo.com/video/${videoId}` : null;
     }
+    
+    // Si ya es un embed de Vimeo
+    if (videoUrl.hostname === 'player.vimeo.com') {
+      return url;
+    }
 
-    return url;
+    // Si llegamos aquí y no hemos devuelto nada, la URL no es válida
+    return null;
   } catch {
     return null;
   }
