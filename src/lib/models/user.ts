@@ -1,10 +1,12 @@
-import mongoose, { Document } from 'mongoose';
+import mongoose from 'mongoose';
 
-export interface IUser extends Document {
-  _id: mongoose.Types.ObjectId;
+export type UserRole = 'admin' | 'coach' | 'customer';
+
+// Define the interface for the document
+export interface IUser {
   name?: string;
   email?: string;
-  role: 'admin' | 'coach' | 'customer';
+  role: UserRole;
   emailVerified?: Date;
   image?: string;
   coach?: mongoose.Types.ObjectId;
@@ -13,9 +15,8 @@ export interface IUser extends Document {
   // ... other fields
 }
 
-export type UserRole = 'admin' | 'coach' | 'customer';
-
-const userSchema = new mongoose.Schema<IUser>({
+// Create the schema without generic type parameter
+const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true
@@ -63,6 +64,10 @@ const userSchema = new mongoose.Schema<IUser>({
 // Only add index for role since it's not unique
 userSchema.index({ role: 1 });
 
-const User = mongoose.models.User || mongoose.model<IUser>('User', userSchema);
+// Define the User model type
+export type UserDocument = mongoose.Document & IUser;
+
+// Create the model
+const User = mongoose.models.User || mongoose.model<UserDocument>('User', userSchema);
 
 export default User; 

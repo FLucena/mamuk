@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import User, { IUser } from '@/lib/models/user';
+import User, { UserDocument } from '@/lib/models/user';
 import { dbConnect } from '@/lib/db';
 import { validateMongoId } from '@/lib/utils';
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const roles = searchParams.get('roles')?.split(',') || [];
     
     const query = roles.length > 0 ? { role: { $in: roles } } : {};
-    const users = await User.find(query).lean<IUser[]>();
+    const users = await User.find(query).lean<UserDocument[]>();
 
     const validatedUsers = users.map(user => {
       if (!user._id || !validateMongoId(user._id.toString())) {
