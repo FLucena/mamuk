@@ -2,26 +2,27 @@
 
 import { useState } from 'react';
 import { FiBook, FiActivity, FiHeart, FiTrendingUp } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 const categories = [
   {
     name: 'Principiantes',
-    icon: FiBook,
+    icon: 'FiBook' as IconName,
     description: 'Guías básicas para comenzar tu viaje fitness'
   },
   {
     name: 'Entrenamiento',
-    icon: FiActivity,
+    icon: 'FiActivity' as IconName,
     description: 'Técnicas y rutinas de ejercicio'
   },
   {
     name: 'Nutrición',
-    icon: FiHeart,
+    icon: 'FiHeart' as IconName,
     description: 'Consejos de alimentación y dieta'
   },
   {
     name: 'Progreso',
-    icon: FiTrendingUp,
+    icon: 'FiTrendingUp' as IconName,
     description: 'Seguimiento y medición de resultados'
   }
 ];
@@ -129,40 +130,40 @@ export default function GuidesPage() {
               Ver todas las guías
             </p>
           </button>
-          {categories.map((category, index) => {
-            const Icon = category.icon;
-            return (
-              <button
-                key={index}
-                onClick={() => setSelectedCategory(category.name)}
-                className={`p-6 rounded-lg shadow-md text-left transition-all ${
-                  selectedCategory === category.name
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                <Icon className={`w-6 h-6 ${
+          {categories.map((category, index) => (
+            <button
+              key={index}
+              onClick={() => setSelectedCategory(category.name)}
+              className={`p-6 rounded-lg shadow-md text-left transition-all ${
+                selectedCategory === category.name
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Icon 
+                icon={category.icon} 
+                className={`w-6 h-6 ${
                   selectedCategory === category.name
                     ? 'text-white'
                     : 'text-blue-500 dark:text-blue-400'
-                }`} />
-                <h3 className={`mt-4 text-lg font-semibold ${
-                  selectedCategory === category.name
-                    ? 'text-white'
-                    : 'text-gray-900 dark:text-white'
-                }`}>
-                  {category.name}
-                </h3>
-                <p className={
-                  selectedCategory === category.name
-                    ? 'text-blue-100'
-                    : 'text-gray-500 dark:text-gray-400'
-                }>
-                  {category.description}
-                </p>
-              </button>
-            );
-          })}
+                }`} 
+              />
+              <h3 className={`mt-4 text-lg font-semibold ${
+                selectedCategory === category.name
+                  ? 'text-white'
+                  : 'text-gray-900 dark:text-white'
+              }`}>
+                {category.name}
+              </h3>
+              <p className={
+                selectedCategory === category.name
+                  ? 'text-blue-100'
+                  : 'text-gray-500 dark:text-gray-400'
+              }>
+                {category.description}
+              </p>
+            </button>
+          ))}
         </div>
 
         {/* Guides Grid */}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiCalendar, FiTrash2 } from 'react-icons/fi';
 import { Search } from 'lucide-react';
+import Icon from '@/components/ui/Icon';
 
 interface Customer {
   _id: string;
@@ -114,13 +115,13 @@ export default function CustomerList({ coach }: CustomerListProps) {
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                    <FiUser className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                    <Icon icon="FiUser" className="w-6 h-6 text-gray-500 dark:text-gray-400" />
                   </div>
                 )}
                 <div>
                   <h3 className="text-lg font-semibold">{customer.name}</h3>
                   <div className="flex items-center text-gray-500 dark:text-gray-400">
-                    <FiMail className="w-4 h-4 mr-1" />
+                    <Icon icon="FiMail" className="w-4 h-4 mr-1" />
                     <span className="text-sm">{customer.email}</span>
                   </div>
                 </div>
@@ -131,7 +132,7 @@ export default function CustomerList({ coach }: CustomerListProps) {
                   href={`/coach/customers/${customer._id}/workout`}
                   className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  <FiCalendar className="w-4 h-4 mr-2" />
+                  <Icon icon="FiCalendar" className="w-4 h-4 mr-2" />
                   Ver Rutinas
                 </Link>
 
@@ -140,7 +141,7 @@ export default function CustomerList({ coach }: CustomerListProps) {
                   disabled={isLoading}
                   className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-600 bg-red-100 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <FiTrash2 className="w-4 h-4 mr-2" />
+                  <Icon icon="FiTrash2" className="w-4 h-4 mr-2" />
                   Eliminar Cliente
                 </button>
               </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FiCalendar, FiUser, FiTag } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 const categories = [
   'Entrenamiento',
@@ -109,15 +109,15 @@ export default function BlogPage() {
                 <div className="p-6">
                   <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4">
                     <span className="flex items-center">
-                      <FiUser className="w-4 h-4 mr-1" />
+                      <Icon icon="FiUser" className="w-4 h-4 mr-1" />
                       {article.author}
                     </span>
                     <span className="flex items-center">
-                      <FiCalendar className="w-4 h-4 mr-1" />
+                      <Icon icon="FiCalendar" className="w-4 h-4 mr-1" />
                       {new Date(article.date).toLocaleDateString()}
                     </span>
                     <span className="flex items-center">
-                      <FiTag className="w-4 h-4 mr-1" />
+                      <Icon icon="FiTag" className="w-4 h-4 mr-1" />
                       {article.category}
                     </span>
                   </div>
@@ -183,11 +183,11 @@ export default function BlogPage() {
               <div className="p-6">
                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4">
                   <span className="flex items-center">
-                    <FiUser className="w-4 h-4 mr-1" />
+                    <Icon icon="FiUser" className="w-4 h-4 mr-1" />
                     {article.author}
                   </span>
                   <span className="flex items-center">
-                    <FiCalendar className="w-4 h-4 mr-1" />
+                    <Icon icon="FiCalendar" className="w-4 h-4 mr-1" />
                     {new Date(article.date).toLocaleDateString()}
                   </span>
                 </div>

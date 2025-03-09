@@ -15,6 +15,7 @@ import SignOutButton from '@/components/auth/SignOutButton';
 import { Session } from 'next-auth';
 import { Role } from '@/lib/types/user';
 import { Sun, Moon } from 'lucide-react';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 // Define a type for the user object
 type UserType = {
@@ -133,25 +134,25 @@ function NavbarContent() {
     {
       href: '/',
       label: 'Rutinas',
-      icon: FiHome,
+      icon: 'FiHome' as IconName,
       show: pathname !== '/' && pathname !== '/auth/signin'
     },
     {
       href: '/admin',
       label: 'Admin',
-      icon: FiUser,
+      icon: 'FiUser' as IconName,
       show: isAdmin && session
     },
     {
       href: '/coach',
       label: 'Coach',
-      icon: FiUsers,
+      icon: 'FiUsers' as IconName,
       show: (isCoach || isAdmin) && session
     },
     {
       href: '/auth/signin',
       label: 'Iniciar sesión',
-      icon: FiUser,
+      icon: 'FiUser' as IconName,
       show: !session
     }
   ].filter(link => link.show);
@@ -191,7 +192,7 @@ function NavbarContent() {
           {/* Desktop menu */}
           <div className="hidden md:flex md:items-center md:space-x-4">
             <div className="ml-10 flex items-center space-x-4">
-              {navLinks.map(({ href, label, icon: Icon }) => (
+              {navLinks.map(({ href, label, icon }) => (
                 <Link
                   key={href}
                   href={href}
@@ -201,7 +202,7 @@ function NavbarContent() {
                       : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  <Icon className="w-5 h-5 mr-2" />
+                  <Icon icon={icon} className="w-5 h-5 mr-2" />
                   {label}
                 </Link>
               ))}
@@ -238,7 +239,7 @@ function NavbarContent() {
                       </div>
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-white">
-                        <FiUser className="w-5 h-5" />
+                        <Icon icon="FiUser" className="w-5 h-5" />
                       </div>
                     )}
                     {isAuthenticated && (
@@ -283,7 +284,7 @@ function NavbarContent() {
                       <>
                         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                           <div className="flex items-center mb-2">
-                            <FiAward className={`w-5 h-5 mr-2 ${nivelActual.color}`} />
+                            <Icon icon="FiAward" className={`w-5 h-5 mr-2 ${nivelActual.color}`} />
                             <span className="font-semibold text-gray-900 dark:text-white">Nivel: <span className={nivelActual.color}>{nivelActual.nombre}</span></span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
@@ -326,7 +327,7 @@ function NavbarContent() {
                         </div>
                       ) : (
                         <Link href="/auth/signin" className="flex w-full items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                          <FiUser className="w-5 h-5 mr-2" />
+                          <Icon icon="FiUser" className="w-5 h-5 mr-2" />
                           Iniciar sesión
                         </Link>
                       )}
@@ -359,7 +360,7 @@ function NavbarContent() {
                   </div>
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-white">
-                    <FiUser className="w-4 h-4" />
+                    <Icon icon="FiUser" className="w-4 h-4" />
                   </div>
                 )}
                 {isAuthenticated && (
@@ -429,7 +430,7 @@ function NavbarContent() {
                       </div>
                     ) : (
                       <Link href="/auth/signin" className="flex w-full items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                        <FiUser className="w-5 h-5 mr-2" />
+                        <Icon icon="FiUser" className="w-5 h-5 mr-2" />
                         Iniciar sesión
                       </Link>
                     )}
@@ -443,9 +444,9 @@ function NavbarContent() {
               className="inline-flex items-center justify-center p-2 ml-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
             >
               {isOpen ? (
-                <FiX className="w-6 h-6" />
+                <Icon icon="FiX" className="w-6 h-6" />
               ) : (
-                <FiMenu className="w-6 h-6" />
+                <Icon icon="FiMenu" className="w-6 h-6" />
               )}
             </button>
           </div>
@@ -456,7 +457,7 @@ function NavbarContent() {
       {isOpen && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navLinks.map(({ href, label, icon: Icon }) => (
+            {navLinks.map(({ href, label, icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -466,7 +467,7 @@ function NavbarContent() {
                     : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                <Icon className="w-5 h-5 mr-2" />
+                <Icon icon={icon} className="w-5 h-5 mr-2" />
                 {label}
               </Link>
             ))}

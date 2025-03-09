@@ -2,9 +2,10 @@
 
 import { signOut } from 'next-auth/react';
 import { useState } from 'react';
-import { FiLogOut } from 'react-icons/fi';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import Icon from '@/components/ui/Icon';
+import { FiLogOut } from 'react-icons/fi';
 
 interface SignOutButtonProps {
   className?: string;
@@ -30,7 +31,7 @@ export default function SignOutButton({
     if (variant === 'icon') {
       return (
         <Link href={signoutUrl} className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 ${className}`}>
-          <FiLogOut className="w-5 h-5" />
+          <Icon icon="FiLogOut" className="w-5 h-5" />
         </Link>
       );
     }
@@ -48,7 +49,7 @@ export default function SignOutButton({
         href={signoutUrl}
         className={`flex items-center px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md ${className}`}
       >
-        <FiLogOut className="w-5 h-5 mr-2" />
+        <Icon icon="FiLogOut" className="w-5 h-5 mr-2" />
         {label}
       </Link>
     );
@@ -94,7 +95,7 @@ export default function SignOutButton({
         className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 ${className}`}
         aria-label="Cerrar sesión"
       >
-        <FiLogOut className="w-5 h-5" />
+        <Icon icon="FiLogOut" className="w-5 h-5" />
       </button>
     );
   }
@@ -117,7 +118,7 @@ export default function SignOutButton({
       disabled={loading}
       className={`flex items-center px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md ${className}`}
     >
-      <FiLogOut className="w-5 h-5 mr-2" />
+      <Icon icon="FiLogOut" className="w-5 h-5 mr-2" />
       {loading ? 'Cerrando sesión...' : label}
     </button>
   );

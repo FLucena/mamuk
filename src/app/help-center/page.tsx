@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { FiSearch, FiBook, FiVideo, FiFileText, FiHelpCircle } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 const categories = [
   {
     title: 'Primeros Pasos',
-    icon: FiBook,
+    icon: 'FiBook' as IconName,
     articles: [
       {
         title: 'Cómo configurar tu cuenta',
@@ -27,7 +27,7 @@ const categories = [
   },
   {
     title: 'Tutoriales en Video',
-    icon: FiVideo,
+    icon: 'FiVideo' as IconName,
     articles: [
       {
         title: 'Cómo crear tu primera rutina',
@@ -48,7 +48,7 @@ const categories = [
   },
   {
     title: 'Guías Detalladas',
-    icon: FiFileText,
+    icon: 'FiFileText' as IconName,
     articles: [
       {
         title: 'Nutrición y dieta',
@@ -69,7 +69,7 @@ const categories = [
   },
   {
     title: 'Solución de Problemas',
-    icon: FiHelpCircle,
+    icon: 'FiHelpCircle' as IconName,
     articles: [
       {
         title: 'Problemas comunes',
@@ -117,7 +117,7 @@ export default function HelpCenterPage() {
         {/* Search */}
         <div className="mt-8 max-w-2xl mx-auto">
           <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Icon icon="FiSearch" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar artículos, tutoriales y guías..."
@@ -130,43 +130,40 @@ export default function HelpCenterPage() {
 
         {/* Categories */}
         <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
-          {filteredCategories.map((category, categoryIndex) => {
-            const Icon = category.icon;
-            return (
-              <div
-                key={categoryIndex}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
-              >
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <Icon className="w-6 h-6 text-blue-500 dark:text-blue-400" />
-                    <h2 className="ml-3 text-xl font-semibold text-gray-900 dark:text-white">
-                      {category.title}
-                    </h2>
-                  </div>
-                  <div className="mt-6 space-y-6">
-                    {category.articles.map((article, articleIndex) => (
-                      <div
-                        key={articleIndex}
-                        className="group cursor-pointer"
-                      >
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                          {article.title}
-                        </h3>
-                        <p className="mt-1 text-gray-600 dark:text-gray-400">
-                          {article.description}
-                        </p>
-                        <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                          <FiBook className="w-4 h-4 mr-1" />
-                          {article.readTime} de lectura
-                        </div>
+          {filteredCategories.map((category, categoryIndex) => (
+            <div
+              key={categoryIndex}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
+            >
+              <div className="p-6">
+                <div className="flex items-center">
+                  <Icon icon={category.icon} className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+                  <h2 className="ml-3 text-xl font-semibold text-gray-900 dark:text-white">
+                    {category.title}
+                  </h2>
+                </div>
+                <div className="mt-6 space-y-6">
+                  {category.articles.map((article, articleIndex) => (
+                    <div
+                      key={articleIndex}
+                      className="group cursor-pointer"
+                    >
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                        {article.title}
+                      </h3>
+                      <p className="mt-1 text-gray-600 dark:text-gray-400">
+                        {article.description}
+                      </p>
+                      <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <Icon icon="FiBook" className="w-4 h-4 mr-1" />
+                        {article.readTime} de lectura
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
 
         {/* Quick Links */}
@@ -179,28 +176,28 @@ export default function HelpCenterPage() {
               href="/support"
               className="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             >
-              <FiHelpCircle className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+              <Icon icon="FiHelpCircle" className="w-6 h-6 text-blue-500 dark:text-blue-400" />
               <span className="ml-3 text-gray-900 dark:text-white">Soporte Técnico</span>
             </a>
             <a
               href="/guides"
               className="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             >
-              <FiBook className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+              <Icon icon="FiBook" className="w-6 h-6 text-blue-500 dark:text-blue-400" />
               <span className="ml-3 text-gray-900 dark:text-white">Guías y Tutoriales</span>
             </a>
             <a
               href="/contact"
               className="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             >
-              <FiFileText className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+              <Icon icon="FiFileText" className="w-6 h-6 text-blue-500 dark:text-blue-400" />
               <span className="ml-3 text-gray-900 dark:text-white">Documentación</span>
             </a>
             <a
               href="/blog"
               className="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             >
-              <FiVideo className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+              <Icon icon="FiVideo" className="w-6 h-6 text-blue-500 dark:text-blue-400" />
               <span className="ml-3 text-gray-900 dark:text-white">Videotutoriales</span>
             </a>
           </div>

@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { FiAlertTriangle } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 interface DeleteCoachModalProps {
   isOpen: boolean;
@@ -44,7 +44,7 @@ export default function DeleteCoachModal({
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex items-center justify-center mb-4">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
-                    <FiAlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    <Icon icon="FiAlertTriangle" className="h-6 w-6 text-red-600 dark:text-red-400" />
                   </div>
                 </div>
 

@@ -174,7 +174,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
                 Aquí puedes ver y gestionar los usuarios de la plataforma.
               </p>
             </div>
-            <UserList users={apiUsers} />
+            <UserList users={mongoUsers} isLoading={loading} />
           </div>
         );
       case 'archived':

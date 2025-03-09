@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FiAward } from 'react-icons/fi';
+import Icon from '@/components/ui/Icon';
 
 // Definimos los niveles de usuario
 export const NIVELES_USUARIO = [
@@ -42,7 +42,7 @@ export default function UserLevel({
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
       <div className="flex items-center mb-4">
         <div className={`relative ${animateBadge ? 'animate-pulse' : ''}`}>
-          <FiAward className={`w-8 h-8 ${nivelActual.color}`} />
+          <Icon icon="FiAward" className={`w-8 h-8 ${nivelActual.color}`} />
           <span className={`absolute -top-1 -right-1 text-xs font-bold rounded-full ${nivelActual.bg} text-white w-5 h-5 flex items-center justify-center`}>
             {nivel + 1}
           </span>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
+import Icon from '@/components/ui/Icon';
 
 interface CookiePreferencesModalProps {
   onClose: () => void;
@@ -53,7 +54,7 @@ export default function CookiePreferencesModal({ onClose }: CookiePreferencesMod
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
         >
-          <FiX className="w-6 h-6" />
+          <Icon icon="FiX" className="w-6 h-6" />
         </button>
 
         <div className="space-y-6">

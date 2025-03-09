@@ -2,9 +2,9 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { getWorkouts } from '@/lib/services/workout';
-import WorkoutHeaderWrapper from '@/components/workout/WorkoutHeaderWrapper';
+import WorkoutHeader from '@/components/workout/WorkoutHeader';
 import WorkoutList from '@/components/workout/WorkoutList';
-import { handleArchiveWorkout } from './actions';
+import { handleArchiveWorkout, canCreateWorkouts } from './actions';
 import { getCurrentUserRole } from '@/lib/utils/permissions';
 
 export default async function WorkoutPage() {
@@ -32,9 +32,15 @@ export default async function WorkoutPage() {
     }
   }
 
+  // Check if user can create workouts
+  const hasPermission = await canCreateWorkouts();
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <WorkoutHeaderWrapper title="Rutinas" />
+      <WorkoutHeader 
+        title="Rutinas" 
+        hasPermission={hasPermission}
+      />
       
       {/* @ts-ignore - Pasamos los workouts directamente al componente */}
       <WorkoutList workouts={workouts} isCoach={isCoach} />

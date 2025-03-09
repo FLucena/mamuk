@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FiMail, FiMessageSquare, FiHelpCircle, FiBook } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 const faqs = [
   {
@@ -34,25 +35,25 @@ const resources = [
   {
     title: 'Centro de Ayuda',
     description: 'Encuentra respuestas a preguntas comunes y tutoriales detallados',
-    icon: FiHelpCircle,
+    icon: 'FiHelpCircle' as IconName,
     link: '/help-center'
   },
   {
     title: 'Guías y Tutoriales',
     description: 'Aprende a sacar el máximo provecho de la plataforma',
-    icon: FiBook,
+    icon: 'FiBook' as IconName,
     link: '/guides'
   },
   {
     title: 'Chat de Soporte',
     description: 'Habla en tiempo real con nuestro equipo de soporte',
-    icon: FiMessageSquare,
+    icon: 'FiMessageSquare' as IconName,
     link: '/chat'
   },
   {
     title: 'Contacto',
     description: 'Envíanos un mensaje y te responderemos lo antes posible',
-    icon: FiMail,
+    icon: 'FiMail' as IconName,
     link: '/contact'
   }
 ];
@@ -103,29 +104,26 @@ export default function SupportPage() {
 
         {/* Help Resources */}
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {resources.map((resource, index) => {
-            const Icon = resource.icon;
-            return (
-              <div
-                key={index}
-                className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+          {resources.map((resource, index) => (
+            <div
+              key={index}
+              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+            >
+              <Icon icon={resource.icon} className="w-8 h-8 text-blue-500 dark:text-blue-400" />
+              <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+                {resource.title}
+              </h3>
+              <p className="mt-2 text-gray-600 dark:text-gray-400">
+                {resource.description}
+              </p>
+              <a
+                href={resource.link}
+                className="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
               >
-                <Icon className="w-8 h-8 text-blue-500 dark:text-blue-400" />
-                <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
-                  {resource.title}
-                </h3>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
-                  {resource.description}
-                </p>
-                <a
-                  href={resource.link}
-                  className="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                >
-                  Saber más →
-                </a>
-              </div>
-            );
-          })}
+                Saber más →
+              </a>
+            </div>
+          ))}
         </div>
 
         {/* FAQs */}

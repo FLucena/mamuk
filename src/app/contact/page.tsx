@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FiMail, FiMapPin, FiPhone } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -54,7 +54,7 @@ export default function ContactPage() {
             </h2>
             <div className="space-y-6">
               <div className="flex items-start">
-                <FiMail className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1" />
+                <Icon icon="FiMail" className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1" />
                 <div className="ml-4">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                     Email
@@ -65,7 +65,7 @@ export default function ContactPage() {
                 </div>
               </div>
               <div className="flex items-start">
-                <FiPhone className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1" />
+                <Icon icon="FiPhone" className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1" />
                 <div className="ml-4">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                     Teléfono
@@ -76,7 +76,7 @@ export default function ContactPage() {
                 </div>
               </div>
               <div className="flex items-start">
-                <FiMapPin className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1" />
+                <Icon icon="FiMapPin" className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1" />
                 <div className="ml-4">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                     Ubicación

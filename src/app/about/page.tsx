@@ -1,21 +1,23 @@
 'use client';
 
+import React from 'react';
 import { FiHeart, FiTarget, FiUsers } from 'react-icons/fi';
 import Image from 'next/image';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 const values = [
   {
-    icon: FiHeart,
+    icon: 'FiHeart' as IconName,
     title: 'Pasión por el bienestar',
     description: 'Creemos en un enfoque holístico del fitness que integra cuerpo y mente.'
   },
   {
-    icon: FiTarget,
+    icon: 'FiTarget' as IconName,
     title: 'Compromiso con resultados',
     description: 'Nos enfocamos en ayudarte a alcanzar tus metas de manera sostenible y saludable.'
   },
   {
-    icon: FiUsers,
+    icon: 'FiUsers' as IconName,
     title: 'Comunidad inclusiva',
     description: 'Construimos un espacio donde todos son bienvenidos, sin importar su nivel de experiencia.'
   }
@@ -78,7 +80,7 @@ export default function AboutPage() {
               className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md"
             >
               <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full mb-4">
-                <value.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <Icon icon={value.icon} className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                 {value.title}

@@ -2,35 +2,37 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiMail, FiEdit2, FiTrash2 } from 'react-icons/fi';
-import { toast } from 'sonner';
+import { FiUser, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import Icon from '@/components/ui/Icon';
 import EditUserModal from './EditUserModal';
 import DeleteUserModal from './DeleteUserModal';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  image?: string;
-  role: string;
-}
+import Image from 'next/image';
+import { MongoUser } from '@/lib/types/user';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface UserListProps {
-  users: User[];
+  users?: MongoUser[];
+  isLoading?: boolean;
 }
 
-export default function UserList({ users }: UserListProps) {
+export default function UserList({ users = [], isLoading = false }: UserListProps) {
   const router = useRouter();
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<MongoUser | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleEditClick = (user: User) => {
+  const filteredUsers = users.filter(user => 
+    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleEditClick = (user: MongoUser) => {
     setSelectedUser(user);
     setShowEditModal(true);
   };
 
-  const handleDeleteClick = (user: User) => {
+  const handleDeleteClick = (user: MongoUser) => {
     setSelectedUser(user);
     setShowDeleteModal(true);
   };
@@ -41,9 +43,9 @@ export default function UserList({ users }: UserListProps) {
     role: string;
   }) => {
     if (!selectedUser) return;
-    
+
     try {
-      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -52,152 +54,154 @@ export default function UserList({ users }: UserListProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update user');
+        throw new Error('Error al actualizar el usuario');
       }
 
-      setShowEditModal(false);
-      toast.success('Usuario actualizado exitosamente');
       router.refresh();
+      setShowEditModal(false);
+      setSelectedUser(null);
     } catch (error) {
-      toast.error('Error al actualizar usuario');
+      console.error('Error al actualizar el usuario:', error);
+      // TODO: Show error toast
     }
   };
 
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;
-    
+
     try {
-      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete user');
+        throw new Error('Error al eliminar el usuario');
       }
 
-      setShowDeleteModal(false);
-      toast.success('Usuario eliminado exitosamente');
       router.refresh();
+      setShowDeleteModal(false);
+      setSelectedUser(null);
     } catch (error) {
-      toast.error('Error al eliminar usuario');
+      console.error('Error al eliminar el usuario:', error);
+      // TODO: Show error toast
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
-      case 'coach':
-        return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
-      case 'customer':
-        return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
-      default:
-        return 'bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200';
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'Administrador';
-      case 'coach':
-        return 'Coach';
-      case 'customer':
-        return 'Cliente';
-      default:
-        return role;
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {users.map((user) => (
-          <div
-            key={user.id}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
+    <div>
+      <div className="mb-4">
+        <div className="flex justify-between items-center">
+          <div className="relative flex-1 max-w-lg">
+            <input
+              type="text"
+              placeholder="Buscar usuarios..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+          <button
+            className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            <div className="flex items-center space-x-4 mb-4">
-              {user.image ? (
-                <img
-                  src={user.image}
-                  alt={user.name}
-                  className="w-12 h-12 rounded-full"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <FiUser className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-                </div>
-              )}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{user.name}</h3>
-                <div className="flex items-center text-gray-500 dark:text-gray-400">
-                  <FiMail className="w-4 h-4 mr-1" />
-                  <span className="text-sm">{user.email}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                  user.role
-                )}`}
-              >
-                {getRoleLabel(user.role)}
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => handleEditClick(user)}
-                className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-offset-gray-800"
-              >
-                <FiEdit2 className="w-4 h-4 mr-2" />
-                Editar
-              </button>
-
-              <button
-                onClick={() => handleDeleteClick(user)}
-                disabled={user.role === 'admin'}
-                className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-md hover:bg-red-200 dark:hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FiTrash2 className="w-4 h-4 mr-2" />
-                Eliminar
-              </button>
-            </div>
-          </div>
-        ))}
-
-        {users.length === 0 && (
-          <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
-            No hay usuarios registrados aún.
-          </div>
-        )}
+            Añadir Usuario
+          </button>
+        </div>
       </div>
 
-      {selectedUser && (
-        <>
-          <EditUserModal
-            isOpen={showEditModal}
-            onClose={() => {
-              setShowEditModal(false);
-              setSelectedUser(null);
-            }}
-            onConfirm={handleEditConfirm}
-            user={selectedUser}
-          />
+      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Usuarios</h2>
+          <div className="space-y-6">
+            {filteredUsers.map((user) => (
+              <div key={user._id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-4">
+                  {user.image ? (
+                    <Image
+                      src={user.image}
+                      alt={user.name || ''}
+                      width={48}
+                      height={48}
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      <Icon icon="FiUser" className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{user.name}</h3>
+                    <p className="text-gray-500 dark:text-gray-400">{user.email}</p>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      user.role === 'admin'
+                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                        : user.role === 'coach'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                        : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    }`}>
+                      {user.role === 'admin' ? 'Administrador' : user.role === 'coach' ? 'Entrenador' : 'Cliente'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleEditClick(user)}
+                    className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    <Icon icon="FiEdit2" className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(user)}
+                    className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    <Icon icon="FiTrash2" className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                No se encontraron usuarios.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-          <DeleteUserModal
-            isOpen={showDeleteModal}
-            onClose={() => {
-              setShowDeleteModal(false);
-              setSelectedUser(null);
-            }}
-            onConfirm={handleDeleteConfirm}
-          />
-        </>
+      {selectedUser && showEditModal && (
+        <EditUserModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onConfirm={handleEditConfirm}
+          user={{
+            id: selectedUser._id,
+            name: selectedUser.name || '',
+            email: selectedUser.email || '',
+            role: selectedUser.role || 'customer'
+          }}
+        />
       )}
-    </>
+
+      {selectedUser && showDeleteModal && (
+        <DeleteUserModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteConfirm}
+          userName={selectedUser.name || ''}
+        />
+      )}
+    </div>
   );
 } 

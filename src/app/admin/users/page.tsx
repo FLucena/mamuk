@@ -6,6 +6,7 @@ import UserList from '@/components/admin/UserList';
 import { Types } from 'mongoose';
 import type { Viewport } from 'next';
 import { redirect } from 'next/navigation';
+import { MongoUser } from '@/lib/types/user';
 
 interface User {
   id: string;
@@ -24,7 +25,7 @@ export const viewport: Viewport = {
 
 export default function UsersPage() {
   const { data: session, status } = useSession();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<MongoUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +68,7 @@ export default function UsersPage() {
         
         // Transform the data to match our interface
         const transformedUsers = data.map((user: any) => ({
-          id: user._id || user.id,
+          _id: user._id || user.id,
           name: user.name,
           email: user.email,
           image: user.image,
@@ -195,7 +196,7 @@ export default function UsersPage() {
         </p>
       </div>
 
-      <UserList users={users} />
+      <UserList users={users} isLoading={loading} />
     </div>
   );
 } 

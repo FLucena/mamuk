@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FiInstagram, FiTwitter } from 'react-icons/fi';
 import { useState } from 'react';
 import CookiePreferencesModal from './CookiePreferencesModal';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 export default function Footer() {
   const [showCookiePreferences, setShowCookiePreferences] = useState(false);
@@ -25,8 +26,8 @@ export default function Footer() {
       { name: 'Preferencias de cookies', href: '#', onClick: () => setShowCookiePreferences(true) },
     ],
     social: [
-      { name: 'Twitter', href: 'https://twitter.com', icon: FiTwitter },
-      { name: 'Instagram', href: 'https://www.instagram.com/mamuk_fa/', icon: FiInstagram },
+      { name: 'Twitter', href: 'https://twitter.com', iconName: 'FiTwitter' as IconName },
+      { name: 'Instagram', href: 'https://www.instagram.com/mamuk_fa/', iconName: 'FiInstagram' as IconName },
     ],
   };
 
@@ -117,7 +118,7 @@ export default function Footer() {
                     rel="noopener noreferrer"
                   >
                     <span className="sr-only">{item.name}</span>
-                    <item.icon className="h-6 w-6" />
+                    <Icon icon={item.iconName} className="h-6 w-6" />
                   </a>
                 ))}
               </div>

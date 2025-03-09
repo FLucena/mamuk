@@ -1,35 +1,35 @@
 'use client';
 
-import { FiTarget, FiUsers, FiActivity, FiAward, FiTrendingUp, FiShield } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 const features = [
   {
-    icon: FiTarget,
+    icon: 'FiTarget' as IconName,
     title: 'Entrenamiento Personalizado',
     description: 'Rutinas adaptadas a tus objetivos, nivel y disponibilidad. Cada plan es único, como tú.'
   },
   {
-    icon: FiUsers,
+    icon: 'FiUsers' as IconName,
     title: 'Coaches Expertos',
     description: 'Accede a entrenadores certificados con experiencia en diferentes disciplinas y objetivos.'
   },
   {
-    icon: FiActivity,
+    icon: 'FiActivity' as IconName,
     title: 'Seguimiento en Tiempo Real',
     description: 'Monitorea tu progreso, registra tus entrenamientos y ajusta tus objetivos sobre la marcha.'
   },
   {
-    icon: FiAward,
+    icon: 'FiAward' as IconName,
     title: 'Sistema de Logros',
     description: 'Mantente motivado con nuestro sistema de niveles e insignias que reconocen tu dedicación.'
   },
   {
-    icon: FiTrendingUp,
+    icon: 'FiTrendingUp' as IconName,
     title: 'Análisis de Progreso',
     description: 'Visualiza tu evolución con gráficos detallados y métricas personalizadas.'
   },
   {
-    icon: FiShield,
+    icon: 'FiShield' as IconName,
     title: 'Seguridad y Privacidad',
     description: 'Tus datos están seguros con nosotros. Utilizamos la última tecnología en seguridad.'
   }
@@ -56,7 +56,7 @@ export default function FeaturesPage() {
                 className="relative p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg mb-4">
-                  <feature.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <Icon icon={feature.icon} className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   {feature.title}

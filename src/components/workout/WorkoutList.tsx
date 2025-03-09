@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiEye, FiEdit, FiCopy, FiUsers, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
+import Icon from '@/components/ui/Icon';
 
 import DuplicateWorkoutModal from '../modals/DuplicateWorkoutModal';
 import AssignWorkoutModal from '../modals/AssignWorkoutModal';
@@ -302,44 +302,44 @@ export default function WorkoutList({ workouts: initialWorkouts, isCoach = false
                   {isValidId && (
                     <button
                       onClick={() => handleViewWorkout(workoutId)}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-full"
+                      className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                       title="Ver rutina"
                     >
-                      <FiEye className="w-5 h-5" />
+                      <Icon icon="FiEye" className="w-5 h-5" />
                     </button>
                   )}
                   
                   <button
                     onClick={() => handleRenameClick(workout)}
-                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+                    className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                     title="Renombrar rutina"
                   >
-                    <FiEdit className="w-5 h-5" />
+                    <Icon icon="FiEdit2" className="w-5 h-5" />
                   </button>
                   
                   <button
                     onClick={() => handleDuplicateClick(workout)}
-                    className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full"
+                    className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                     title="Duplicar rutina"
                   >
-                    <FiCopy className="w-5 h-5" />
+                    <Icon icon="FiCopy" className="w-5 h-5" />
                   </button>
                   
                   <button
                     onClick={() => handleDeleteClick(workout)}
-                    className="p-2 text-red-600 hover:bg-red-100 rounded-full"
+                    className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                     title="Eliminar rutina"
                   >
-                    <FiTrash2 className="w-5 h-5" />
+                    <Icon icon="FiTrash2" className="w-5 h-5" />
                   </button>
                   
                   {isCoach && (
                     <button
                       onClick={() => handleAssignClick(workout)}
-                      className="p-2 text-green-600 hover:bg-green-100 rounded-full"
+                      className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                       title="Asignar rutina a usuario"
                     >
-                      <FiUsers className="w-5 h-5" />
+                      <Icon icon="FiUsers" className="w-5 h-5" />
                     </button>
                   )}
                 </div>

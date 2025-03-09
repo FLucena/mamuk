@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiUser, FiMail, FiEdit2, FiTrash2, FiUsers, FiUserPlus } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 import EditCoachModal from './EditCoachModal';
 import DeleteCoachModal from './DeleteCoachModal';
 import AddCustomerModal from './AddCustomerModal';
+import { MongoUser } from '@/lib/types/user';
 
 interface User {
   id: string;
@@ -131,6 +133,18 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
     }
   };
 
+  // Convert Coach to MongoUser format for EditCoachModal
+  const coachForModal: MongoUser & { specialties?: string[], bio?: string, customers?: string[] } = {
+    _id: coach.id,
+    name: coach.userId.name,
+    email: coach.userId.email,
+    role: 'coach',
+    image: coach.userId.image,
+    specialties: coach.specialties,
+    bio: coach.biography,
+    customers: coach.customers.map(c => c.id)
+  };
+
   return (
     <>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
@@ -145,13 +159,13 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
                 />
               ) : (
                 <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <FiUser className="w-8 h-8 text-gray-500 dark:text-gray-400" />
+                  <Icon icon="FiUser" className="w-8 h-8 text-gray-500 dark:text-gray-400" />
                 </div>
               )}
               <div>
                 <h2 className="text-xl font-semibold">{coach.userId.name}</h2>
                 <div className="flex items-center text-gray-500 dark:text-gray-400">
-                  <FiMail className="w-4 h-4 mr-1" />
+                  <Icon icon="FiMail" className="w-4 h-4 mr-1" />
                   <span>{coach.userId.email}</span>
                 </div>
               </div>
@@ -162,14 +176,14 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
                 onClick={() => setShowEditModal(true)}
                 className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
-                <FiEdit2 className="w-4 h-4 mr-2" />
+                <Icon icon="FiEdit2" className="w-4 h-4 mr-2" />
                 Editar
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)}
                 className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-100 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
-                <FiTrash2 className="w-4 h-4 mr-2" />
+                <Icon icon="FiTrash2" className="w-4 h-4 mr-2" />
                 Eliminar
               </button>
             </div>
@@ -203,7 +217,7 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
                 onClick={() => setShowAddCustomerModal(true)}
                 className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                <FiUserPlus className="w-4 h-4 mr-2" />
+                <Icon icon="FiUserPlus" className="w-4 h-4 mr-2" />
                 Agregar Cliente
               </button>
             </div>
@@ -223,7 +237,7 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
                       />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                        <FiUser className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                        <Icon icon="FiUser" className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                       </div>
                     )}
                     <div>
@@ -238,7 +252,7 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
                     onClick={() => handleRemoveCustomer(customer.id)}
                     className="text-red-600 hover:text-red-700"
                   >
-                    <FiTrash2 className="w-5 h-5" />
+                    <Icon icon="FiTrash2" className="w-5 h-5" />
                   </button>
                 </div>
               ))}
@@ -253,34 +267,31 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
         </div>
       </div>
 
-      <EditCoachModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        onConfirm={handleEditConfirm}
-        coach={{
-          _id: coach.id,
-          name: coach.userId.name,
-          email: coach.userId.email,
-          role: 'coach',
-          image: coach.userId.image,
-          specialties: coach.specialties,
-          bio: coach.biography,
-          customers: coach.customers.map(c => c.id)
-        }}
-      />
+      {showEditModal && (
+        <EditCoachModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onConfirm={handleEditConfirm}
+          coach={coachForModal}
+        />
+      )}
 
-      <DeleteCoachModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteConfirm}
-      />
+      {showDeleteModal && (
+        <DeleteCoachModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
 
-      <AddCustomerModal
-        isOpen={showAddCustomerModal}
-        onClose={() => setShowAddCustomerModal(false)}
-        onConfirm={handleAddCustomer}
-        existingCustomerIds={coach.customers.map((c) => c.id)}
-      />
+      {showAddCustomerModal && (
+        <AddCustomerModal
+          isOpen={showAddCustomerModal}
+          onClose={() => setShowAddCustomerModal(false)}
+          onConfirm={handleAddCustomer}
+          existingCustomerIds={coach.customers.map(c => c.id)}
+        />
+      )}
     </>
   );
 } 

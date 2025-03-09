@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiEdit2, FiTrash2, FiUsers } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 import EditCoachModal from './EditCoachModal';
 import DeleteCoachModal from './DeleteCoachModal';
 import Image from 'next/image';
@@ -199,7 +200,7 @@ export default function CoachList({ users = [], isLoading = false }: CoachListPr
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                          <FiUser className="h-6 w-6 text-gray-400 dark:text-gray-300" />
+                          <Icon icon="FiUser" className="h-6 w-6 text-gray-400 dark:text-gray-300" />
                         </div>
                       )}
                     </div>
@@ -223,14 +224,14 @@ export default function CoachList({ users = [], isLoading = false }: CoachListPr
                     onClick={() => handleEditClick(coach)}
                     className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4"
                   >
-                    <FiEdit2 className="inline-block w-4 h-4 mr-1" />
+                    <Icon icon="FiEdit2" className="inline-block w-4 h-4 mr-1" />
                     Editar
                   </button>
                   <button
                     onClick={() => handleDeleteClick(coach)}
                     className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                   >
-                    <FiTrash2 className="inline-block w-4 h-4 mr-1" />
+                    <Icon icon="FiTrash2" className="inline-block w-4 h-4 mr-1" />
                     Eliminar
                   </button>
                   <button
@@ -247,39 +248,35 @@ export default function CoachList({ users = [], isLoading = false }: CoachListPr
         </table>
       </div>
 
-      {selectedCoach && (
-        <>
-          <EditCoachModal
-            isOpen={showEditModal}
-            onClose={() => {
-              setShowEditModal(false);
-              setSelectedCoach(null);
-            }}
-            onConfirm={handleEditConfirm}
-            coach={selectedCoach}
-          />
+      {selectedCoach && showEditModal && (
+        <EditCoachModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onConfirm={handleEditConfirm}
+          coach={selectedCoach}
+        />
+      )}
 
-          <DeleteCoachModal
-            isOpen={showDeleteModal}
-            onClose={() => {
-              setShowDeleteModal(false);
-              setSelectedCoach(null);
-            }}
-            onConfirm={handleDeleteConfirm}
-          />
+      {selectedCoach && showDeleteModal && (
+        <DeleteCoachModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
 
-          <AssignCustomerModal
-            isOpen={isAssignModalOpen}
-            onClose={() => setIsAssignModalOpen(false)}
-            coach={{
-              id: selectedCoach._id || '',
-              name: selectedCoach.name || '',
-              email: selectedCoach.email || '',
-              image: selectedCoach.image
-            }}
-            onAssign={handleAssignSubmit}
-          />
-        </>
+      {selectedCoach && isAssignModalOpen && (
+        <AssignCustomerModal
+          isOpen={isAssignModalOpen}
+          onClose={() => setIsAssignModalOpen(false)}
+          coach={{
+            id: selectedCoach._id,
+            name: selectedCoach.name || '',
+            email: selectedCoach.email || '',
+            image: selectedCoach.image
+          }}
+          onAssign={handleAssignSubmit}
+        />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { FiCheck } from 'react-icons/fi';
+import Icon, { IconName } from '@/components/ui/Icon';
 
 const plans = [
   {
@@ -113,9 +114,12 @@ export default function PricingPage() {
                 <ul className="mt-8 space-y-4">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start">
-                      <FiCheck className={`w-5 h-5 mt-0.5 ${
-                        plan.highlighted ? 'text-white' : 'text-blue-500 dark:text-blue-400'
-                      }`} />
+                      <Icon 
+                        icon="FiCheck" 
+                        className={`w-5 h-5 mt-0.5 ${
+                          plan.highlighted ? 'text-white' : 'text-blue-500 dark:text-blue-400'
+                        }`} 
+                      />
                       <span className={`ml-3 text-sm ${
                         plan.highlighted ? 'text-white' : 'text-gray-700 dark:text-gray-300'
                       }`}>

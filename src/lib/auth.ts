@@ -196,7 +196,7 @@ export const authOptions: NextAuthOptions = {
 
       return session;
     },
-    async signIn({ user, account }: { user: GoogleUser; account: Account | null }): Promise<boolean> {
+    async signIn({ user, account }) {
       if (!account) {
         console.error('No account provided in signIn callback');
         return false;
