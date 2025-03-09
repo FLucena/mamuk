@@ -8,6 +8,7 @@ import { Toaster } from 'react-hot-toast'
 import { Metadata, Viewport } from 'next'
 import CookieConsent from '@/components/CookieConsent'
 import Footer from '@/components/Footer'
+import LoadingPage from '@/components/LoadingPage'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,8 +22,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f3f4f6' }, // Light mode color
-    { media: '(prefers-color-scheme: dark)', color: '#111827' }   // Dark mode color
+    { media: '(prefers-color-scheme: light)', color: '#f9fafb' }, // Light mode color (gray-50)
+    { media: '(prefers-color-scheme: dark)', color: '#030712' }   // Dark mode color (gray-950)
   ],
   colorScheme: 'light dark'
 };
@@ -93,11 +94,12 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           }}
         />
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} antialiased bg-gray-50 dark:bg-gray-950`}>
         <Providers>
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+          <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+            <LoadingPage />
             <Navbar />
-            <main className="pb-16">
+            <main className="flex-grow pb-16">
               {children}
             </main>
             <Footer />

@@ -43,27 +43,61 @@
   .min-w-10 {
     min-width: 2.5rem;
   }
+  .min-h-16 {
+    min-height: 4rem;
+  }
+  .min-w-16 {
+    min-width: 4rem;
+  }
+  
+  /* Border widths */
+  .border-3 {
+    border-width: 3px;
+  }
 }
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --background-rgb: 249, 250, 251; /* Solid light background (gray-50) */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background-rgb: 3, 7, 18; /* Solid dark background (gray-950) */
   }
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      rgb(var(--background-start-rgb)),
-      rgb(var(--background-end-rgb))
-    );
+  background-color: rgb(var(--background-rgb));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Estilos para la página de carga */
+.loading-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgb(var(--background-rgb));
+  z-index: 9999;
+}
+
+/* Eliminar el fondo con franjas */
+#__next {
+  min-height: 100vh;
+  background-color: rgb(var(--background-rgb));
 }
