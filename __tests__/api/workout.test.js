@@ -1,22 +1,37 @@
 import { createMocks } from 'node-mocks-http'
 import * as workoutService from '@/lib/services/workout'
 import { getServerSession } from 'next-auth'
+import { NextRequest, NextResponse } from 'next/server'
 
 // Mock de servicios y next-auth
-jest.mock('@/lib/services/workout')
+jest.mock('@/lib/services/workout', () => ({
+  getWorkouts: jest.fn(),
+  createWorkout: jest.fn()
+}))
+
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn()
 }))
 
-// Importamos las funciones de la API
-// Nota: Esto puede necesitar ajustes dependiendo de cómo estén estructuradas tus rutas de API
-let GET, POST
-jest.mock('@/app/api/workout/route', () => {
-  const actual = jest.requireActual('@/app/api/workout/route')
-  GET = actual.GET
-  POST = actual.POST
-  return actual
+jest.mock('next/server', () => {
+  return {
+    NextRequest: jest.fn().mockImplementation((url, init) => ({
+      url,
+      method: init?.method || 'GET',
+      json: jest.fn().mockImplementation(() => Promise.resolve(init?.body ? JSON.parse(init.body) : {})),
+      nextUrl: { pathname: '/api/workout' }
+    })),
+    NextResponse: {
+      json: jest.fn().mockImplementation((body, init) => ({
+        body,
+        status: init?.status || 200
+      }))
+    }
+  }
 })
+
+// Importamos las funciones de la API
+import { GET, POST } from '@/app/api/workout/route'
 
 describe('/api/workout API', () => {
   beforeEach(() => {
@@ -26,11 +41,11 @@ describe('/api/workout API', () => {
   it('GET returns 401 for unauthenticated user', async () => {
     getServerSession.mockResolvedValue(null)
     
-    const { req, res } = createMocks({ method: 'GET' })
+    const req = new NextRequest('http://localhost:3000/api/workout')
     
-    await GET(req, res)
+    const response = await GET(req)
     
-    expect(res._getStatusCode()).toBe(401)
+    expect(response.status).toBe(401)
   })
 
   it('GET returns workouts for authenticated user', async () => {
@@ -45,12 +60,12 @@ describe('/api/workout API', () => {
     ]
     workoutService.getWorkouts.mockResolvedValue(mockWorkouts)
     
-    const { req, res } = createMocks({ method: 'GET' })
+    const req = new NextRequest('http://localhost:3000/api/workout')
     
-    await GET(req, res)
+    const response = await GET(req)
     
-    expect(res._getStatusCode()).toBe(200)
-    expect(JSON.parse(res._getData())).toEqual(mockWorkouts)
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual(mockWorkouts)
   })
 
   it('POST creates new workout', async () => {
@@ -64,15 +79,15 @@ describe('/api/workout API', () => {
     
     workoutService.createWorkout.mockResolvedValue(createdWorkout)
     
-    const { req, res } = createMocks({
+    const req = new NextRequest('http://localhost:3000/api/workout', {
       method: 'POST',
-      body: workoutData
+      body: JSON.stringify(workoutData)
     })
     
-    await POST(req, res)
+    const response = await POST(req)
     
-    expect(res._getStatusCode()).toBe(201)
-    expect(JSON.parse(res._getData())).toEqual(createdWorkout)
-    expect(workoutService.createWorkout).toHaveBeenCalledWith(workoutData, 'user-id')
+    expect(response.status).toBe(201)
+    expect(response.body).toEqual(createdWorkout)
+    expect(workoutService.createWorkout).toHaveBeenCalledWith(expect.objectContaining(workoutData), 'user-id')
   })
 }) 

@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_ENV=development next dev",
+    "dev": "next dev",
+    "dev:env": "NODE_ENV=development next dev",
     "dev:win": "set NODE_ENV=development && next dev",
-    "build": "NODE_ENV=production next build",
+    "build": "next build",
     "build:win": "set NODE_ENV=production && next build",
     "start": "NODE_ENV=production next start",
     "start:win": "set NODE_ENV=production && next start",
@@ -18,7 +19,8 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:ci": "npm run test && npm run test:e2e"
+    "test:ci": "npm run test && npm run test:e2e",
+    "msw:init": "msw init public"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.7.4",
@@ -48,6 +50,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",
+    "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "20.17.19",
@@ -57,11 +60,16 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "mongodb-memory-server": "^10.1.4",
-    "msw": "^2.7.3",
+    "msw": "^0.47.4",
     "node-mocks-http": "^1.16.2",
     "postcss": "^8",
     "supertest": "^7.0.0",
     "tailwindcss": "^3",
     "typescript": "5.7.3"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

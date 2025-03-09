@@ -1,25 +1,51 @@
 import { getWorkout, getWorkouts } from '@/lib/services/workout'
 import { dbConnect } from '@/lib/db'
 import mongoose from 'mongoose'
+import * as security from '@/lib/utils/security'
 
-// Mock de los modelos
+// Mock de los modelos y utilidades
 jest.mock('@/lib/db')
+jest.mock('@/lib/utils/security', () => ({
+  validateIds: jest.fn(),
+  validateMongoId: jest.fn().mockReturnValue(true)
+}))
+
 jest.mock('mongoose', () => {
   const originalModule = jest.requireActual('mongoose')
   return {
     ...originalModule,
+    connection: {
+      setMaxListeners: jest.fn(),
+      on: jest.fn(),
+      once: jest.fn()
+    },
     models: {
       Workout: {
         findById: jest.fn(),
         find: jest.fn(),
         lean: jest.fn()
+      },
+      User: {
+        findOne: jest.fn().mockResolvedValue({ _id: 'user-id', email: 'test@example.com' })
       }
     },
-    model: jest.fn(() => ({
-      findById: jest.fn(),
-      find: jest.fn(),
-      lean: jest.fn()
-    }))
+    model: jest.fn((name) => {
+      if (name === 'User') {
+        return {
+          findOne: jest.fn().mockResolvedValue({ _id: 'user-id', email: 'test@example.com' })
+        }
+      }
+      return {
+        findById: jest.fn(),
+        find: jest.fn(),
+        lean: jest.fn()
+      }
+    }),
+    Types: {
+      ObjectId: {
+        isValid: jest.fn().mockReturnValue(true)
+      }
+    }
   }
 })
 
@@ -31,7 +57,8 @@ describe('Workout Service', () => {
   it('getWorkout returns workout by ID', async () => {
     const mockWorkout = { 
       _id: 'workout-id', 
-      name: 'Test Workout', 
+      name: 'Test Workout',
+      userId: 'user-id',
       days: [{ name: 'Day 1', blocks: [] }] 
     }
     

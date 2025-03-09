@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     const data = await request.json();
     const workout = await createWorkout(data, session.user.id);
-    return NextResponse.json(workout);
+    return NextResponse.json(workout, { status: 201 });
   } catch (error) {
     console.error('Error creating workout:', error);
     return NextResponse.json(

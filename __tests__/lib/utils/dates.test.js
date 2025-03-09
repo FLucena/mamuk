@@ -15,6 +15,6 @@ describe('Date Utilities', () => {
 
   it('formatDateTime returns date with time', () => {
     const formatted = formatDateTime(testDate)
-    expect(formatted).toMatch(/\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}/)
+    expect(formatted).toMatch(/\d{1,2} de [a-zA-Z]+ de \d{4}, \d{1,2}:\d{2}/)
   })
 }) 
