@@ -9,7 +9,7 @@ import Icon from '@/components/ui/Icon';
 import EditUserModal from './EditUserModal';
 import DeleteUserModal from './DeleteUserModal';
 import Image from 'next/image';
-import { MongoUser } from '@/lib/types/user';
+import { MongoUser, Role } from '@/lib/types/user';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface UserListProps {
@@ -20,7 +20,7 @@ interface UserListProps {
 export default function UserList({ users = [], isLoading = false }: UserListProps) {
   const router = useRouter();
   const { data: session } = useSession();
-  const { updateRole } = useAuth();
+  const { updateRole, updateRoles } = useAuth();
   const [localUsers, setLocalUsers] = useState<MongoUser[]>(users);
   const [selectedUser, setSelectedUser] = useState<MongoUser | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -82,15 +82,20 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
                 ...user, 
                 name: updatedUser.name, 
                 email: updatedUser.email, 
-                role: updatedUser.role 
+                role: updatedUser.role,
+                roles: updatedUser.roles || [updatedUser.role]
               } 
             : user
         )
       );
       
-      // If the updated user is the current user, update their role in the session
+      // If the updated user is the current user, update their roles in the session
       if (session?.user?.email === updatedUser.email) {
+        // Actualizar tanto el rol principal como los roles múltiples
         updateRole(updatedUser.role);
+        if (updatedUser.roles) {
+          updateRoles(updatedUser.roles);
+        }
       }
       
       // Close the modal
@@ -199,6 +204,26 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
                     }`}>
                       {user.role === 'admin' ? 'Administrador' : user.role === 'coach' ? 'Entrenador' : 'Cliente'}
                     </span>
+                    
+                    {/* Mostrar roles adicionales si tiene más de uno */}
+                    {user.roles && user.roles.length > 1 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {user.roles.filter(r => r !== user.role).map(additionalRole => (
+                          <span 
+                            key={additionalRole}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              additionalRole === 'admin'
+                                ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300'
+                                : additionalRole === 'coach'
+                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300'
+                                : 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300'
+                            }`}
+                          >
+                            +{additionalRole === 'admin' ? 'Admin' : additionalRole === 'coach' ? 'Coach' : 'Cliente'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -240,7 +265,8 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
             id: selectedUser._id,
             name: selectedUser.name || '',
             email: selectedUser.email || '',
-            role: selectedUser.role || 'customer'
+            role: selectedUser.role || 'customer',
+            roles: selectedUser.roles || [selectedUser.role || 'customer']
           }}
         />
       )}

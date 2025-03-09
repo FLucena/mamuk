@@ -7,6 +7,7 @@ export interface IUser {
   name?: string;
   email?: string;
   role: UserRole;
+  roles: UserRole[];
   emailVerified?: Date;
   image?: string;
   coach?: mongoose.Types.ObjectId;
@@ -40,6 +41,12 @@ const userSchema = new mongoose.Schema({
     default: 'customer',
     required: true
   },
+  roles: {
+    type: [String],
+    enum: ['admin', 'coach', 'customer'],
+    default: ['customer'],
+    required: true
+  },
   coach: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Coach',
@@ -63,6 +70,22 @@ const userSchema = new mongoose.Schema({
 
 // Only add index for role since it's not unique
 userSchema.index({ role: 1 });
+userSchema.index({ roles: 1 });
+
+// Middleware para mantener sincronizado el campo role con roles
+userSchema.pre('save', function(next) {
+  // Si roles está vacío, establecer el valor predeterminado
+  if (!this.roles || this.roles.length === 0) {
+    this.roles = [this.role || 'customer'];
+  }
+  
+  // Asegurarse de que role siempre sea el primer rol en roles
+  if (this.roles.length > 0 && this.role !== this.roles[0]) {
+    this.role = this.roles[0] as UserRole;
+  }
+  
+  next();
+});
 
 // Define the User model type
 export type UserDocument = mongoose.Document & IUser;

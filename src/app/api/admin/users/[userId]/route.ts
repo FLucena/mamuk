@@ -19,6 +19,7 @@ interface UserDocument {
   email: string;
   image?: string;
   role: UserRole;
+  roles: UserRole[];
   __v: number;
 }
 
@@ -43,7 +44,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     await dbConnect();
 
     const user = await User.findById(params.userId)
-      .select('name email image role')
+      .select('name email image role roles')
       .lean() as UserDocument;
 
     if (!user) {
@@ -59,7 +60,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       name: user.name,
       email: user.email,
       image: user.image,
-      role: user.role
+      role: user.role,
+      roles: user.roles || [user.role]
     };
 
     return NextResponse.json(transformedUser);
@@ -102,11 +104,20 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     await dbConnect();
 
-    const user = await User.findByIdAndUpdate(
+    // Actualizar el usuario, asegurándose de que el rol principal esté en el array de roles
+    const updateData = {
+      name, 
+      email, 
+      role,
+      // Si no hay roles o el rol principal no está en el array, añadirlo
+      $addToSet: { roles: role }
+    };
+
+    const user: any = await User.findByIdAndUpdate(
       params.userId,
-      { name, email, role },
+      updateData,
       { new: true }
-    ).select('name email image role').lean() as UserDocument;
+    ).select('name email image role roles').lean();
 
     if (!user) {
       return NextResponse.json(
@@ -121,7 +132,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       name: user.name,
       email: user.email,
       image: user.image,
-      role: user.role
+      role: user.role,
+      roles: user.roles || [user.role]
     };
 
     return NextResponse.json(transformedUser);

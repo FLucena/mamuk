@@ -10,6 +10,7 @@ interface UserDocument {
   email: string;
   image?: string;
   role: string;
+  roles?: string[];
   active?: boolean;
   __v: number;
 }
@@ -31,7 +32,7 @@ export async function getActiveUsers() {
         { active: { $exists: false } }
       ]
     })
-      .select('name email image role')
+      .select('name email image role roles')
       .lean() as UserDocument[];
     
     console.log('[SERVICE] getActiveUsers - Encontrados:', users.length, 'usuarios');
@@ -42,7 +43,8 @@ export async function getActiveUsers() {
       name: user.name,
       email: user.email,
       image: user.image,
-      role: user.role
+      role: user.role,
+      roles: user.roles || [user.role]
     }));
     
     return transformedUsers;
@@ -64,7 +66,7 @@ export async function getUserById(userId: string) {
   await dbConnect();
   
   const user = await User.findOne({ _id: new Types.ObjectId(userId) })
-    .select('name email image role')
+    .select('name email image role roles')
     .lean() as UserDocument | null;
 
   if (!user) {
@@ -77,7 +79,8 @@ export async function getUserById(userId: string) {
     name: user.name,
     email: user.email,
     image: user.image,
-    role: user.role
+    role: user.role,
+    roles: user.roles || [user.role]
   };
 }
 
@@ -103,7 +106,7 @@ export async function getCustomers() {
         { role: 'customer' }
       ]
     })
-      .select('name email image role')
+      .select('name email image role roles')
       .lean() as UserDocument[];
     
     console.log('[SERVICE] getCustomers - Encontrados:', users.length, 'clientes');
@@ -114,7 +117,8 @@ export async function getCustomers() {
       name: user.name,
       email: user.email,
       image: user.image,
-      role: user.role
+      role: user.role,
+      roles: user.roles || [user.role]
     }));
     
     return transformedUsers;
@@ -140,6 +144,7 @@ export async function getAllUsers(): Promise<MongoUser[]> {
       name: user.name || '',
       email: user.email || '',
       role: user.role,
+      roles: user.roles || [user.role],
       image: user.image
     })) as MongoUser[];
   } catch (error) {

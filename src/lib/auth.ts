@@ -24,6 +24,7 @@ interface DbUser extends Document {
 interface LeanDbUser {
   _id: any;
   role: Role;
+  roles: Role[];
   email: string;
   name?: string;
   image?: string;
@@ -37,6 +38,7 @@ declare module 'next-auth' {
     user: {
       id: string;
       role: Role;
+      roles: Role[];
       coachId?: string;
       emailVerified?: Date | null;
     } & DefaultSession['user']
@@ -45,6 +47,7 @@ declare module 'next-auth' {
   interface User {
     id: string;
     role: Role;
+    roles: Role[];
     emailVerified?: Date | null;
   }
 }
@@ -53,6 +56,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id?: string;
     role?: Role;
+    roles?: Role[];
     sub?: string;
     email?: string;
   }
@@ -107,6 +111,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role;
+        token.roles = user.roles || [user.role];
       }
 
       try {
@@ -117,7 +122,7 @@ export const authOptions: NextAuthOptions = {
             { sub: token.sub }
           ]
         })
-        .select('_id role email name image sub provider emailVerified')
+        .select('_id role roles email name image sub provider emailVerified')
         .lean<LeanDbUser>();
 
         if (dbUser) {
@@ -125,6 +130,7 @@ export const authOptions: NextAuthOptions = {
             ...token,
             id: dbUser._id.toString(),
             role: dbUser.role as Role,
+            roles: dbUser.roles as Role[] || [dbUser.role as Role],
             name: dbUser.name || token.name,
             email: dbUser.email || token.email,
             picture: dbUser.image || token.picture,
@@ -136,17 +142,20 @@ export const authOptions: NextAuthOptions = {
             image: token.picture,
             sub: token.sub,
             role: 'customer' as Role,
+            roles: ['customer'] as Role[],
           });
 
           return {
             ...token,
             id: newUser._id.toString(),
             role: newUser.role as Role,
+            roles: newUser.roles as Role[],
           };
         } else {
           return {
             ...token,
             role: 'customer' as Role,
+            roles: ['customer'] as Role[],
           };
         }
       } catch (error) {
@@ -162,6 +171,7 @@ export const authOptions: NextAuthOptions = {
         session.user = {
           id: token?.id || '',
           role: (token?.role || 'customer') as Role,
+          roles: token?.roles || [(token?.role || 'customer') as Role],
           name: token?.name,
           email: token?.email,
           image: token?.picture
@@ -175,22 +185,27 @@ export const authOptions: NextAuthOptions = {
           
           if (session.user.email) {
             const dbUser = await User.findOne({ email: session.user.email })
-              .select('role')
-              .lean<{ role: Role }>();
+              .select('role roles')
+              .lean<{ role: Role, roles: Role[] }>();
             
             if (dbUser) {
               session.user.role = dbUser.role;
+              session.user.roles = dbUser.roles || [dbUser.role];
               // Actualizamos el token también para mantener sincronizado
               token.role = dbUser.role;
+              token.roles = dbUser.roles || [dbUser.role];
             } else {
               session.user.role = (token?.role || 'customer') as Role;
+              session.user.roles = token?.roles || [(token?.role || 'customer') as Role];
             }
           } else {
             session.user.role = (token?.role || 'customer') as Role;
+            session.user.roles = token?.roles || [(token?.role || 'customer') as Role];
           }
         } catch (error) {
           console.error('Error getting updated role in session callback:', error);
           session.user.role = (token?.role || 'customer') as Role;
+          session.user.roles = token?.roles || [(token?.role || 'customer') as Role];
         }
       }
 

@@ -18,6 +18,7 @@ interface ApiUser {
   email: string;
   image?: string;
   role: Role;
+  roles: Role[];
 }
 
 interface ArchivedRoutine {
@@ -80,7 +81,8 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
         name: user.name,
         email: user.email,
         image: user.image,
-        role: user.role
+        role: user.role,
+        roles: user.roles || [user.role]
       }));
       
       // Transformar a formato MongoDB (con _id)
@@ -89,7 +91,8 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
         name: user.name,
         email: user.email,
         image: user.image,
-        role: user.role
+        role: user.role,
+        roles: user.roles || [user.role]
       }));
 
       setApiUsers(transformedApiUsers);

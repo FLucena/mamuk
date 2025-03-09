@@ -4,14 +4,15 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { MongoUser, User } from '@/lib/types/user';
+import { MongoUser, User, Role } from '@/lib/types/user';
 import { MultiSelect } from '@/components/MultiSelect';
 import { validateMongoId } from '@/lib/utils/security';
 
 // Tipo extendido que puede manejar tanto MongoUser como User (con _id o id)
-interface ExtendedUser extends Omit<MongoUser, '_id'> {
+interface ExtendedUser extends Omit<MongoUser, '_id' | 'roles'> {
   _id?: string;
   id?: string;
+  roles?: Role[];
 }
 
 interface AssignWorkoutModalProps {

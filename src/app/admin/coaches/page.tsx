@@ -28,6 +28,7 @@ export default async function CoachesPage() {
     name: coach.userId?.name || 'Sin nombre',
     email: coach.userId?.email || 'Sin email',
     role: 'coach' as const,
+    roles: ['coach'],
     image: coach.userId?.image
   }));
 

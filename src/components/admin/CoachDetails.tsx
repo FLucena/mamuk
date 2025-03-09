@@ -139,6 +139,7 @@ export default function CoachDetails({ coach }: CoachDetailsProps) {
     name: coach.userId.name,
     email: coach.userId.email,
     role: 'coach',
+    roles: ['coach'],
     image: coach.userId.image,
     specialties: coach.specialties,
     bio: coach.biography,

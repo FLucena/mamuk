@@ -4,19 +4,22 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import Icon, { IconName } from '@/components/ui/Icon';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import UserRolesManager from './UserRolesManager';
+import { Role } from '@/lib/types/user';
 
 interface User {
   id: string;
   name: string;
   email: string;
   image?: string;
-  role: string;
+  role: Role;
+  roles: Role[];
 }
 
 interface EditUserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: { name: string; email: string; role: string }) => Promise<void>;
+  onConfirm: (data: { name: string; email: string; role: Role }) => Promise<void>;
   user: User;
 }
 
@@ -29,6 +32,7 @@ export default function EditUserModal({
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [role, setRole] = useState(user.role);
+  const [roles, setRoles] = useState<Role[]>(user.roles || [user.role]);
   const [isLoading, setIsLoading] = useState(false);
   
   // Reset form when user changes
@@ -36,6 +40,7 @@ export default function EditUserModal({
     setName(user.name);
     setEmail(user.email);
     setRole(user.role);
+    setRoles(user.roles || [user.role]);
   }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,6 +58,14 @@ export default function EditUserModal({
       console.error('Error updating user:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRolesUpdated = (updatedRoles: Role[]) => {
+    setRoles(updatedRoles);
+    // Actualizar el rol principal si ha cambiado
+    if (updatedRoles.length > 0 && updatedRoles[0] !== role) {
+      setRole(updatedRoles[0]);
     }
   };
 
@@ -131,12 +144,12 @@ export default function EditUserModal({
                       htmlFor="role"
                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >
-                      Rol
+                      Rol Principal
                     </label>
                     <select
                       id="role"
                       value={role}
-                      onChange={(e) => setRole(e.target.value)}
+                      onChange={(e) => setRole(e.target.value as Role)}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white py-2.5 px-4"
                       disabled={isLoading}
                     >
@@ -145,6 +158,13 @@ export default function EditUserModal({
                       <option value="admin">Administrador</option>
                     </select>
                   </div>
+
+                  {/* Gestor de roles múltiples */}
+                  <UserRolesManager 
+                    userId={user.id}
+                    initialRoles={roles}
+                    onRolesUpdated={handleRolesUpdated}
+                  />
 
                   <div className="mt-8 flex justify-end space-x-4">
                     <button
