@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import UserList from '@/components/admin/UserList';
 import ArchivedRoutines from '@/components/admin/ArchivedRoutines';
 import { Role, MongoUser } from '@/lib/types/user';
-import { AdminNavLink } from '@/components/navigation/AdminNavigation';
+import CoachCustomerAssignment from './CoachCustomerAssignment';
 
 // Interfaz para usuarios en formato MongoDB (con _id)
 interface MongoUserWithRole extends MongoUser {
@@ -36,7 +36,7 @@ interface ArchivedRoutine {
   };
 }
 
-type AdminView = 'users' | 'archived';
+type AdminView = 'users' | 'archived' | 'assignments';
 
 interface AdminDashboardProps {
   initialView?: AdminView;
@@ -55,6 +55,8 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       fetchUsers();
     } else if (currentView === 'archived') {
       fetchArchivedRoutines();
+    } else if (currentView === 'assignments') {
+      fetchUsers();
     }
   }, [currentView]);
 
@@ -130,6 +132,16 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
               Gestionar Usuarios
             </button>
             <button
+              onClick={() => setCurrentView('assignments')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
+                currentView === 'assignments'
+                  ? 'bg-blue-600 dark:bg-blue-700 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Asignaciones Coach-Cliente
+            </button>
+            <button
               onClick={() => setCurrentView('archived')}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
                 currentView === 'archived'
@@ -175,6 +187,20 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
               </p>
             </div>
             <UserList users={mongoUsers} isLoading={loading} />
+          </div>
+        );
+      case 'assignments':
+        return (
+          <div>
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                Asignaciones Coach-Cliente
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Asigna clientes a coaches para que puedan gestionar sus entrenamientos.
+              </p>
+            </div>
+            <CoachCustomerAssignment users={mongoUsers} isLoading={loading} />
           </div>
         );
       case 'archived':

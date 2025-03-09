@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/db';
 import User from '@/lib/models/user';
+import { Role } from '@/lib/types/user';
 import { Types } from 'mongoose';
 
 interface DbUser {
@@ -10,58 +11,47 @@ interface DbUser {
   name: string;
   email: string;
   image?: string;
-  role: string;
+  role: Role;
 }
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    // Comprobar si el usuario está autenticado
-    if (!session?.user) {
-      return new NextResponse(
-        JSON.stringify({ error: 'No autenticado' }),
-        { status: 401 }
-      );
-    }
-
-    // Comprobar si el usuario tiene el rol de administrador
-    if (session.user.role !== 'admin') {
-      return new NextResponse(
-        JSON.stringify({ error: 'Permisos insuficientes. Se requiere rol de administrador.' }),
+    // Check if user is authenticated and is an admin
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'No tienes permisos para realizar esta acción' },
         { status: 403 }
       );
     }
 
+    // Get role filter from query params
+    const searchParams = req.nextUrl.searchParams;
+    const roleFilter = searchParams.get('role') as Role | null;
+
     await dbConnect();
-    
-    // Get query parameters
-    const url = new URL(request.url);
-    const roleFilter = url.searchParams.get('role');
-    
-    // Build query
-    const query: any = {};
+
+    // Build query based on filters
+    const query: { role?: Role } = {};
     if (roleFilter) {
       query.role = roleFilter;
     }
-    
-    const users = await User.find(query)
-      .select('name email image role')
-      .lean<DbUser[]>();
 
-    // Transform _id to id for consistency
+    // Fetch users with optional role filter
+    const users = await User.find(query).lean<DbUser[]>();
+
+    // Transform MongoDB _id to string
     const transformedUsers = users.map(user => ({
-      id: user._id.toString(),
-      name: user.name,
-      email: user.email,
-      image: user.image,
-      role: user.role
+      ...user,
+      _id: user._id.toString()
     }));
 
     return NextResponse.json(transformedUsers);
   } catch (error) {
-    return new NextResponse(
-      JSON.stringify({ error: 'Error interno del servidor' }),
+    console.error('Error fetching users:', error);
+    return NextResponse.json(
+      { error: 'Error al obtener usuarios' },
       { status: 500 }
     );
   }

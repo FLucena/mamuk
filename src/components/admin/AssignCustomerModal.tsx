@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import { X, Search, UserPlus } from 'lucide-react';
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   image?: string;
@@ -21,7 +21,7 @@ interface AssignCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   coach: Coach;
-  onAssign: (coachId: string, customerIds: string[]) => Promise<void>;
+  onAssign: (coachId: string, customerIds: string[]) => Promise<boolean | void>;
 }
 
 export default function AssignCustomerModal({
@@ -39,6 +39,7 @@ export default function AssignCustomerModal({
   useEffect(() => {
     if (isOpen) {
       fetchCustomers();
+      setSelectedCustomers([]);
     }
   }, [isOpen]);
 
@@ -67,9 +68,10 @@ export default function AssignCustomerModal({
 
     setIsSubmitting(true);
     try {
-      await onAssign(coach.id, selectedCustomers);
-      toast.success('Clientes asignados correctamente');
-      onClose();
+      const result = await onAssign(coach.id, selectedCustomers);
+      if (result !== false) {
+        onClose();
+      }
     } catch (error) {
       toast.error('Error al asignar clientes');
       console.error(error);
@@ -151,13 +153,13 @@ export default function AssignCustomerModal({
                     <div className="max-h-60 overflow-y-auto">
                       <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                         {filteredCustomers.map((customer) => (
-                          <li key={customer.id} className="py-3">
+                          <li key={customer._id} className="py-3">
                             <div className="flex items-center">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                checked={selectedCustomers.includes(customer.id)}
-                                onChange={() => toggleCustomer(customer.id)}
+                                checked={selectedCustomers.includes(customer._id)}
+                                onChange={() => toggleCustomer(customer._id)}
                               />
                               <div className="ml-3">
                                 <p className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</p>

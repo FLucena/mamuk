@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import WorkoutDays from '@/components/workout/WorkoutDays'
 
 const mockDays = [
@@ -16,9 +16,9 @@ const mockDays = [
 ]
 
 const mockFunctions = {
-  onAddDay: jest.fn(),
-  onAddBlock: jest.fn(),
-  onAddExercise: jest.fn(),
+  onAddDay: jest.fn().mockImplementation(() => Promise.resolve()),
+  onAddBlock: jest.fn().mockImplementation(() => Promise.resolve()),
+  onAddExercise: jest.fn().mockImplementation(() => Promise.resolve()),
   onUpdateDayName: jest.fn(),
   onUpdateBlockName: jest.fn(),
 }
@@ -33,7 +33,11 @@ describe('WorkoutDays Component', () => {
   it('calls onAddDay when add day button is clicked', async () => {
     render(<WorkoutDays days={mockDays} {...mockFunctions} />)
     const addButton = screen.getByText('Agregar día')
-    fireEvent.click(addButton)
+    
+    await act(async () => {
+      fireEvent.click(addButton)
+    })
+    
     expect(mockFunctions.onAddDay).toHaveBeenCalled()
   })
 }) 
