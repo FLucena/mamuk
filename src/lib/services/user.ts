@@ -2,6 +2,7 @@ import { dbConnect } from '@/lib/db';
 import User from '@/lib/models/user';
 import { Types } from 'mongoose';
 import { validateMongoId } from '@/lib/utils/security';
+import { MongoUser } from '@/lib/types/user';
 
 interface UserDocument {
   _id: Types.ObjectId;
@@ -120,6 +121,29 @@ export async function getCustomers() {
   } catch (error) {
     console.error('[SERVICE] getCustomers - Error:', error);
     // En caso de error, devolver un array vacío para evitar errores en cascada
+    return [];
+  }
+}
+
+/**
+ * Get all users from the database
+ * @returns Array of users with MongoDB format (_id)
+ */
+export async function getAllUsers(): Promise<MongoUser[]> {
+  try {
+    await dbConnect();
+    const users = await User.find().lean();
+    
+    // Convert MongoDB ObjectIds to strings and ensure type safety
+    return users.map((user: any) => ({
+      _id: user._id.toString(),
+      name: user.name || '',
+      email: user.email || '',
+      role: user.role,
+      image: user.image
+    })) as MongoUser[];
+  } catch (error) {
+    console.error('Error fetching all users:', error);
     return [];
   }
 } 

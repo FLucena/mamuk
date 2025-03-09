@@ -1,12 +1,9 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { getServerSession } from 'next-auth'
-import SessionProvider from '@/components/SessionProvider'
 import Navbar from '@/components/Navbar'
-import { ThemeProvider } from '@/components/theme/ThemeProvider'
 import { authOptions } from '@/lib/auth'
 import { Providers } from '@/providers'
-import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from 'react-hot-toast'
 import { Metadata, Viewport } from 'next'
 import CookieConsent from '@/components/CookieConsent'
@@ -97,21 +94,17 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <SessionProvider session={session}>
-          <AuthProvider>
-            <ThemeProvider>
-              <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-                <Navbar />
-                <main className="pb-16">
-                  {children}
-                </main>
-                <Footer />
-                <Toaster position="top-right" />
-                <CookieConsent />
-              </div>
-            </ThemeProvider>
-          </AuthProvider>
-        </SessionProvider>
+        <Providers>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+            <Navbar />
+            <main className="pb-16">
+              {children}
+            </main>
+            <Footer />
+            <Toaster position="top-right" />
+            <CookieConsent />
+          </div>
+        </Providers>
       </body>
     </html>
   )

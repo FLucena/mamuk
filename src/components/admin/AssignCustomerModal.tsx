@@ -51,7 +51,9 @@ export default function AssignCustomerModal({
         throw new Error('Error al obtener los clientes');
       }
       const data = await response.json();
-      setCustomers(data);
+      // Ensure we only have customers
+      const onlyCustomers = data.filter((user: User) => user.role === 'customer');
+      setCustomers(onlyCustomers);
     } catch (error) {
       toast.error('Error al cargar los clientes');
       console.error(error);
@@ -126,6 +128,9 @@ export default function AssignCustomerModal({
                 </div>
                 
                 <div className="mt-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Selecciona los clientes que deseas asignar a este entrenador.
+                  </p>
                   <div className="relative mb-4">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                       <Search className="w-5 h-5 text-gray-400" />

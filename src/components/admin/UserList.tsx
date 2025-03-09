@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useAuth } from '@/contexts/AuthContext';
 import { FiUser, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import Icon from '@/components/ui/Icon';
 import EditUserModal from './EditUserModal';
@@ -17,12 +19,22 @@ interface UserListProps {
 
 export default function UserList({ users = [], isLoading = false }: UserListProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const { updateRole } = useAuth();
+  const [localUsers, setLocalUsers] = useState<MongoUser[]>(users);
   const [selectedUser, setSelectedUser] = useState<MongoUser | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const filteredUsers = users.filter(user => 
+  // Update local users when the prop changes
+  useEffect(() => {
+    setLocalUsers(users);
+  }, [users]);
+
+  const filteredUsers = localUsers.filter(user => 
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -43,6 +55,8 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
     role: string;
   }) => {
     if (!selectedUser) return;
+    
+    setIsEditing(true);
 
     try {
       const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
@@ -57,17 +71,43 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
         throw new Error('Error al actualizar el usuario');
       }
 
-      router.refresh();
+      // Get the updated user data from the response
+      const updatedUser = await response.json();
+      
+      // Update the user in the local state
+      setLocalUsers(prevUsers => 
+        prevUsers.map(user => 
+          user._id === selectedUser._id 
+            ? { 
+                ...user, 
+                name: updatedUser.name, 
+                email: updatedUser.email, 
+                role: updatedUser.role 
+              } 
+            : user
+        )
+      );
+      
+      // If the updated user is the current user, update their role in the session
+      if (session?.user?.email === updatedUser.email) {
+        updateRole(updatedUser.role);
+      }
+      
+      // Close the modal
       setShowEditModal(false);
       setSelectedUser(null);
     } catch (error) {
       console.error('Error al actualizar el usuario:', error);
       // TODO: Show error toast
+    } finally {
+      setIsEditing(false);
     }
   };
 
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;
+    
+    setIsDeleting(true);
 
     try {
       const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
@@ -78,12 +118,18 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
         throw new Error('Error al eliminar el usuario');
       }
 
-      router.refresh();
+      // Update local state by removing the deleted user
+      setLocalUsers(prevUsers => 
+        prevUsers.filter(user => user._id !== selectedUser._id)
+      );
+
       setShowDeleteModal(false);
       setSelectedUser(null);
     } catch (error) {
       console.error('Error al eliminar el usuario:', error);
       // TODO: Show error toast
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -183,7 +229,12 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
       {selectedUser && showEditModal && (
         <EditUserModal
           isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
+          onClose={() => {
+            if (!isEditing) {
+              setShowEditModal(false);
+              setSelectedUser(null);
+            }
+          }}
           onConfirm={handleEditConfirm}
           user={{
             id: selectedUser._id,
@@ -197,7 +248,12 @@ export default function UserList({ users = [], isLoading = false }: UserListProp
       {selectedUser && showDeleteModal && (
         <DeleteUserModal
           isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
+          onClose={() => {
+            if (!isDeleting) {
+              setShowDeleteModal(false);
+              setSelectedUser(null);
+            }
+          }}
           onConfirm={handleDeleteConfirm}
           userName={selectedUser.name || ''}
         />

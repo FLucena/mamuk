@@ -191,6 +191,57 @@ export async function getAllCoaches(): Promise<CoachDocument[]> {
   }
 }
 
+/**
+ * Get all coaches with their customers
+ * @returns Array of coaches with their customer data
+ */
+export async function getAllCoachesWithCustomers(): Promise<CoachDocument[]> {
+  try {
+    await dbConnect();
+    
+    // Find all coaches and populate their user and customer data
+    const coaches = await Coach.find()
+      .populate('userId', 'name email image')
+      .populate('customers', 'name email image')
+      .lean();
+    
+    if (!coaches || !Array.isArray(coaches)) {
+      return [];
+    }
+    
+    // Format the coach data for consistency
+    return coaches.map((coach: any) => {
+      // Ensure coach is properly formatted
+      return {
+        _id: coach._id.toString(),
+        userId: typeof coach.userId === 'object' && coach.userId !== null 
+          ? { 
+              _id: (coach.userId as any)._id?.toString() || '',
+              name: (coach.userId as any).name || '',
+              email: (coach.userId as any).email || '',
+              image: (coach.userId as any).image
+            } 
+          : coach.userId?.toString() || '',
+        specialties: coach.specialties || [],
+        bio: coach.bio || '',
+        customers: Array.isArray(coach.customers) 
+          ? coach.customers.map((customer: any) => ({
+              _id: customer._id?.toString() || '',
+              name: customer.name || '',
+              email: customer.email || '',
+              image: customer.image
+            }))
+          : [],
+        createdAt: coach.createdAt,
+        updatedAt: coach.updatedAt
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching all coaches with customers:', error);
+    return [];
+  }
+}
+
 export async function createCoach({
   userId,
   specialties,

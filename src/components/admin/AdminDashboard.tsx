@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import UserList from '@/components/admin/UserList';
 import ArchivedRoutines from '@/components/admin/ArchivedRoutines';
 import { Role, MongoUser } from '@/lib/types/user';
-import CoachCustomerAssignment from './CoachCustomerAssignment';
+import { useRouter } from 'next/navigation';
 
 // Interfaz para usuarios en formato MongoDB (con _id)
 interface MongoUserWithRole extends MongoUser {
@@ -43,6 +43,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ initialView = 'users' }: AdminDashboardProps) {
+  const router = useRouter();
   const [currentView, setCurrentView] = useState<AdminView>(initialView);
   const [apiUsers, setApiUsers] = useState<ApiUser[]>([]);
   const [mongoUsers, setMongoUsers] = useState<MongoUserWithRole[]>([]);
@@ -51,14 +52,18 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (currentView === 'assignments') {
+      // Navigate to the assignments page
+      router.push('/admin/assignments');
+      return;
+    }
+    
     if (currentView === 'users') {
       fetchUsers();
     } else if (currentView === 'archived') {
       fetchArchivedRoutines();
-    } else if (currentView === 'assignments') {
-      fetchUsers();
     }
-  }, [currentView]);
+  }, [currentView, router]);
 
   const fetchUsers = async () => {
     try {
@@ -116,120 +121,52 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
     }
   };
 
-  const renderNavigation = () => (
-    <nav className="bg-white dark:bg-gray-900 shadow-lg mb-8 rounded-lg">
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 justify-start items-center">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setCurrentView('users')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
-                currentView === 'users'
-                  ? 'bg-blue-600 dark:bg-blue-700 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-600 dark:text-red-400 p-4">
+        {error}
+      </div>
+    );
+  }
+
+  switch (currentView) {
+    case 'users':
+      return (
+        <div>
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
               Gestionar Usuarios
-            </button>
-            <button
-              onClick={() => setCurrentView('assignments')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
-                currentView === 'assignments'
-                  ? 'bg-blue-600 dark:bg-blue-700 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Asignaciones Coach-Cliente
-            </button>
-            <button
-              onClick={() => setCurrentView('archived')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
-                currentView === 'archived'
-                  ? 'bg-blue-600 dark:bg-blue-700 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Aquí puedes ver y gestionar los usuarios de la plataforma.
+            </p>
+          </div>
+          <UserList users={mongoUsers} isLoading={loading} />
+        </div>
+      );
+    case 'archived':
+      return (
+        <div>
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
               Rutinas Archivadas
-            </button>
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Visualiza y gestiona las rutinas archivadas.
+            </p>
           </div>
-        </div>
-      </div>
-    </nav>
-  );
-
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+          <ArchivedRoutines routines={archivedRoutines} />
         </div>
       );
-    }
-
-    if (error) {
-      return (
-        <div className="text-center text-red-600 dark:text-red-400 p-4">
-          {error}
-        </div>
-      );
-    }
-
-    switch (currentView) {
-      case 'users':
-        return (
-          <div>
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-                Gestionar Usuarios
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Aquí puedes ver y gestionar los usuarios de la plataforma.
-              </p>
-            </div>
-            <UserList users={mongoUsers} isLoading={loading} />
-          </div>
-        );
-      case 'assignments':
-        return (
-          <div>
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-                Asignaciones Coach-Cliente
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Asigna clientes a coaches para que puedan gestionar sus entrenamientos.
-              </p>
-            </div>
-            <CoachCustomerAssignment users={mongoUsers} isLoading={loading} />
-          </div>
-        );
-      case 'archived':
-        return (
-          <div>
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-                Rutinas Archivadas
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Visualiza y gestiona las rutinas archivadas.
-              </p>
-            </div>
-            <ArchivedRoutines routines={archivedRoutines} />
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderNavigation()}
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-          {renderContent()}
-        </div>
-      </div>
-    </div>
-  );
+    default:
+      return null;
+  }
 } 

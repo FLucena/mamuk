@@ -10,5 +10,5 @@ export default async function AdminPage() {
     redirect('/auth/signin?error=AccessDenied');
   }
 
-  return <AdminDashboard />;
+  return <AdminDashboard initialView="users" />;
 } 

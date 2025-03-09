@@ -16,6 +16,8 @@ import { Session } from 'next-auth';
 import { Role } from '@/lib/types/user';
 import { Sun, Moon } from 'lucide-react';
 import Icon, { IconName } from '@/components/ui/Icon';
+import { useNavigation } from '@/contexts/NavigationContext';
+import LoadingSpinner from './ui/LoadingSpinner';
 
 // Define a type for the user object
 type UserType = {
@@ -41,6 +43,7 @@ function NavbarContent() {
   const [insigniasObtenidas, setInsigniasObtenidas] = useState(['constancia', 'progreso']); // Ejemplo
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<UserType>(null);
+  const { isNavigating, navigateTo } = useNavigation();
   
   // Asegurarse de que el componente está montado para evitar problemas de hidratación
   useEffect(() => {
@@ -156,13 +159,20 @@ function NavbarContent() {
       show: !session
     }
   ].filter(link => link.show);
-
+  
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
   
   const toggleProfileMenu = () => {
     setProfileMenuOpen(!profileMenuOpen);
+  };
+
+  // Handle navigation with loading state
+  const handleNavigation = (path: string) => {
+    navigateTo(path);
+    setIsOpen(false); // Close mobile menu if open
+    setProfileMenuOpen(false); // Close profile menu if open
   };
 
   const nivelActual = NIVELES_USUARIO[userNivel];
@@ -178,7 +188,12 @@ function NavbarContent() {
   const isAuthenticated = !!session?.user;
 
   return (
-    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 relative">
+      {isNavigating && (
+        <div className="absolute top-0 left-0 w-full h-1 bg-blue-100 dark:bg-blue-900 overflow-hidden z-50">
+          <div className="h-full bg-blue-600 dark:bg-blue-400 animate-progress"></div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
@@ -188,23 +203,43 @@ function NavbarContent() {
               </span>
             </Link>
           </div>
-
+          
           {/* Desktop menu */}
           <div className="hidden md:flex md:items-center md:space-x-4">
             <div className="ml-10 flex items-center space-x-4">
               {navLinks.map(({ href, label, icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
-                    pathname === href
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon icon={icon} className="w-5 h-5 mr-2" />
-                  {label}
-                </Link>
+                href === '/admin' || href === '/coach' ? (
+                  <button
+                    key={href}
+                    onClick={() => handleNavigation(href)}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium min-w-[100px] relative ${
+                      pathname === href
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon icon={icon} className="w-5 h-5 mr-2" />
+                    <span>{label}</span>
+                    {isNavigating && pathname?.startsWith(href) && (
+                      <span className="ml-2 inline-flex">
+                        <LoadingSpinner size="sm" />
+                      </span>
+                    )}
+                  </button>
+                ) : (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                      pathname === href
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon icon={icon} className="w-5 h-5 mr-2" />
+                    {label}
+                  </Link>
+                )
               ))}
               
               {/* Theme toggle button (desktop) */}
@@ -217,7 +252,7 @@ function NavbarContent() {
               >
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
-              
+            
               {/* Foto de perfil y menú desplegable */}
               <div className="relative ml-3" ref={profileMenuRef}>
                 <button
@@ -288,7 +323,7 @@ function NavbarContent() {
                             <span className="font-semibold text-gray-900 dark:text-white">Nivel: <span className={nivelActual.color}>{nivelActual.nombre}</span></span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
-                            <div 
+                            <div
                               className={`h-2.5 rounded-full ${nivelActual.color.replace('text-', 'bg-')}`} 
                               style={{ width: `${(userPuntos / puntosParaSiguienteNivel) * 100}%` }}
                             ></div>
@@ -337,7 +372,7 @@ function NavbarContent() {
               </div>
             </div>
           </div>
-
+          
           {/* Mobile menu button */}
           <div className="flex items-center md:hidden">
             {/* Foto de perfil - móvil */}
@@ -458,18 +493,38 @@ function NavbarContent() {
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map(({ href, label, icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center px-3 py-2 rounded-md text-base font-medium ${
-                  pathname === href
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <Icon icon={icon} className="w-5 h-5 mr-2" />
-                {label}
-              </Link>
+              href === '/admin' || href === '/coach' ? (
+                <button
+                  key={href}
+                  onClick={() => handleNavigation(href)}
+                  className={`flex w-full items-center px-3 py-2 rounded-md text-base font-medium min-w-[150px] relative ${
+                    pathname === href
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon icon={icon} className="w-5 h-5 mr-2" />
+                  <span>{label}</span>
+                  {isNavigating && pathname?.startsWith(href) && (
+                    <span className="ml-2 inline-flex">
+                      <LoadingSpinner size="sm" />
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center px-3 py-2 rounded-md text-base font-medium ${
+                    pathname === href
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon icon={icon} className="w-5 h-5 mr-2" />
+                  {label}
+                </Link>
+              )
             ))}
           </div>
         </div>

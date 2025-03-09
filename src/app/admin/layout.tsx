@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import type { Viewport } from 'next';
+import AdminNavigation from '@/components/admin/AdminNavigation';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -26,8 +27,11 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {children}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <AdminNavigation />
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+          {children}
+        </div>
       </div>
     </div>
   );
