@@ -13,7 +13,9 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
 // Minimum time between navigations in milliseconds
-const NAVIGATION_THROTTLE = 500;
+const NAVIGATION_THROTTLE = 1000;
+// Maximum number of pending navigations to process
+const MAX_NAVIGATION_DEPTH = 2;
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [isNavigating, setIsNavigating] = useState(false);
@@ -22,6 +24,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingNavigationRef = useRef<string | null>(null);
+  const navigationDepthRef = useRef<number>(0);
 
   // Clear any pending navigation timeouts when component unmounts
   useEffect(() => {
@@ -39,18 +42,33 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       navigationTimeoutRef.current = setTimeout(() => {
         setIsNavigating(false);
         
+        // Reset navigation depth when navigation completes
+        navigationDepthRef.current = 0;
+        
         // Check if there's a pending navigation
         if (pendingNavigationRef.current && pendingNavigationRef.current !== pathname) {
-          const pendingPath = pendingNavigationRef.current;
-          pendingNavigationRef.current = null;
-          // Execute the pending navigation after a short delay
-          setTimeout(() => {
-            navigateTo(pendingPath);
-          }, 100);
+          // Only process pending navigation if we haven't exceeded the maximum depth
+          if (navigationDepthRef.current < MAX_NAVIGATION_DEPTH) {
+            const pendingPath = pendingNavigationRef.current;
+            pendingNavigationRef.current = null;
+            
+            // Increment navigation depth
+            navigationDepthRef.current += 1;
+            
+            // Execute the pending navigation after a short delay
+            setTimeout(() => {
+              // Direct router push instead of navigateTo to avoid potential loops
+              router.push(pendingPath);
+            }, 100);
+          } else {
+            // Log warning and clear pending navigation if max depth exceeded
+            console.warn('Maximum navigation depth exceeded, cancelling pending navigation');
+            pendingNavigationRef.current = null;
+          }
         }
       }, 300);
     }
-  }, [pathname, isNavigating]);
+  }, [pathname, isNavigating, router]);
 
   const navigateTo = (path: string) => {
     // Don't trigger navigation if already on the path
