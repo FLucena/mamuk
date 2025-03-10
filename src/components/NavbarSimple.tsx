@@ -21,6 +21,11 @@ export default function NavbarSimple() {
   };
 
   const handleNavigation = (path: string) => {
+    if (pathname === path) {
+      setIsOpen(false);
+      return;
+    }
+    
     navigateTo(path);
     setIsOpen(false);
   };

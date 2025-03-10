@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { ReactNode } from 'react';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import NavigationGuard from '@/components/NavigationGuard';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -16,9 +17,11 @@ export function Providers({ children }: { children: ReactNode }) {
         disableTransitionOnChange
       >
         <NavigationProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <NavigationGuard>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </NavigationGuard>
         </NavigationProvider>
       </ThemeProvider>
     </SessionProvider>
