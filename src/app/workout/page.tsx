@@ -25,7 +25,7 @@ export default async function WorkoutPage() {
   const workouts = await getWorkouts(userId);
   
   // Determinar el rol directamente desde la base de datos
-  let isCoach = session.user.role === 'coach' || session.user.role === 'admin';
+  let isCoach = session.user.roles?.includes('coach') || session.user.roles?.includes('admin');
   
   // Usar getCurrentUserRole para obtener el rol actualizado desde la base de datos
   if (session.user.email) {

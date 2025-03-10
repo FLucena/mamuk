@@ -14,20 +14,20 @@ interface CustomerWorkoutsPageProps {
 export default async function CustomerWorkoutsPage({ params }: CustomerWorkoutsPageProps) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || (session.user.role !== 'coach' && session.user.role !== 'admin')) {
+  if (!session?.user || (!session.user.roles?.includes('coach') && !session.user.roles?.includes('admin'))) {
     redirect('/auth/signin');
   }
 
   const coach = await getCoachByUserId(session.user.id);
   
   // For coaches, we need a coach profile
-  if (session.user.role === 'coach' && !coach) {
+  if (session.user.roles?.includes('coach') && !coach) {
     redirect('/');
   }
 
   // For coaches, verify that the customer belongs to the coach
   // Admins can access any customer's workouts
-  if (session.user.role === 'coach' && coach) {
+  if (session.user.roles?.includes('coach') && coach) {
     const isCustomerOfCoach = coach.customers.some(
       (customer) => customer._id === params.customerId
     );

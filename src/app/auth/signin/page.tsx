@@ -9,7 +9,7 @@ export default async function SignIn() {
 
   if (session?.user) {
     // Redirect based on user role
-    if (session.user.role === 'coach') {
+    if (session.user.roles?.includes('coach')) {
       redirect('/coach');
     } else {
       // Tanto usuarios normales como administradores van a la página de rutinas por defecto

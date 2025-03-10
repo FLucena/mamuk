@@ -13,7 +13,7 @@ export default async function ArchivedWorkoutsPage() {
   }
 
   // Check if user is admin
-  if (session.user.role !== ROLES.ADMIN) {
+  if (!session.user.roles?.includes('admin')) {
     redirect('/workout');
   }
 

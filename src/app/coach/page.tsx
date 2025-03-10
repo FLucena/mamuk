@@ -18,10 +18,10 @@ export default async function CoachDashboardPage() {
   }
   
   // Only fetch coach data if user is a coach
-  const coachData = session.user.role === 'coach' ? await getCoachByUserId(session.user.id) : null;
+  const coachData = session.user.roles?.includes('coach') ? await getCoachByUserId(session.user.id) : null;
   
   // Admin view
-  if (session.user.role === 'admin') {
+  if (session.user.roles?.includes('admin')) {
     return (
       <div>
         <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">Panel de Coach (Vista de Administrador)</h1>

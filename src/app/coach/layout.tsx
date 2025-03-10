@@ -26,8 +26,8 @@ export default async function CoachLayout({
   }
 
   // Verificar que el usuario es coach o admin
-  if (session.user.role !== 'coach' && session.user.role !== 'admin') {
-    redirect('/');
+  if (!session.user.roles?.includes('coach') && !session.user.roles?.includes('admin')) {
+    redirect('/workout');
   }
 
   return (

@@ -13,7 +13,7 @@ export default async function NewWorkoutPage() {
   }
 
   // Check if user has permission to create workouts
-  if (!['admin', 'coach'].includes(session.user.role)) {
+  if (!session.user.roles?.includes('admin') && !session.user.roles?.includes('coach')) {
     redirect('/workout');
   }
 

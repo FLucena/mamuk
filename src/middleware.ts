@@ -98,5 +98,6 @@ export const config = {
     '/dashboard/:path*',
     '/workout/:path*',
     '/profile/:path*',
+    '/coach/:path*',
   ],
 }; 

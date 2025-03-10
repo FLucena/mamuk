@@ -405,7 +405,9 @@ export async function ensureCoachExists(userId: string): Promise<CoachDocument |
     throw new Error('Usuario no encontrado');
   }
 
-  if (user.role !== 'coach') {
+  // Check if user has coach role (either in roles array or single role)
+  const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+  if (!userRoles.includes('coach')) {
     throw new Error('El usuario no tiene el rol de coach');
   }
 

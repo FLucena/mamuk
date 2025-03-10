@@ -1,25 +1,18 @@
 import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
-import { getCoachByUserId } from '@/lib/services/coach';
+import { getCoachByUserId, getAllCoaches } from '@/lib/services/coach';
 import CustomerList from '@/components/coach/CustomerList';
-import { getAllCoaches } from '@/lib/services/coach';
 
 export default async function CustomersPage() {
   const session = await getServerSession(authOptions);
   
-  // Authentication is already handled in the layout
-  // But we still need to check for session to satisfy TypeScript
   if (!session?.user) {
-    return (
-      <div className="text-center py-10">
-        <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">Sesión no encontrada</h2>
-        <p className="mt-2 dark:text-gray-300">Por favor, inicia sesión para acceder a esta página.</p>
-      </div>
-    );
+    redirect('/auth/signin');
   }
   
-  // Different behavior for admin and coach
-  if (session.user.role === 'admin') {
+  // Check if user is admin
+  if (session.user.roles?.includes('admin')) {
     // For admin, show all coaches and their customers
     const allCoaches = await getAllCoaches();
     
