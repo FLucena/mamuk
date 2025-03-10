@@ -1,20 +1,31 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export function SignInButtons() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [callbackUrl, setCallbackUrl] = useState('/workout');
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    // Get the callbackUrl from the URL if it exists
+    const urlCallbackParam = searchParams?.get('callbackUrl');
+    if (urlCallbackParam) {
+      setCallbackUrl(urlCallbackParam);
+    }
+  }, [searchParams]);
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // Usar /workout como URL de callback para todos los usuarios
+      // Use the callback URL from state
       await signIn('google', { 
-        callbackUrl: '/workout',
+        callbackUrl,
         redirect: true
       });
       

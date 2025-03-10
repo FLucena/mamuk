@@ -78,10 +78,15 @@ export default withAuth(
         // Verificar que el token existe y tiene un rol válido
         if (!token) return false;
         
+        // Accept any valid role
         const role = token.role as Role;
         return role === 'admin' || role === 'coach' || role === 'customer';
       },
     },
+    pages: {
+      // Ensure we're using the correct sign-in page
+      signIn: '/auth/signin',
+    }
   }
 );
 

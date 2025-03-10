@@ -9,11 +9,19 @@ import { getCurrentUserRole } from '@/lib/utils/permissions';
 
 export default async function WorkoutPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    redirect('/api/auth/signin');
+  
+  // Only redirect if there's no session at all, not based on user ID
+  if (!session) {
+    redirect('/auth/signin');
   }
 
-  const userId = session.user.id;
+  // Ensure we have a user ID for fetching workouts
+  const userId = session.user?.id;
+  if (!userId) {
+    console.error('User session exists but no user ID found');
+    redirect('/auth/signin');
+  }
+
   const workouts = await getWorkouts(userId);
   
   // Determinar el rol directamente desde la base de datos
