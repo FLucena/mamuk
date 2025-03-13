@@ -1,0 +1,169 @@
+[1mdiff --git a/src/lib/utils/permissions.ts b/src/lib/utils/permissions.ts[m
+[1mindex 911b177..bcb9eae 100644[m
+[1m--- a/src/lib/utils/permissions.ts[m
+[1m+++ b/src/lib/utils/permissions.ts[m
+[36m@@ -1,13 +1,30 @@[m
+ import { Types } from 'mongoose';[m
+ import User from '../models/user';[m
+ import Coach from '../models/coach';[m
+[31m-import { Workout } from '@/types/workouts';[m
+[32m+[m[32mimport { Workout as WorkoutModel } from '../models/workout';[m
+ import { dbConnect } from '../db';[m
+ import { ensureCoachExists } from '../services/coach';[m
+ [m
+[32m+[m[32m// Update the Workout type to include the new fields[m
+[32m+[m[32minterface Workout {[m
+[32m+[m[32m  id?: string;[m
+[32m+[m[32m  userId: string;[m
+[32m+[m[32m  createdBy?: string;[m
+[32m+[m[32m  name: string;[m
+[32m+[m[32m  description?: string;[m
+[32m+[m[32m  days: any[];[m
+[32m+[m[32m  status?: 'active' | 'archived' | 'completed';[m
+[32m+[m[32m  createdAt?: Date;[m
+[32m+[m[32m  updatedAt?: Date;[m
+[32m+[m[32m  assignedCoaches: string[];[m
+[32m+[m[32m  assignedCustomers: string[];[m
+[32m+[m[32m  isCoachCreated?: boolean;[m
+[32m+[m[32m}[m
+[32m+[m
+ interface UserWithRole {[m
+   _id: Types.ObjectId;[m
+   role: string;[m
+[32m+[m[32m  roles?: string[];[m
+   [key: string]: any;[m
+ }[m
+ [m
+[36m@@ -18,17 +35,17 @@[m [mexport async function getUserWithRole(userId: string): Promise<UserWithRole> {[m
+   [m
+   // Try to find by ID first[m
+   if (Types.ObjectId.isValid(userId)) {[m
+[31m-    user = await User.findById(userId).select('_id role').lean();[m
+[32m+[m[32m    user = await User.findById(userId).select('_id role roles').lean();[m
+   }[m
+   [m
+   // If not found, try by email[m
+   if (!user) {[m
+[31m-    user = await User.findOne({ email: userId }).select('_id role').lean();[m
+[32m+[m[32m    user = await User.findOne({ email: userId }).select('_id role roles').lean();[m
+   }[m
+   [m
+   // If still not found, try by sub (for OAuth)[m
+   if (!user) {[m
+[31m-    user = await User.findOne({ sub: userId }).select('_id role').lean();[m
+[32m+[m[32m    user = await User.findOne({ sub: userId }).select('_id role roles').lean();[m
+   }[m
+   [m
+   if (!user) {[m
+[36m@@ -38,6 +55,19 @@[m [mexport async function getUserWithRole(userId: string): Promise<UserWithRole> {[m
+   return user as UserWithRole;[m
+ }[m
+ [m
+[32m+[m[32m/**[m
+[32m+[m[32m * Checks if a user has a specific role[m
+[32m+[m[32m * @param user The user object with roles[m
+[32m+[m[32m * @param role The role to check[m
+[32m+[m[32m * @returns True if the user has the role[m
+[32m+[m[32m */[m
+[32m+[m[32mexport function hasRole(user: UserWithRole, role: string): boolean {[m
+[32m+[m[32m  if (user.roles && Array.isArray(user.roles)) {[m
+[32m+[m[32m    return user.roles.includes(role);[m
+[32m+[m[32m  }[m
+[32m+[m[32m  return user.role === role;[m
+[32m+[m[32m}[m
+[32m+[m
+ /**[m
+  * Obtiene el rol actualizado de un usuario desde la base de datos[m
+  * @param email El email del usuario[m
+[36m@@ -58,16 +88,41 @@[m [mexport async function getCurrentUserRole(email: string): Promise<string | null>[m
+   }[m
+ }[m
+ [m
+[32m+[m[32m/**[m
+[32m+[m[32m * Gets all roles for a user[m
+[32m+[m[32m * @param email The user's email[m
+[32m+[m[32m * @returns Array of roles or empty array if not found[m
+[32m+[m[32m */[m
+[32m+[m[32mexport async function getUserRoles(email: string): Promise<string[]> {[m
+[32m+[m[32m  if (!email) {[m
+[32m+[m[32m    return [];[m
+[32m+[m[32m  }[m
+[32m+[m[41m  [m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await dbConnect();[m
+[32m+[m[32m    const user = await User.findOne({ email }).select('roles role');[m
+[32m+[m[32m    if (!user) return [];[m
+[32m+[m[41m    [m
+[32m+[m[32m    if (user.roles && Array.isArray(user.roles)) {[m
+[32m+[m[32m      return user.roles;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    return [user.role];[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error('Error getting user roles:', error);[m
+[32m+[m[32m    return [];[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+ export async function canAccessWorkout(userId: string, workout: Workout) {[m
+   const user = await getUserWithRole(userId);[m
+ [m
+   // Admin can access any workout[m
+[31m-  if (user.role === 'admin') {[m
+[32m+[m[32m  if (hasRole(user, 'admin')) {[m
+     return true;[m
+   }[m
+ [m
+   // Coach can access their own workouts and their clients' workouts[m
+[31m-  if (user.role === 'coach') {[m
+[32m+[m[32m  if (hasRole(user, 'coach')) {[m
+     const coach = await Coach.findOne({ userId: user._id });[m
+     [m
+     // If coach profile doesn't exist, try to create it[m
+[36m@@ -103,17 +158,43 @@[m [mexport async function canModifyWorkout(userId: string, workout: Workout) {[m
+   const user = await getUserWithRole(userId);[m
+   [m
+   // Admins can always modify[m
+[31m-  if (user.role === 'admin') return true;[m
+[32m+[m[32m  if (hasRole(user, 'admin')) return true;[m
+   [m
+   // Coaches can modify if they're in the assigned coaches[m
+[31m-  if (user.role === 'coach') {[m
+[32m+[m[32m  if (hasRole(user, 'coach')) {[m
+     return workout.assignedCoaches.includes(user._id.toString());[m
+   }[m
+   [m
+[32m+[m[32m  // Customers can only modify their own workouts if they created them[m
+[32m+[m[32m  if (hasRole(user, 'customer') && workout.userId === userId) {[m
+[32m+[m[32m    // Check if the workout was created by a coach[m
+[32m+[m[32m    if (workout.createdBy && workout.createdBy !== userId) {[m
+[32m+[m[32m      return false;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    return true;[m
+[32m+[m[32m  }[m
+[32m+[m[41m  [m
+   return false;[m
+ }[m
+ [m
+ export async function canCreateWorkouts(userId: string) {[m
+   const user = await getUserWithRole(userId);[m
+[31m-  return user.role === 'admin' || user.role === 'coach';[m
+[32m+[m[41m  [m
+[32m+[m[32m  // Admins and coaches can always create workouts[m
+[32m+[m[32m  if (hasRole(user, 'admin') || hasRole(user, 'coach')) {[m
+[32m+[m[32m    return true;[m
+[32m+[m[32m  }[m
+[32m+[m[41m  [m
+[32m+[m[32m  // Customers can create up to 3 workouts[m
+[32m+[m[32m  if (hasRole(user, 'customer')) {[m
+[32m+[m[32m    await dbConnect();[m
+[32m+[m[32m    const workoutCount = await WorkoutModel.countDocuments({[m[41m [m
+[32m+[m[32m      userId: user._id.toString(),[m
+[32m+[m[32m      createdBy: user._id.toString(),[m
+[32m+[m[32m      status: 'active'[m
+[32m+[m[32m    });[m
+[32m+[m[32m    return workoutCount < 3;[m
+[32m+[m[32m  }[m
+[32m+[m[41m  [m
+[32m+[m[32m  return false;[m
+ } [m
+\ No newline at end of file[m

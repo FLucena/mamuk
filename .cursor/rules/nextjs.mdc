@@ -1,0 +1,10 @@
+---
+description: use @https://nextjs.org/docs for Next.js latest documentation.
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to

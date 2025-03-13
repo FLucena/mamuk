@@ -1,0 +1,60 @@
+name: Page Content Checks
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/app/**/*.tsx'
+      - 'src/app/**/*.jsx'
+      - 'src/app/**/*.ts'
+      - 'src/app/**/*.js'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'src/app/**/*.tsx'
+      - 'src/app/**/*.jsx'
+      - 'src/app/**/*.ts'
+      - 'src/app/**/*.js'
+  workflow_dispatch:
+
+jobs:
+  check-page-content:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Check page content
+        run: npm run check:page-content
+        
+      - name: Comment on PR if check fails
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ Page content check failed! Some pages are missing required elements.
+              
+              Please ensure all pages have:
+              1. A heading (h1 or h2)
+              2. A main content section (main, section, article, etc.)
+              3. Sufficient content (at least 100 characters)
+              
+              Run \`npm run check:page-content\` locally to see which pages need to be fixed.`
+            }); 

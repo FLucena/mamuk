@@ -1,0 +1,112 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/a/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'drive.google.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    formats: ['image/webp'],
+  },
+  env: {
+    // Asegurarse de que el modo de depuración esté desactivado en producción
+    NEXTAUTH_DEBUG: process.env.NODE_ENV === 'development' ? 'true' : 'false',
+  },
+  // Enable output standalone for Docker deployment
+  output: 'standalone',
+  // Optimize for HTTP/2
+  compress: true,
+  poweredByHeader: false,
+  // Enable font optimization
+  optimizeFonts: true,
+  // Experimental features
+  experimental: {
+    // Proper handling of external packages
+    serverComponentsExternalPackages: ['punycode'],
+    // Enable HTTP/2 server push capabilities
+    optimizeCss: true,
+    // Disable tracing to avoid permission issues
+    disableOptimizedLoading: true,
+  },
+  // Force all API routes to be dynamic
+  serverRuntimeConfig: {
+    dynamicRoutes: ['/api/**/*'],
+  },
+  // Disable telemetry using environment variable instead of config
+  // telemetry: { 
+  //   disabled: true 
+  // },
+  async headers() {
+    return [
+      {
+        // Aplicar a todas las rutas
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+          // Remove the preload header for the font and let Next.js handle it
+        ],
+      },
+      {
+        // Add Content-Type header only for HTML pages
+        source: '/((?!_next/|api/).*)',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/html; charset=utf-8',
+          },
+        ],
+      },
+      {
+        // Aplicar a rutas específicas que necesitan iframes
+        source: '/(workout|coach)/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com https://*.firebasestorage.googleapis.com https://*.amazonaws.com https://*.cloudfront.net https://*.cloudinary.com; object-src 'none'; base-uri 'self';",
+          },
+        ],
+      },
+    ];
+  },
+}
+
+// Disable telemetry using environment variable
+process.env.NEXT_TELEMETRY_DISABLED = '1';
+
+module.exports = nextConfig

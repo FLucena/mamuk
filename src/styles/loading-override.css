@@ -1,0 +1,47 @@
+/**
+ * Next.js 14 Loading UI Overrides
+ * 
+ * This file contains CSS overrides for Next.js 14's default loading UI.
+ * It ensures that the default gray stripes are hidden and replaced with our custom loading UI.
+ * 
+ * See: https://nextjs.org/docs/app/building-your-application/routing/loading-ui-and-streaming
+ */
+
+/* Override Next.js default loading UI variables */
+:root {
+  --loading-bg: transparent;
+  --loading-color: transparent;
+}
+
+/* Hide the default loading UI elements */
+.nextjs-loading-skeleton,
+.nextjs-loading-dots,
+.nextjs-loading-stripes,
+[data-nextjs-loading-skeleton],
+[data-nextjs-loading-dots],
+[data-nextjs-loading-stripes] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Override any loading animation that might show stripes */
+@keyframes loading-skeleton {
+  0%, 100% {
+    background-color: transparent;
+  }
+}
+
+/* Hide any gray stripes */
+body::before,
+body::after,
+[data-nextjs-loading]::before,
+[data-nextjs-loading]::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Ensure our custom loading UI is visible */
+.loading-spinner {
+  display: flex !important;
+} 
