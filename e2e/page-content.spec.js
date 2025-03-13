@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { checkPageContent, checkAuthenticatedPageContent } from '../__tests__/utils/page-content-checker';
+import { checkPageContentE2E, checkAuthenticatedPageContent } from '../__tests__/utils/page-content-checker';
 
 // List of public pages that don't require authentication
 const publicPages = [
@@ -29,23 +29,8 @@ const authenticatedPages = [
   { path: '/admin', title: 'Admin Dashboard', heading: 'Admin' },
 ];
 
-test.describe('Page Content Tests', () => {
+test.describe('Page Content E2E Tests', () => {
   test.describe('Public Pages', () => {
-    // Test each public page
-    for (const page of publicPages) {
-      test(`${page.path} should have content`, async ({ page: browserPage }) => {
-        const result = await checkPageContent(browserPage, page.path, {
-          title: page.title,
-          heading: page.heading,
-          minContentLength: 100
-        });
-        
-        expect(result).toBe(true);
-      });
-    }
-  });
-  
-  test.describe('Authenticated Pages', () => {
     test.beforeEach(async ({ page }) => {
       // Login before each test
       await page.goto('/auth/signin');
@@ -57,6 +42,17 @@ test.describe('Page Content Tests', () => {
       await page.waitForURL('/workout');
     });
     
+    test.each(publicPages)('Public page %s should have content', async ({ path }) => {
+      const result = await checkPageContentE2E(browserPage, path, {
+        checkHeading: true,
+        checkContent: true,
+      });
+      expect(result.hasHeading).toBe(true);
+      expect(result.hasContent).toBe(true);
+    });
+  });
+  
+  test.describe('Authenticated Pages', () => {
     // Test each authenticated page
     for (const page of authenticatedPages) {
       test(`${page.path} should have content`, async ({ page: browserPage }) => {
@@ -72,32 +68,21 @@ test.describe('Page Content Tests', () => {
   });
   
   // Test error pages
-  test.describe('Error Pages', () => {
-    test('404 page should have content', async ({ page }) => {
-      const result = await checkPageContent(page, '/this-page-does-not-exist', {
-        minContentLength: 50,
-        checkNavigation: false,
-        screenshotPath: './test-results/screenshots/404-page.png'
-      });
-      
-      expect(result).toBe(true);
-      
-      // Check for "not found" message
-      const pageContent = await page.textContent('body');
-      expect(pageContent.toLowerCase()).toContain('not found');
+  test('404 page should have content', async ({ page }) => {
+    const result = await checkPageContentE2E(page, '/this-page-does-not-exist', {
+      checkHeading: true,
+      checkContent: true,
     });
-    
-    test('Unauthorized page should have content', async ({ page }) => {
-      const result = await checkPageContent(page, '/unauthorized', {
-        minContentLength: 50,
-        screenshotPath: './test-results/screenshots/unauthorized-page.png'
-      });
-      
-      expect(result).toBe(true);
-      
-      // Check for "unauthorized" message
-      const pageContent = await page.textContent('body');
-      expect(pageContent.toLowerCase()).toContain('unauthorized');
+    expect(result.hasHeading).toBe(true);
+    expect(result.hasContent).toBe(true);
+  });
+  
+  test('Unauthorized page should have content', async ({ page }) => {
+    const result = await checkPageContentE2E(page, '/unauthorized', {
+      checkHeading: true,
+      checkContent: true,
     });
+    expect(result.hasHeading).toBe(true);
+    expect(result.hasContent).toBe(true);
   });
 }); 

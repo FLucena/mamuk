@@ -144,7 +144,7 @@ export function checkAccessibilityElements(document) {
  * @param {string} options.screenshotPath - Path to save screenshot (default: based on URL)
  * @returns {Promise<boolean>} - Whether the page has the minimum required content
  */
-async function checkPageContent(page, url, options = {}) {
+async function checkPageContentE2E(page, url, options = {}) {
   const {
     title,
     heading,
@@ -222,7 +222,7 @@ async function checkPageContent(page, url, options = {}) {
  * Checks if a page has the minimum required content for authenticated pages
  * @param {Object} page - Playwright page object
  * @param {string} url - URL to navigate to
- * @param {Object} options - Options for checking content (see checkPageContent)
+ * @param {Object} options - Options for checking content (see checkPageContentE2E)
  * @param {boolean} options.checkUserElements - Whether to check for user elements (default: true)
  * @returns {Promise<boolean>} - Whether the page has the minimum required content
  */
@@ -230,7 +230,7 @@ async function checkAuthenticatedPageContent(page, url, options = {}) {
   const { checkUserElements = true, ...restOptions } = options;
 
   // Check basic content first
-  const hasBasicContent = await checkPageContent(page, url, {
+  const hasBasicContent = await checkPageContentE2E(page, url, {
     ...restOptions,
     screenshotPath: restOptions.screenshotPath || `./test-results/screenshots/auth-${url.replace(/\//g, '-').replace(/^-/, '')}.png`
   });
@@ -377,5 +377,17 @@ export function checkPerformanceOptimizations(container) {
 
 module.exports = {
   checkPageContent,
-  checkAuthenticatedPageContent
+  checkPageContentE2E,
+  checkAuthenticatedPageContent,
+  checkBasicPageElements,
+  checkFormPageElements,
+  checkDashboardPageElements,
+  checkListPageElements,
+  checkDetailPageElements,
+  checkSEOElements,
+  checkAccessibilityElements,
+  checkMetadata,
+  checkSemanticStructure,
+  checkResponsiveDesign,
+  checkPerformanceOptimizations
 }; 

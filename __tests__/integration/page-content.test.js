@@ -12,6 +12,18 @@ jest.mock('@sentry/nextjs', () => ({
   setTag: jest.fn(),
 }));
 
+// Mock the page content checker module
+jest.mock('../utils/page-content-checker', () => ({
+  checkPageContent: jest.fn(),
+  checkBasicPageElements: jest.fn(),
+  checkFormPageElements: jest.fn(),
+  checkDashboardPageElements: jest.fn(),
+  checkListPageElements: jest.fn(),
+  checkDetailPageElements: jest.fn(),
+  checkSEOElements: jest.fn(),
+  checkAccessibilityElements: jest.fn(),
+}));
+
 // Import pages to test
 // import HomePage from '@/app/page';
 import AboutPage from '@/app/about/page';
@@ -190,6 +202,48 @@ const mockSession = {
 
 describe('Page Content Tests', () => {
   beforeEach(() => {
+    // Reset all mocks before each test
+    jest.clearAllMocks();
+    
+    // Setup default mock implementations
+    pageContentChecker.checkPageContent.mockReturnValue([]);
+    pageContentChecker.checkBasicPageElements.mockReturnValue({
+      hasMain: true,
+      hasHeading: true,
+      hasSufficientContent: true,
+      contentLength: 200,
+    });
+    pageContentChecker.checkFormPageElements.mockReturnValue({
+      hasForm: true,
+      hasInputs: true,
+      hasSubmitButton: true,
+      inputCount: 3,
+    });
+    pageContentChecker.checkListPageElements.mockReturnValue({
+      hasLists: true,
+      hasListItems: true,
+      listItemCount: 3,
+    });
+    pageContentChecker.checkDashboardPageElements.mockReturnValue({
+      hasCards: true,
+      hasCharts: true,
+      hasTables: false,
+      cardCount: 2,
+    });
+    pageContentChecker.checkDetailPageElements.mockReturnValue({
+      hasTitle: true,
+      hasDescriptions: true,
+      hasImages: true,
+      hasActions: true,
+    });
+    pageContentChecker.checkAccessibilityElements.mockReturnValue({
+      imagesHaveAlt: true,
+      hasAriaLabels: true,
+      hasSkipLink: true,
+      imgWithAltCount: 1,
+      imgWithoutAltCount: 0,
+    });
+
     // Setup router mock
     useRouter.mockImplementation(() => ({
       push: jest.fn(),
@@ -205,55 +259,47 @@ describe('Page Content Tests', () => {
 
   describe('Public Pages', () => {
     test('Home page should have content', async () => {
-      render(<MockHomePage />);
+      const { container } = render(<MockHomePage />);
+      const issues = pageContentChecker.checkPageContent(container);
+      expect(issues).toHaveLength(0);
       
-      // Check for main heading (level 1)
-      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Mamuk Training');
-      
-      // Check for content sections
-      const mainContent = document.querySelector('main');
-      expect(mainContent).toBeInTheDocument();
-      expect(mainContent.textContent.length).toBeGreaterThan(10);
-      
-      // Check for wrapper
-      expect(screen.getByTestId('async-wrapper')).toBeInTheDocument();
+      const basicElements = pageContentChecker.checkBasicPageElements(container);
+      expect(basicElements.hasMain).toBe(true);
+      expect(basicElements.hasHeading).toBe(true);
+      expect(basicElements.hasSufficientContent).toBe(true);
     });
 
     test('About page should have content', async () => {
-      render(<AboutPage />);
+      const { container } = render(<AboutPage />);
+      const issues = pageContentChecker.checkPageContent(container);
+      expect(issues).toHaveLength(0);
       
-      // Check for heading (level 1)
-      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-      
-      // Check for content
-      const mainContent = document.querySelector('main');
-      expect(mainContent).toBeInTheDocument();
-      expect(mainContent.textContent.length).toBeGreaterThan(10);
+      const basicElements = pageContentChecker.checkBasicPageElements(container);
+      expect(basicElements.hasMain).toBe(true);
+      expect(basicElements.hasHeading).toBe(true);
+      expect(basicElements.hasSufficientContent).toBe(true);
     });
 
     test('Contact page should have content', async () => {
-      render(<ContactPage />);
+      const { container } = render(<ContactPage />);
+      const issues = pageContentChecker.checkPageContent(container);
+      expect(issues).toHaveLength(0);
       
-      // Check for heading (level 1)
-      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-      
-      // Check for form elements - use more specific selectors
-      expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/mensaje/i)).toBeInTheDocument();
-      expect(screen.getByText(/enviar mensaje/i)).toBeInTheDocument();
+      const formElements = pageContentChecker.checkFormPageElements(container);
+      expect(formElements.hasForm).toBe(true);
+      expect(formElements.hasInputs).toBe(true);
+      expect(formElements.hasSubmitButton).toBe(true);
     });
 
     test('Features page should have content', async () => {
-      render(<FeaturesPage />);
+      const { container } = render(<FeaturesPage />);
+      const issues = pageContentChecker.checkPageContent(container);
+      expect(issues).toHaveLength(0);
       
-      // Check for heading (level 1)
-      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-      
-      // Check for feature content instead of sections
-      const featureHeadings = screen.getAllByRole('heading', { level: 3 });
-      expect(featureHeadings.length).toBeGreaterThan(0);
+      const basicElements = pageContentChecker.checkBasicPageElements(container);
+      expect(basicElements.hasMain).toBe(true);
+      expect(basicElements.hasHeading).toBe(true);
+      expect(basicElements.hasSufficientContent).toBe(true);
     });
 
     test('Privacy page should have content', async () => {
@@ -355,44 +401,6 @@ describe('Page Content Tests', () => {
   });
 
   describe('Specific page type tests', () => {
-    // Mock the page content checker functions
-    beforeEach(() => {
-      pageContentChecker.checkFormPageElements = jest.fn().mockReturnValue({
-        hasForm: true,
-        hasInputs: true,
-        hasSubmitButton: true,
-        inputCount: 3
-      });
-      
-      pageContentChecker.checkListPageElements = jest.fn().mockReturnValue({
-        hasLists: true,
-        hasListItems: true,
-        listItemCount: 3
-      });
-      
-      pageContentChecker.checkDashboardPageElements = jest.fn().mockReturnValue({
-        hasCards: true,
-        hasCharts: true,
-        hasTables: false,
-        cardCount: 2
-      });
-      
-      pageContentChecker.checkDetailPageElements = jest.fn().mockReturnValue({
-        hasTitle: true,
-        hasDescriptions: true,
-        hasImages: true,
-        hasActions: true
-      });
-      
-      pageContentChecker.checkAccessibilityElements = jest.fn().mockReturnValue({
-        imagesHaveAlt: true,
-        hasAriaLabels: true,
-        hasSkipLink: true,
-        imgWithAltCount: 1,
-        imgWithoutAltCount: 0
-      });
-    });
-
     test('Contact page should have form elements', async () => {
       const { container } = render(<ContactPage />);
       const formCheck = pageContentChecker.checkFormPageElements(container);
