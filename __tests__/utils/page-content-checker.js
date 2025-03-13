@@ -251,6 +251,130 @@ async function checkAuthenticatedPageContent(page, url, options = {}) {
   return true;
 }
 
+// Helper functions for checking page content in tests
+export function checkPageContent(container) {
+  const issues = [];
+
+  // Check for main content area
+  const mainContent = container.querySelector('main');
+  if (!mainContent) {
+    issues.push('Page is missing a main content area');
+  }
+
+  // Check for headings
+  const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  if (headings.length === 0) {
+    issues.push('Page has no headings');
+  }
+
+  // Check heading hierarchy
+  let previousLevel = 0;
+  headings.forEach((heading) => {
+    const level = parseInt(heading.tagName.charAt(1));
+    if (previousLevel === 0) {
+      if (level !== 1) {
+        issues.push('First heading is not h1');
+      }
+    } else if (level > previousLevel + 1) {
+      issues.push(`Heading level jumps from h${previousLevel} to h${level}`);
+    }
+    previousLevel = level;
+  });
+
+  // Check for empty content
+  if (container.textContent.trim().length < 10) {
+    issues.push('Page has very little or no content');
+  }
+
+  // Check images for alt text
+  const images = container.querySelectorAll('img');
+  images.forEach((img) => {
+    if (!img.hasAttribute('alt')) {
+      issues.push('Image is missing alt text');
+    }
+  });
+
+  // Check links for accessibility
+  const links = container.querySelectorAll('a');
+  links.forEach((link) => {
+    if (!link.textContent.trim() && !link.getAttribute('aria-label')) {
+      issues.push('Link has no accessible text');
+    }
+  });
+
+  return issues;
+}
+
+// Helper function to check for required metadata
+export function checkMetadata(metadata) {
+  const issues = [];
+  const requiredFields = ['title', 'description'];
+
+  requiredFields.forEach((field) => {
+    if (!metadata[field]) {
+      issues.push(`Missing required metadata: ${field}`);
+    }
+  });
+
+  return issues;
+}
+
+// Helper function to check for semantic HTML structure
+export function checkSemanticStructure(container) {
+  const issues = [];
+  const requiredElements = ['header', 'main', 'footer'];
+
+  requiredElements.forEach((element) => {
+    if (!container.querySelector(element)) {
+      issues.push(`Missing semantic element: <${element}>`);
+    }
+  });
+
+  return issues;
+}
+
+// Helper function to check for responsive design elements
+export function checkResponsiveDesign(container) {
+  const issues = [];
+  
+  // Check for viewport meta tag
+  const hasViewportMeta = document.querySelector('meta[name="viewport"]');
+  if (!hasViewportMeta) {
+    issues.push('Missing viewport meta tag');
+  }
+
+  // Check for responsive images
+  const images = container.querySelectorAll('img');
+  images.forEach((img) => {
+    if (!img.hasAttribute('srcset') && !img.hasAttribute('sizes')) {
+      issues.push('Image is not using responsive attributes (srcset/sizes)');
+    }
+  });
+
+  return issues;
+}
+
+// Helper function to check for performance optimizations
+export function checkPerformanceOptimizations(container) {
+  const issues = [];
+
+  // Check for lazy loading on images
+  const images = container.querySelectorAll('img');
+  images.forEach((img) => {
+    if (!img.hasAttribute('loading')) {
+      issues.push('Image is not using lazy loading');
+    }
+  });
+
+  // Check for proper heading structure
+  const headings = container.querySelectorAll('h1');
+  if (headings.length > 1) {
+    issues.push('Multiple h1 elements found on page');
+  }
+
+  return issues;
+}
+
 module.exports = {
   checkPageContent,
   checkAuthenticatedPageContent
