@@ -1,150 +1,108 @@
-// Service Worker for caching and offline support
+// Service Worker for Mamuk App
 const CACHE_NAME = 'mamuk-cache-v1';
-const OFFLINE_URL = '/offline.html';
+const OFFLINE_URL = '/offline';
 
-// Get the current scope
-const scope = self.registration.scope || '/';
-
-// Assets to cache on install
-const STATIC_ASSETS = [
-  scope,
-  '/offline.html',
-  '/manifest.json',
-  '/favicon.ico',
+// Assets to cache
+const urlsToCache = [
+  '/',
+  '/offline',
+  '/api/manifest',
   '/logo.png',
-  '/logo512.png',
+  '/favicon.ico',
+  '/api/sw-register',
+  '/api/sw',
 ];
 
-const CACHE_STRATEGIES = {
-  staticAssets: {
-    type: 'cache-first',
-    paths: [
-      /\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2)$/,
-    ],
-  },
-  pages: {
-    type: 'network-first',
-    paths: [
-      /^\/(?!api\/)/,
-    ],
-  },
-  api: {
-    type: 'network-only',
-    paths: [
-      /^\/api\//,
-    ],
-  },
-};
-
-// Install event - cache static assets
+// Install event - cache assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
-      self.skipWaiting(),
-    ])
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((cacheName) => cacheName !== CACHE_NAME)
-            .map((cacheName) => caches.delete(cacheName))
-        );
-      }),
-      self.clients.claim(),
-    ])
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
-// Helper function to determine if a request is for an API
-const isApiRequest = (url) => {
-  return url.pathname.startsWith('/api/');
-};
-
-// Helper function to determine if a request is for an image
-const isImageRequest = (url) => {
-  const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico'];
-  return imageExtensions.some(ext => url.pathname.endsWith(ext));
-};
-
-// Helper function to determine if a request is for a static asset
-const isStaticAsset = (url) => {
-  const staticExtensions = ['.css', '.js', '.json', '.woff', '.woff2', '.ttf', '.otf'];
-  return staticExtensions.some(ext => url.pathname.endsWith(ext)) || 
-         url.pathname.startsWith('/_next/static/');
-};
-
-// Helper function to check if a request is cacheable
-const isCacheableRequest = (request) => {
-  return request.method === 'GET';
-};
-
-async function handleFetch(event) {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Skip cross-origin requests
-  if (!url.origin.includes(self.location.origin)) {
-    return fetch(request);
-  }
-
-  // Find matching cache strategy
-  const strategy = Object.values(CACHE_STRATEGIES).find(({ paths }) =>
-    paths.some((path) => path.test(url.pathname))
-  );
-
-  if (!strategy) {
-    return fetch(request);
-  }
-
-  // Handle non-GET requests (like HEAD) - don't try to cache them
-  if (!isCacheableRequest(request)) {
-    return fetch(request);
-  }
-
-  switch (strategy.type) {
-    case 'cache-first':
-      return caches.match(request).then((response) =>
-        response || fetch(request).then((response) => {
-          if (response.ok) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          }
-          return response;
-        })
-      );
-
-    case 'network-first':
-      try {
-        const response = await fetch(request);
-        if (response.ok) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-        }
-        return response;
-      } catch (error) {
-        const cachedResponse = await caches.match(request);
-        return cachedResponse || caches.match(OFFLINE_URL);
-      }
-
-    case 'network-only':
-    default:
-      try {
-        return await fetch(request);
-      } catch (error) {
-        return caches.match(OFFLINE_URL);
-      }
-  }
-}
-
+// Fetch event - serve from cache or network
 self.addEventListener('fetch', (event) => {
-  event.respondWith(handleFetch(event));
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Skip browser-extension requests
+  if (event.request.url.includes('chrome-extension')) {
+    return;
+  }
+
+  // Skip API requests except for our service worker API
+  if (event.request.url.includes('/api/') && 
+      !event.request.url.includes('/api/sw') && 
+      !event.request.url.includes('/api/sw-register')) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Return cached response if found
+        if (response) {
+          return response;
+        }
+
+        // Clone the request
+        const fetchRequest = event.request.clone();
+
+        // Make network request
+        return fetch(fetchRequest)
+          .then((response) => {
+            // Check if valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+
+            // Clone the response
+            const responseToCache = response.clone();
+
+            // Cache the response
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              });
+
+            return response;
+          })
+          .catch(() => {
+            // If the request is for a page, return the offline page
+            if (event.request.mode === 'navigate') {
+              return caches.match(OFFLINE_URL);
+            }
+          });
+      })
+  );
 });
 
 // Handle push notifications

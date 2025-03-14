@@ -36,6 +36,8 @@ import { SpinnerProvider } from '@/contexts/SpinnerContext'
 import NavigationSpinnerHandler from '@/components/NavigationSpinnerHandler'
 import JsonLd from './components/JsonLd'
 import { Analytics } from './components/Analytics'
+import { NonceMetaTag } from '@/lib/csp'
+import Script from 'next/script'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -131,6 +133,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        <NonceMetaTag />
         <meta charSet="utf-8" />
         <script
           dangerouslySetInnerHTML={{
@@ -153,7 +156,8 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           }}
         />
         <JsonLd />
-        <script src="/sw-register.js" defer />
+        <link rel="manifest" href="/api/manifest" />
+        <meta name="theme-color" content="#4f46e5" />
       </head>
       <body className={`${inter.className} bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col overflow-x-hidden w-full`}>
         <ThemeProvider>
@@ -201,6 +205,21 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               </SessionProvider>
             </ErrorProvider>
           </Providers>
+          <Script id="sw-registration" strategy="afterInteractive">
+            {`
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/api/sw')
+                    .then(function(registration) {
+                      console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(function(error) {
+                      console.error('Service Worker registration failed:', error);
+                    });
+                });
+              }
+            `}
+          </Script>
         </ThemeProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
 import { Role } from './lib/types/user';
 import type { NextRequest } from 'next/server';
+import { isProtectedRoute, getRequiredRoles } from './utils/authNavigation';
 
 interface Token {
   roles: Role[];
@@ -71,7 +72,10 @@ function shouldRateLimit(request: NextRequest): boolean {
 function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   // Determinar si es una solicitud para manifest.json o sw.js
   const isManifestRequest = request.nextUrl.pathname === '/manifest.json';
-  const isServiceWorkerRequest = request.nextUrl.pathname === '/sw.js';
+  const isServiceWorkerRequest = request.nextUrl.pathname === '/sw.js' || 
+                                request.nextUrl.pathname === '/sw-register.js' ||
+                                request.nextUrl.pathname === '/api/sw' ||
+                                request.nextUrl.pathname === '/api/sw-register';
   
   // Añadir cabeceras de seguridad
   const securityHeaders: Record<string, string> = {
@@ -97,7 +101,9 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
       securityHeaders['Access-Control-Allow-Origin'] = origin;
     } else {
       // En producción, usar solo el dominio principal
-      securityHeaders['Access-Control-Allow-Origin'] = 'https://www.mamuk.com.ar';
+      securityHeaders['Access-Control-Allow-Origin'] = process.env.NODE_ENV === 'production' 
+        ? 'https://www.mamuk.com.ar' 
+        : 'http://localhost:3000';
     }
     
     securityHeaders['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
@@ -120,6 +126,19 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   // Generar nonce para scripts
   const nonce = crypto.randomUUID();
   
+  // Determinar si estamos en desarrollo o producción
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // Define common image sources
+  const imgSrc = isDevelopment
+    ? `'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com https://images.unsplash.com https://*.googleusercontent.com https://avatars.githubusercontent.com https://ui-avatars.com https://randomuser.me https://picsum.photos https://placehold.co`
+    : `'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com https://images.unsplash.com https://*.googleusercontent.com`;
+  
+  // Define connect-src directive
+  const connectSrc = isDevelopment
+    ? `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar http://localhost:* ws://localhost:*`
+    : `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar`;
+  
   // Permitir iframes para videos en rutas específicas
   if (
     request.nextUrl.pathname.startsWith('/workout') ||
@@ -129,24 +148,49 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     response.headers.delete('X-Frame-Options');
     
     // Configurar CSP para permitir iframes de YouTube y Vimeo
+    // En desarrollo, permitir 'unsafe-inline' y 'unsafe-eval'
+    const scriptSrc = isDevelopment 
+      ? `'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net` 
+      : `'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`;
+    
+    const styleSrc = isDevelopment
+      ? `'self' 'unsafe-inline' https://fonts.googleapis.com`
+      : `'self' https://fonts.googleapis.com`;
+    
     response.headers.set(
       'Content-Security-Policy',
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com; object-src 'none'; base-uri 'self'; require-trusted-types-for 'script';`
+      `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; font-src 'self' https://fonts.gstatic.com; connect-src ${connectSrc}; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com; object-src 'none'; base-uri 'self';`
     );
   } else if (
     request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/profile') ||
     request.nextUrl.pathname.startsWith('/achievements')
   ) {
+    const scriptSrc = isDevelopment 
+      ? `'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net` 
+      : `'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`;
+    
+    const styleSrc = isDevelopment
+      ? `'self' 'unsafe-inline' https://fonts.googleapis.com`
+      : `'self' https://fonts.googleapis.com`;
+    
     response.headers.set(
       'Content-Security-Policy',
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar; frame-src 'none'; object-src 'none'; base-uri 'self'; require-trusted-types-for 'script';`
+      `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; font-src 'self' https://fonts.gstatic.com; connect-src ${connectSrc}; frame-src 'none'; object-src 'none'; base-uri 'self';`
     );
   } else {
     // CSP para otras rutas
+    const scriptSrc = isDevelopment 
+      ? `'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net` 
+      : `'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`;
+    
+    const styleSrc = isDevelopment
+      ? `'self' 'unsafe-inline' https://fonts.googleapis.com`
+      : `'self' https://fonts.googleapis.com`;
+    
     response.headers.set(
       'Content-Security-Policy',
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar; frame-src 'none'; object-src 'none'; base-uri 'self'; require-trusted-types-for 'script';`
+      `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; font-src 'self' https://fonts.gstatic.com; connect-src ${connectSrc}; frame-src 'none'; object-src 'none'; base-uri 'self';`
     );
   }
   
@@ -218,10 +262,18 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
+        const pathname = req.nextUrl.pathname;
+        
+        // If the route is not protected, allow access
+        if (!isProtectedRoute(pathname)) {
+          return true;
+        }
         
         // Verificar que el token existe
         if (!token) {
-          console.log('Middleware: No token found');
+          if (process.env.AUTH_DEBUG === 'true') {
+            console.log(`Middleware: No token found for ${pathname}`);
+          }
           return false;
         }
         
@@ -246,18 +298,24 @@ export default withAuth(
           return false;
         }
         
-        // Check if any of the roles is valid
-        const validRoles = ['admin', 'coach', 'customer'];
-        const hasValidRole = tokenWithRoles.roles.some(role => 
-          validRoles.includes(role)
-        );
+        // Get required roles for this route
+        const requiredRoles = getRequiredRoles(pathname);
         
-        if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true') {
-          console.log('Middleware: Has valid role:', hasValidRole);
+        // If route is public (no required roles), allow access
+        if (!requiredRoles) {
+          return true;
         }
         
-        // If at least one role is valid, allow access
-        return hasValidRole;
+        // Check if user has any of the required roles
+        const hasRequiredRole = requiredRoles.some(role => 
+          tokenWithRoles.roles.includes(role)
+        );
+        
+        if (process.env.AUTH_DEBUG === 'true' && !hasRequiredRole) {
+          console.log(`Middleware: User lacks required role(s) for ${pathname}. Required: ${requiredRoles.join(', ')}, User has: ${tokenWithRoles.roles.join(', ')}`);
+        }
+        
+        return hasRequiredRole;
       },
     },
     pages: {
@@ -267,28 +325,21 @@ export default withAuth(
   }
 );
 
-/**
- * Configurar las rutas a las que se aplicará el middleware
- */
+// Specify which routes require authentication
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - / (homepage)
-     * - /api (API routes)
-     * - /auth (authentication routes)
-     * - /_next/static (static files)
-     * - /_next/image (image optimization files)
-     * - /favicon.ico (favicon file)
-     * - /logo.png (logo file)
-     * - /manifest.json (PWA manifest)
-     * - /sw.js (Service Worker)
-     */
-    '/dashboard/:path*',
+    // Protected routes that require authentication
     '/workout/:path*',
-    '/profile/:path*',
     '/achievements/:path*',
+    '/profile/:path*',
     '/coach/:path*',
     '/admin/:path*',
+    '/api/workout/:path*',
+    '/api/user/:path*',
+    '/api/coach/:path*',
+    '/api/admin/:path*',
+    
+    // Exclude static files and public routes
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|sw-register.js|offline.html|logo.png|api/auth).*)',
   ],
 }; 
