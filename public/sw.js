@@ -77,6 +77,11 @@ const isStaticAsset = (url) => {
          url.pathname.startsWith('/_next/static/');
 };
 
+// Helper function to check if a request is cacheable
+const isCacheableRequest = (request) => {
+  return request.method === 'GET';
+};
+
 async function handleFetch(event) {
   const { request } = event;
   const url = new URL(request.url);
@@ -95,12 +100,19 @@ async function handleFetch(event) {
     return fetch(request);
   }
 
+  // Handle non-GET requests (like HEAD) - don't try to cache them
+  if (!isCacheableRequest(request)) {
+    return fetch(request);
+  }
+
   switch (strategy.type) {
     case 'cache-first':
       return caches.match(request).then((response) =>
         response || fetch(request).then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
           return response;
         })
       );
@@ -108,8 +120,10 @@ async function handleFetch(event) {
     case 'network-first':
       try {
         const response = await fetch(request);
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        if (response.ok) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        }
         return response;
       } catch (error) {
         const cachedResponse = await caches.match(request);
