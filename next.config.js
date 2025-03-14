@@ -118,6 +118,24 @@ const nextConfig = {
         ],
       },
       {
+        // Configuración específica para sw.js
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
+        ],
+      },
+      {
         // Add Content-Type header only for HTML pages
         source: '/((?!_next/|api/).*)',
         headers: [

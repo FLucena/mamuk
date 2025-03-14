@@ -45,10 +45,25 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
   
   const startTime = performance.now();
   
-  return navigator.serviceWorker.register('/sw.js', { 
-    scope: '/',
-    type: 'classic' // Explicitly set the type
-  })
+  // Verificar primero si el service worker está disponible
+  return fetch('/sw.js', { method: 'HEAD' })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Service worker file not available: ${response.status} ${response.statusText}`);
+      }
+      
+      // Verificar el tipo MIME
+      const contentType = response.headers.get('content-type');
+      if (contentType && !contentType.includes('javascript')) {
+        console.warn(`[ServiceWorker] Unexpected MIME type: ${contentType}. Expected application/javascript.`);
+      }
+      
+      // Proceder con el registro
+      return navigator.serviceWorker.register('/sw.js', { 
+        scope: '/',
+        type: 'classic' // Explicitly set the type
+      });
+    })
     .then((registration) => {
       const registrationTime = performance.now() - startTime;
       console.info(`[ServiceWorker] Registered successfully in ${registrationTime.toFixed(2)}ms`);

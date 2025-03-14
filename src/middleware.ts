@@ -30,18 +30,33 @@ function checkDomainRedirect(request: NextRequest) {
  * Aplica cabeceras de seguridad a la respuesta
  */
 function applySecurityHeaders(request: NextRequest, response: NextResponse) {
+  // Determinar si es una solicitud para manifest.json o sw.js
+  const isManifestRequest = request.nextUrl.pathname === '/manifest.json';
+  const isServiceWorkerRequest = request.nextUrl.pathname === '/sw.js';
+  
   // Añadir cabeceras de seguridad
-  const securityHeaders = {
+  const securityHeaders: Record<string, string> = {
     'X-DNS-Prefetch-Control': 'on',
     'X-XSS-Protection': '1; mode=block',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-    // Añadir cabeceras CORS para resolver el problema de manifest.json
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
+  
+  // Añadir cabeceras CORS para todos los recursos
+  if (isManifestRequest || isServiceWorkerRequest) {
+    securityHeaders['Access-Control-Allow-Origin'] = '*';
+    securityHeaders['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
+    securityHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+    
+    // Establecer el tipo de contenido correcto
+    if (isManifestRequest) {
+      securityHeaders['Content-Type'] = 'application/manifest+json';
+    } else if (isServiceWorkerRequest) {
+      securityHeaders['Content-Type'] = 'application/javascript; charset=utf-8';
+      securityHeaders['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    }
+  }
   
   // Aplicar las cabeceras de seguridad
   Object.entries(securityHeaders).forEach(([key, value]) => {
