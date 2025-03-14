@@ -32,25 +32,49 @@ const NavigationTracker = memo(function NavigationTracker() {
   const currentUrlRef = useRef<string>('');
   // Track navigation throttling
   const lastNavigationTimeRef = useRef<number>(0);
-  const navigationThrottleTimeRef = useRef<number>(500); // ms between navigations
+  // Aumentar el tiempo de throttling para reducir la frecuencia de navegaciones
+  const navigationThrottleTimeRef = useRef<number>(1000); // Aumentado a 1000ms (1 segundo)
   
-  // Create a debounced version of trackNavigation
+  // Aumentar el tiempo de debounce para reducir la frecuencia de llamadas
   const debouncedTrackNavigation = useCallback(
     debounce((from: string, to: string) => {
       trackNavigation(from, to);
-    }, 300),
+    }, 500), // Aumentado a 500ms
     []
   );
   
-  // Create a debounced version of logNavigationStats
+  // Aumentar el tiempo de debounce para reducir la frecuencia de llamadas
   const debouncedLogStats = useCallback(
     debounce(() => {
       logNavigationStats();
-    }, 500),
+    }, 1000), // Aumentado a 1000ms
     []
   );
   
+  // Usar un efecto separado para el pathname y searchParams para reducir las actualizaciones
   useEffect(() => {
+    // Ignorar cambios menores en searchParams si el pathname no ha cambiado
+    if (!isFirstRender.current && prevPathRef.current === pathname) {
+      return;
+    }
+    
+    handleNavigation();
+  }, [pathname]); // Solo depende de pathname
+  
+  // Efecto separado para searchParams con un debounce más agresivo
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    
+    // Usar un timeout para debounce de cambios en searchParams
+    const timer = setTimeout(() => {
+      handleNavigation();
+    }, 500); // Debounce de 500ms para cambios en searchParams
+    
+    return () => clearTimeout(timer);
+  }, [searchParams]); // Solo depende de searchParams
+  
+  // Función para manejar la navegación
+  const handleNavigation = useCallback(() => {
     // Create the full URL
     const fullUrl = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
     
@@ -94,17 +118,17 @@ const NavigationTracker = memo(function NavigationTracker() {
       navigationCountRef.current += 1;
       
       // Limit the frequency of sessionStorage updates
-      if (navigationCountRef.current % 5 === 0) {
+      if (navigationCountRef.current % 10 === 0) { // Reducir frecuencia de actualizaciones
         sessionStorage.setItem('navigation-count', navigationCountRef.current.toString());
       }
         
-      if (navigationCountRef.current > 20) {
+      if (navigationCountRef.current > 30) { // Aumentar el umbral
         // Use debounced version to avoid excessive logging
         debouncedLogStats();
       }
       
-      // Log stats on every 10th navigation
-      if (navigationCountRef.current % 10 === 0 && navigationCountRef.current > 0) {
+      // Log stats on every 20th navigation (reducir frecuencia)
+      if (navigationCountRef.current % 20 === 0 && navigationCountRef.current > 0) {
         debouncedLogStats();
       }
       
