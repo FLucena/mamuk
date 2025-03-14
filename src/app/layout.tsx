@@ -116,8 +116,9 @@ export const metadata: Metadata = {
 }
 
 // Critical fonts to preload
-const CRITICAL_FONTS = [
-  { path: '/fonts/inter-var-latin.woff2', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
+const CRITICAL_FONTS: { path: string; as: string; type: string; crossOrigin?: string }[] = [
+  // Usar la fuente Inter de next/font/google en lugar de precargar manualmente
+  // { path: '/fonts/inter-var-latin.woff2', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
 ];
 
 export const fetchCache = 'auto';
