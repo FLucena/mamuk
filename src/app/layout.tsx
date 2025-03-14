@@ -52,7 +52,9 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  minimumScale: 1,
   userScalable: true,
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f3f4f6' }, // Light mode color
     { media: '(prefers-color-scheme: dark)', color: '#111827' },  // Dark mode color
@@ -152,7 +154,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         />
         <JsonLd />
       </head>
-      <body className={`${inter.className} bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col`}>
+      <body className={`${inter.className} bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col overflow-x-hidden w-full`}>
         <ThemeProvider>
           <Providers>
             <ErrorProvider>
@@ -175,7 +177,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                       <Navbar />
                     </NavbarErrorBoundary>
                     
-                    <main className="flex-grow">
+                    <main className="flex-grow w-full max-w-full overflow-x-hidden">
                       <ContentErrorBoundary name="main content">
                         {children}
                       </ContentErrorBoundary>

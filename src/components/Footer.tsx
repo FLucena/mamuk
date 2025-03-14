@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Instagram, Twitter } from 'lucide-react';
 import { useState, memo } from 'react';
 import CookiePreferencesModal from './CookiePreferencesModal';
+import ResponsiveContainer from './ui/ResponsiveContainer';
 
 // Memoize the Footer component to prevent unnecessary re-renders
 export default memo(function Footer() {
@@ -33,9 +34,9 @@ export default memo(function Footer() {
 
   return (
     <>
-      <footer className="bg-gray-100 dark:bg-gray-900 py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <footer className="bg-gray-100 dark:bg-gray-900 py-8 md:py-12">
+        <ResponsiveContainer>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Mamuk</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -44,7 +45,7 @@ export default memo(function Footer() {
             </div>
 
             {/* Product links */}
-            <div>
+            <div className="sm:col-span-1">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                 Producto
               </h3>
@@ -63,7 +64,7 @@ export default memo(function Footer() {
             </div>
 
             {/* Company links */}
-            <div>
+            <div className="sm:col-span-1">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                 Compañía
               </h3>
@@ -82,7 +83,7 @@ export default memo(function Footer() {
             </div>
 
             {/* Legal links */}
-            <div>
+            <div className="sm:col-span-1">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                 Legal
               </h3>
@@ -104,8 +105,8 @@ export default memo(function Footer() {
 
           {/* Social links */}
           <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
-            <div className="flex justify-between items-center">
-              <div className="flex space-x-6">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="flex space-x-6 mb-4 md:mb-0">
                 {links.social.map((item) => (
                   <a
                     key={item.name}
@@ -119,12 +120,12 @@ export default memo(function Footer() {
                   </a>
                 ))}
               </div>
-              <p className="text-base text-gray-400">
+              <p className="text-base text-gray-400 text-center md:text-right">
                 &copy; {new Date().getFullYear()} Mamuk. Todos los derechos reservados.
               </p>
             </div>
           </div>
-        </div>
+        </ResponsiveContainer>
       </footer>
 
       {/* Cookie Preferences Modal */}
