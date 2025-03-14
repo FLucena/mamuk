@@ -36,6 +36,8 @@ const nextConfig = {
   env: {
     // Asegurarse de que el modo de depuración esté desactivado en producción
     NEXTAUTH_DEBUG: process.env.NODE_ENV === 'development' ? 'true' : 'false',
+    // Asegurarse de que NEXTAUTH_URL esté configurado correctamente
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'https://www.mamuk.com.ar',
   },
   // Enable output standalone for Docker deployment
   output: 'standalone',
@@ -132,6 +134,16 @@ const nextConfig = {
           {
             key: 'Content-Type',
             value: 'application/javascript; charset=utf-8',
+          },
+        ],
+      },
+      {
+        // Configuración específica para rutas de autenticación
+        source: '/api/auth/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, max-age=0',
           },
         ],
       },

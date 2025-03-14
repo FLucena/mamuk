@@ -46,7 +46,7 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
   const startTime = performance.now();
   
   // Verificar primero si el service worker está disponible
-  return fetch('/sw.js', { method: 'HEAD' })
+  return fetch('/api/sw', { method: 'HEAD' })
     .then(response => {
       if (!response.ok) {
         throw new Error(`Service worker file not available: ${response.status} ${response.statusText}`);
@@ -59,7 +59,7 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
       }
       
       // Proceder con el registro
-      return navigator.serviceWorker.register('/sw.js', { 
+      return navigator.serviceWorker.register('/api/sw', { 
         scope: '/',
         type: 'classic' // Explicitly set the type
       });

@@ -99,7 +99,7 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  manifest: '/manifest.json',
+  manifest: '/api/manifest',
   icons: {
     icon: [
       { url: '/icon.png', type: 'image/png' },

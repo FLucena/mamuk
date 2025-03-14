@@ -2,19 +2,26 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export function SignInButtons() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  
+  // Obtener callbackUrl de los parámetros de búsqueda o usar /workout por defecto
+  const callbackUrl = searchParams?.get('callbackUrl') || '/workout';
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // Usar /workout como URL de callback para todos los usuarios
+      console.log('Iniciando sesión con Google, callbackUrl:', callbackUrl);
+      
+      // Usar el callbackUrl obtenido de los parámetros o el valor por defecto
       await signIn('google', { 
-        callbackUrl: '/workout',
+        callbackUrl,
         redirect: true
       });
       

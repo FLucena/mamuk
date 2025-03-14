@@ -1,4 +1,9 @@
 {
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "regions": ["cdg1"],
   "headers": [
     {
       "source": "/manifest.json",
@@ -13,7 +18,7 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
+          "value": "Content-Type"
         },
         {
           "key": "Content-Type",
@@ -22,10 +27,6 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=3600"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
         }
       ]
     },
@@ -37,56 +38,35 @@
           "value": "*"
         },
         {
-          "key": "Content-Type",
-          "value": "application/javascript; charset=utf-8"
-        },
-        {
           "key": "Cache-Control",
           "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
         }
       ]
     },
     {
-      "source": "/(.*)",
+      "source": "/api/auth/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=3600, stale-while-revalidate=86400"
-        }
-      ]
-    },
-    {
-      "source": "/_next/static/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/fonts/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+          "value": "no-store, max-age=0"
         }
       ]
     }
   ],
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/manifest.json",
-      "destination": "/manifest.json"
-    },
-    {
-      "source": "/sw.js",
-      "destination": "/sw.js"
+      "source": "https://mamuk.com.ar/:path*",
+      "destination": "https://www.mamuk.com.ar/:path*",
+      "permanent": true
     }
   ],
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "github": {
-    "silent": true
+  "env": {
+    "NEXTAUTH_URL": "https://www.mamuk.com.ar",
+    "NEXTAUTH_DEBUG": "false",
+    "AUTH_DEBUG": "false"
   }
 } 

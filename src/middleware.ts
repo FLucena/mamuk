@@ -183,6 +183,8 @@ export const config = {
      * - /_next/image (image optimization files)
      * - /favicon.ico (favicon file)
      * - /logo.png (logo file)
+     * - /manifest.json (PWA manifest)
+     * - /sw.js (Service Worker)
      */
     '/dashboard/:path*',
     '/workout/:path*',
@@ -190,7 +192,5 @@ export const config = {
     '/achievements/:path*',
     '/coach/:path*',
     '/admin/:path*',
-    // Añadir manifest.json para manejar CORS
-    '/manifest.json',
   ],
 }; 
