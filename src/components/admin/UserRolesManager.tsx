@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { CheckIcon } from 'lucide-react';
+import { sortRoles } from '@/lib/utils/roles';
 
 interface UserRolesManagerProps {
   userId: string;
@@ -10,6 +11,7 @@ interface UserRolesManagerProps {
   onRolesUpdated: (roles: string[]) => void;
 }
 
+// Define roles in the desired display order
 const ROLES = [
   { id: 'admin', label: 'Administrador' },
   { id: 'coach', label: 'Entrenador' },
@@ -17,7 +19,7 @@ const ROLES = [
 ];
 
 export default function UserRolesManager({ userId, initialRoles, onRolesUpdated }: UserRolesManagerProps) {
-  const [roles, setRoles] = useState<string[]>(initialRoles);
+  const [roles, setRoles] = useState<string[]>(sortRoles(initialRoles));
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRoleToggle = async (roleId: string) => {
@@ -65,12 +67,13 @@ export default function UserRolesManager({ userId, initialRoles, onRolesUpdated 
       }
       
       const data = await response.json();
+      const sortedRoles = sortRoles(data.roles);
       
       // Update local state
-      setRoles(data.roles);
+      setRoles(sortedRoles);
       
       // Notify parent component
-      onRolesUpdated(data.roles);
+      onRolesUpdated(sortedRoles);
       
       toast.success('Roles actualizados correctamente');
     } catch (error) {

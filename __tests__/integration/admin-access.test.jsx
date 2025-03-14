@@ -13,7 +13,6 @@ jest.mock('next-auth/react', () => ({
         id: 'admin-123',
         name: 'Admin User',
         email: 'admin@example.com',
-        role: 'admin',
         roles: ['admin'],
       }
     },
@@ -45,7 +44,6 @@ const mockAuthContext = createMockAuthContext({
     id: 'admin-123',
     name: 'Admin User',
     email: 'admin@example.com',
-    role: 'admin',
     roles: ['admin'],
   },
   role: 'admin',
@@ -71,7 +69,6 @@ jest.mock('@/hooks/useAuthRedirect', () => ({
         id: 'admin-123',
         name: 'Admin User',
         email: 'admin@example.com',
-        role: 'admin',
         roles: ['admin'],
       }
     },

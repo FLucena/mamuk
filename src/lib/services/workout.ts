@@ -200,7 +200,10 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   }
 
   const workouts = await Workout.find({ 
-    userId: currentUser._id.toString(),
+    $or: [
+      { userId: currentUser._id.toString() }, // Workouts creados por el usuario
+      { assignedCustomers: currentUser._id.toString() } // Workouts asignados al usuario como cliente
+    ],
     status: 'active'
   }).lean<MongoWorkout[]>();
   return workouts.map(mapWorkoutToResponse);
@@ -225,16 +228,59 @@ export async function getWorkout(id: string, userId?: string) {
       // Obtener el rol del usuario
       const userRole = await getCurrentUserRole(userId);
       const isAdmin = userRole === 'admin';
+      
+      // Si es admin, permitir acceso inmediatamente
+      if (isAdmin) {
+        console.log(`[DEBUG] Usuario ${userId} es admin, permitiendo acceso a workout ${id}`);
+        const transformedWorkout = {
+          ...workout,
+          id: workout._id.toString(),
+          userId: workout.userId.toString()
+        };
+        return transformedWorkout;
+      }
+      
       const isCoach = userRole === 'coach';
+      
+      console.log(`[DEBUG] Verificando permisos para usuario ${userId}:`, {
+        userRole,
+        isAdmin,
+        isCoach,
+        workoutUserId: workout.userId.toString(),
+        isOwner: workout.userId.toString() === userId
+      });
+      
+      // Verificar si el usuario está asignado a este workout
+      const isAssignedCustomer = workout.assignedCustomers && 
+        Array.isArray(workout.assignedCustomers) && 
+        workout.assignedCustomers.some(customerId => 
+          customerId.toString() === userId
+        );
+      
+      // Verificar si el usuario es un coach asignado a este workout
+      const isAssignedCoach = workout.assignedCoaches && 
+        Array.isArray(workout.assignedCoaches) && 
+        workout.assignedCoaches.some(coachId => 
+          coachId.toString() === userId
+        );
+      
+      console.log(`[DEBUG] Asignaciones:`, {
+        isAssignedCustomer,
+        isAssignedCoach,
+        assignedCustomers: workout.assignedCustomers || [],
+        assignedCoaches: workout.assignedCoaches || []
+      });
       
       // Permitir acceso si:
       // 1. El usuario es el propietario
-      // 2. El usuario es admin
-      // 3. El usuario es coach y es el coach del propietario
+      // 2. El usuario es coach y es el coach del propietario
+      // 3. El usuario es un cliente asignado a este workout
+      // 4. El usuario es un coach asignado a este workout
       if (
         workout.userId.toString() !== userId && 
-        !isAdmin &&
-        !(isCoach && await isUserCoach(userId, workout.userId.toString()))
+        !(isCoach && await isUserCoach(userId, workout.userId.toString())) &&
+        !isAssignedCustomer &&
+        !isAssignedCoach
       ) {
         console.error(`[SECURITY] Usuario ${userId} intentó acceder a workout ${id} sin permisos`);
         return null;
@@ -257,26 +303,38 @@ export async function getWorkout(id: string, userId?: string) {
 
 async function isUserCoach(coachUserId: string, studentUserId: string): Promise<boolean> {
   try {
+    console.log(`[DEBUG] Verificando si ${coachUserId} es coach de ${studentUserId}`);
+    
     const coach = await Coach.findOne({ userId: coachUserId }).lean();
-    if (!coach) return false;
+    if (!coach) {
+      console.log(`[DEBUG] No se encontró el coach con userId: ${coachUserId}`);
+      return false;
+    }
 
     // Verificar si existe la propiedad customers y es un array
     const coachData = coach as any;
     if (!coachData.customers || !Array.isArray(coachData.customers)) {
+      console.log(`[DEBUG] El coach no tiene clientes o no es un array`);
       return false;
     }
 
+    console.log(`[DEBUG] Clientes del coach:`, coachData.customers.map((c: any) => c.toString()));
+    
     // Verificar si el studentUserId está en la lista de clientes del coach
-    return coachData.customers.some(
+    const isCoach = coachData.customers.some(
       (customerId: any) => customerId && customerId.toString() === studentUserId
     );
+    
+    console.log(`[DEBUG] ¿Es coach del estudiante?:`, isCoach);
+    
+    return isCoach;
   } catch (error) {
     console.error(`[ERROR] Error al verificar si ${coachUserId} es coach de ${studentUserId}:`, error);
     return false;
   }
 }
 
-export async function createWorkout(data: Partial<WorkoutType>, userId: string): Promise<WorkoutType> {
+export async function createWorkout(data: Partial<WorkoutType>, userId: string, creatorId?: string): Promise<WorkoutType> {
   if (!userId) throw new Error('User ID is required');
 
   await dbConnect();
@@ -287,13 +345,28 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string):
     throw new Error('Usuario no encontrado');
   }
 
+  // Si se proporciona un creatorId, verificar que sea un coach o admin
+  let isCreatedByCoach = false;
+  if (creatorId && creatorId !== userId) {
+    const creator = await User.findById(creatorId).select('roles');
+    if (!creator) {
+      throw new Error('Creador no encontrado');
+    }
+    
+    isCreatedByCoach = creator.roles.includes('coach') || creator.roles.includes('admin');
+    
+    if (!isCreatedByCoach) {
+      throw new Error('Solo coaches y admins pueden crear rutinas para otros usuarios');
+    }
+  }
+
   // Determine if the creator is a coach or admin
   const isCoachOrAdmin = user.roles && Array.isArray(user.roles) 
     ? (user.roles.includes('coach') || user.roles.includes('admin'))
     : (user.roles.includes('coach') || user.roles.includes('admin'));
 
   // For customers, check if they've reached their limit of 3 workouts
-  if (!isCoachOrAdmin) {
+  if (!isCoachOrAdmin && !isCreatedByCoach) {
     const workoutCount = await Workout.countDocuments({
       userId,
       createdBy: userId,
@@ -318,15 +391,25 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string):
   const sanitizedData = {
     ...data,
     userId: Types.ObjectId.isValid(userId) ? userId : new Types.ObjectId(userId).toString(),
-    createdBy: userId, // Set the createdBy field to track who created the workout
+    createdBy: creatorId || userId, // Set the createdBy field to track who created the workout
     name: data.name ? sanitizeHtml(data.name) : 'Rutina de Volumen',
     description: data.description ? sanitizeHtml(data.description) : 'Ganar masa muscular',
     days: defaultDays,
     status: 'active',
-    isCoachCreated: isCoachOrAdmin // Track if the workout was created by a coach or admin
+    isCoachCreated: isCoachOrAdmin || isCreatedByCoach, // Track if the workout was created by a coach or admin
+    assignedCustomers: [userId] // Asignar automáticamente al usuario para el que se creó
   };
 
   const doc = await Workout.create(sanitizedData);
+  
+  // Si fue creado por un coach, actualizar también el usuario
+  if (creatorId && creatorId !== userId) {
+    await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { assignedWorkouts: doc._id } }
+    );
+  }
+  
   return mapWorkoutToResponse(doc.toObject());
 }
 
@@ -467,9 +550,12 @@ export async function getWorkoutsByUserId(userId: string): Promise<WorkoutType[]
     
     await dbConnect();
     
-    // Buscar workouts del usuario
+    // Buscar workouts del usuario y workouts asignados al usuario
     const workouts = await Workout.find({ 
-      userId,
+      $or: [
+        { userId }, // Workouts creados por el usuario
+        { assignedCustomers: userId } // Workouts asignados al usuario como cliente
+      ],
       status: 'active' // Solo workouts activos
     }).lean<MongoWorkout[]>();
     
@@ -482,11 +568,55 @@ export async function getWorkoutsByUserId(userId: string): Promise<WorkoutType[]
   }
 }
 
-export async function getWorkoutById(id: string): Promise<WorkoutType> {
+export async function getWorkoutById(id: string, userId?: string): Promise<WorkoutType> {
   validateIds(id);
   
   await dbConnect();
   const workout = await Workout.findById(id);
   if (!workout) throw new Error('Workout not found');
+  
+  // Si se proporcionó un userId, verificar que tenga acceso
+  if (userId) {
+    // Obtener el rol del usuario
+    const userRole = await getCurrentUserRole(userId);
+    const isAdmin = userRole === 'admin';
+    
+    // Si es admin, permitir acceso inmediatamente
+    if (isAdmin) {
+      console.log(`[DEBUG] Usuario ${userId} es admin, permitiendo acceso a workout ${id}`);
+      return mapWorkoutToResponse(workout);
+    }
+    
+    const isCoach = userRole === 'coach';
+    
+    // Verificar si el usuario está asignado a este workout
+    const isAssignedCustomer = workout.assignedCustomers && 
+      Array.isArray(workout.assignedCustomers) && 
+      workout.assignedCustomers.some((customerId: any) => 
+        customerId.toString() === userId
+      );
+    
+    // Verificar si el usuario es un coach asignado a este workout
+    const isAssignedCoach = workout.assignedCoaches && 
+      Array.isArray(workout.assignedCoaches) && 
+      workout.assignedCoaches.some((coachId: any) => 
+        coachId.toString() === userId
+      );
+    
+    // Permitir acceso si:
+    // 1. El usuario es el propietario
+    // 2. El usuario es coach y es el coach del propietario
+    // 3. El usuario es un cliente asignado a este workout
+    // 4. El usuario es un coach asignado a este workout
+    if (
+      workout.userId.toString() !== userId && 
+      !(isCoach && await isUserCoach(userId, workout.userId.toString())) &&
+      !isAssignedCustomer &&
+      !isAssignedCoach
+    ) {
+      throw new Error('No tienes permiso para acceder a esta rutina');
+    }
+  }
+  
   return mapWorkoutToResponse(workout);
 } 

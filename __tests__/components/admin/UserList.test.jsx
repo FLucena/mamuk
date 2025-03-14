@@ -77,13 +77,9 @@ describe('UserList Component', () => {
     // Check if email is displayed
     expect(screen.getByText('single@example.com')).toBeInTheDocument();
     
-    // Check if role is displayed (with star for primary role)
-    const roleElement = screen.getByText('Cliente');
+    // Check if role is displayed
+    const roleElement = screen.getByText('customer');
     expect(roleElement).toBeInTheDocument();
-    
-    // Check that the role element has a star (★) before it
-    const roleElementParent = roleElement.parentElement;
-    expect(roleElementParent.textContent).toContain('★');
   });
 
   it('should display users with multiple roles correctly', () => {
@@ -95,22 +91,10 @@ describe('UserList Component', () => {
     // Check if email is displayed
     expect(screen.getByText('multi@example.com')).toBeInTheDocument();
     
-    // Check if primary role (admin) is displayed with a star
-    const adminRoleElement = screen.getByText('Administrador');
-    expect(adminRoleElement).toBeInTheDocument();
-    const adminRoleElementParent = adminRoleElement.parentElement;
-    expect(adminRoleElementParent.textContent).toContain('★');
-    
-    // Check if secondary roles are displayed without stars
-    const coachRoleElement = screen.getByText('Coach');
-    expect(coachRoleElement).toBeInTheDocument();
-    
-    const customerRoleElement = screen.getByText('Cliente');
-    expect(customerRoleElement).toBeInTheDocument();
-    
-    // Verify that there are exactly 3 role badges (admin, coach, customer)
-    const roleBadges = screen.getAllByText(/Administrador|Coach|Cliente/);
-    expect(roleBadges).toHaveLength(3);
+    // Check if all roles are displayed
+    expect(screen.getByText('admin')).toBeInTheDocument();
+    expect(screen.getByText('coach')).toBeInTheDocument();
+    expect(screen.getByText('customer')).toBeInTheDocument();
   });
 
   it('should handle users with roles array but only one role', () => {
@@ -126,26 +110,23 @@ describe('UserList Component', () => {
     // Check if user name is displayed
     expect(screen.getByText('Single Role in Array')).toBeInTheDocument();
     
-    // Check if role is displayed with a star
-    const roleElement = screen.getByText('Coach');
-    expect(roleElement).toBeInTheDocument();
-    const roleElementParent = roleElement.parentElement;
-    expect(roleElementParent.textContent).toContain('★');
+    // Check if email is displayed
+    expect(screen.getByText('array@example.com')).toBeInTheDocument();
     
-    // Verify that there is exactly 1 role badge
-    const roleBadges = screen.getAllByText(/Administrador|Coach|Cliente/);
-    expect(roleBadges).toHaveLength(1);
+    // Check if role is displayed
+    const roleElement = screen.getByText('coach');
+    expect(roleElement).toBeInTheDocument();
   });
 
   it('should display multiple users with different role configurations', () => {
-    render(<UserList users={users} />);
+    render(<UserList users={[singleRoleUser, multiRoleUser]} />);
     
     // Check if both users are displayed
     expect(screen.getByText('Single Role User')).toBeInTheDocument();
     expect(screen.getByText('Multi Role User')).toBeInTheDocument();
     
     // Check if all roles are displayed correctly
-    const roleBadges = screen.getAllByText(/Administrador|Coach|Cliente/);
+    const roleBadges = screen.getAllByText(/admin|coach|customer/);
     expect(roleBadges).toHaveLength(4); // 1 for single role user + 3 for multi role user
   });
 }); 

@@ -65,6 +65,8 @@ interface WorkoutClientProps {
   updateBlockName?: (workout: Workout, dayIndex: number, blockIndex: number, newName: string) => Promise<any>;
   userId: string;
   showVideosInline?: boolean;
+  isAdmin: boolean;
+  isCoach: boolean;
 }
 
 export default function WorkoutClient({
@@ -80,21 +82,22 @@ export default function WorkoutClient({
   updateDayName,
   updateBlockName,
   userId,
-  showVideosInline = true
+  showVideosInline = true,
+  isAdmin,
+  isCoach
 }: WorkoutClientProps) {
   // Removed console.log
   
-  const [workout, setWorkout] = useState<Workout>(initialWorkout);
   const router = useRouter();
+  const [workout, setWorkout] = useState<Workout>(initialWorkout);
   const { data: session } = useSession();
   const { roles: userRoles, loading: rolesLoading } = useRealUserRoles();
   
-  const isAdmin = userRoles.includes('admin');
-  const isCoach = userRoles.includes('coach');
-  const [isLoading, setIsLoading] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
+  const [expandedExercises, setExpandedExercises] = useState<Record<string, boolean>>({});
   const [expandExercises, setExpandExercises] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -365,6 +368,7 @@ export default function WorkoutClient({
     // Crear nuevos objetos para los estados para evitar referencias a los anteriores
     const allDaysExpanded: Record<number, boolean> = {};
     const allBlocksExpanded: Record<string, boolean> = {};
+    const allExercisesExpanded: Record<string, boolean> = {};
     
     // Llenar los objetos con los datos necesarios
     if (workout.days) {
@@ -372,9 +376,16 @@ export default function WorkoutClient({
         allDaysExpanded[dayIndex] = true;
         
         if (day.blocks) {
-          day.blocks.forEach((_, blockIndex) => {
-            const key = `${dayIndex}-${blockIndex}`;
-            allBlocksExpanded[key] = true;
+          day.blocks.forEach((block, blockIndex) => {
+            const blockKey = `${dayIndex}-${blockIndex}`;
+            allBlocksExpanded[blockKey] = true;
+            
+            if (block.exercises) {
+              block.exercises.forEach((_, exerciseIndex) => {
+                const exerciseKey = `${block.name}-${exerciseIndex}`;
+                allExercisesExpanded[exerciseKey] = true;
+              });
+            }
           });
         }
       });
@@ -384,6 +395,7 @@ export default function WorkoutClient({
     // que podrían causar loops infinitos
     const shouldUpdateDays = JSON.stringify(expandedDays) !== JSON.stringify(allDaysExpanded);
     const shouldUpdateBlocks = JSON.stringify(expandedBlocks) !== JSON.stringify(allBlocksExpanded);
+    const shouldUpdateExercises = JSON.stringify(expandedExercises) !== JSON.stringify(allExercisesExpanded);
     
     // Solo actualizar si hay cambios para evitar loops infinitos
     if (shouldUpdateDays) {
@@ -394,111 +406,151 @@ export default function WorkoutClient({
       setExpandedBlocks(allBlocksExpanded);
     }
     
-    if (!expandExercises) {
-      setExpandExercises(true);
+    if (shouldUpdateExercises) {
+      setExpandedExercises(allExercisesExpanded);
     }
   };
 
   const collapseAll = () => {
-    // Solo actualizar si hay cambios para evitar loops infinitos
-    if (Object.keys(expandedDays).length > 0) {
-      setExpandedDays({});
+    // Crear nuevos objetos para los estados para evitar referencias a los anteriores
+    const allDaysCollapsed: Record<number, boolean> = {};
+    const allBlocksCollapsed: Record<string, boolean> = {};
+    const allExercisesCollapsed: Record<string, boolean> = {};
+    
+    // Llenar los objetos con los datos necesarios
+    if (workout.days) {
+      workout.days.forEach((day, dayIndex) => {
+        // No establecemos nada para los días, lo que equivale a colapsado
+        
+        if (day.blocks) {
+          day.blocks.forEach((block, blockIndex) => {
+            // No establecemos nada para los bloques, lo que equivale a colapsado
+            
+            if (block.exercises) {
+              block.exercises.forEach((_, exerciseIndex) => {
+                const exerciseKey = `${block.name}-${exerciseIndex}`;
+                allExercisesCollapsed[exerciseKey] = false; // Explícitamente colapsado
+              });
+            }
+          });
+        }
+      });
     }
     
-    if (Object.keys(expandedBlocks).length > 0) {
-      setExpandedBlocks({});
-    }
+    // Actualizar los estados
+    setExpandedDays(allDaysCollapsed);
+    setExpandedBlocks(allBlocksCollapsed);
+    setExpandedExercises(allExercisesCollapsed);
     
-    if (expandExercises) {
-      setExpandExercises(false);
-    }
+    // Ya no necesitamos este estado global
+    // if (expandExercises) {
+    //   setExpandExercises(false);
+    // }
   };
 
   return (
     <div className="pb-10">
-      <WorkoutDetailHeader
-        name={workout.name}
-        description={workout.description}
-      />
-      
-      <div className="container max-w-5xl mx-auto p-4">
-        <div className="flex justify-between items-center mb-6">
+      {workout ? (
+        <>
+          <WorkoutDetailHeader
+            name={workout.name}
+            description={workout.description}
+          />
+          
+          <div className="container max-w-5xl mx-auto p-4">
+            <div className="flex justify-between items-center mb-6">
+              <Link 
+                href="/workout" 
+                className="inline-flex items-center px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 mr-2" />
+                Volver a rutinas
+              </Link>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={expandAll}
+                  className="px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded transition-colors"
+                >
+                  Expandir todo
+                </button>
+                <button
+                  onClick={collapseAll}
+                  className="px-3 py-1 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded transition-colors"
+                >
+                  Colapsar todo
+                </button>
+              </div>
+            </div>
+            
+            {workout.days && workout.days.length > 0 ? (
+              <>
+                {workout.days.map((day, dayIndex) => (
+                  <WorkoutDayComponent
+                    key={dayIndex}
+                    title={day.name}
+                    blocks={day.blocks || []}
+                    isExpanded={expandedDays[dayIndex] || false}
+                    expandExercises={expandExercises}
+                    expandedBlocks={expandedBlocks}
+                    setExpandedBlocks={setExpandedBlocks}
+                    expandedExercises={expandedExercises}
+                    setExpandedExercises={setExpandedExercises}
+                    dayIndex={dayIndex}
+                    onAddBlock={() => handleAddBlock(dayIndex)}
+                    onAddExercise={(blockIndex) => handleAddExercise(dayIndex, blockIndex)}
+                    onUpdateExercise={(blockIndex, exerciseIndex, data) => 
+                      handleUpdateExercise(dayIndex, blockIndex, exerciseIndex, data)
+                    }
+                    onDeleteExercise={(blockIndex, exerciseIndex) => 
+                      handleDeleteExercise(dayIndex, blockIndex, exerciseIndex)
+                    }
+                    onUpdateTitle={(newName) => handleUpdateDayName(dayIndex, newName)}
+                    onUpdateBlockTitle={(blockIndex, newName) => handleUpdateBlockName(dayIndex, blockIndex, newName)}
+                    onDeleteBlock={(blockIndex) => handleDeleteBlock(dayIndex, blockIndex)}
+                    onDeleteDay={() => handleDeleteDay(dayIndex)}
+                    showVideosInline={showVideosInline}
+                  />
+                ))}
+                
+                {/* Botón "Añadir día" después de los días existentes */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 mb-6 shadow-sm">
+                  <button 
+                    onClick={handleAddDay}
+                    className="w-full py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Añadir día
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-sm">
+                <p className="text-gray-500 dark:text-gray-400 mb-4">No hay días en esta rutina</p>
+                <button 
+                  onClick={handleAddDay}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Añadir primer día
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="container mx-auto p-4 text-center">
+          <h1 className="text-2xl font-bold mb-4">Error al cargar la rutina</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">No se pudo cargar la información de la rutina.</p>
           <Link 
             href="/workout" 
-            className="inline-flex items-center px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Volver a rutinas
           </Link>
-          
-          <div className="flex space-x-2">
-            <button
-              onClick={expandAll}
-              className="px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded transition-colors"
-            >
-              Expandir todo
-            </button>
-            <button
-              onClick={collapseAll}
-              className="px-3 py-1 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Colapsar todo
-            </button>
-          </div>
         </div>
-        
-        {workout.days && workout.days.length > 0 ? (
-          <>
-            {workout.days.map((day, dayIndex) => (
-              <WorkoutDayComponent
-                key={dayIndex}
-                title={day.name}
-                blocks={day.blocks || []}
-                isExpanded={expandedDays[dayIndex] || false}
-                expandExercises={expandExercises}
-                expandedBlocks={expandedBlocks}
-                setExpandedBlocks={setExpandedBlocks}
-                dayIndex={dayIndex}
-                onAddBlock={() => handleAddBlock(dayIndex)}
-                onAddExercise={(blockIndex) => handleAddExercise(dayIndex, blockIndex)}
-                onUpdateExercise={(blockIndex, exerciseIndex, data) => 
-                  handleUpdateExercise(dayIndex, blockIndex, exerciseIndex, data)
-                }
-                onDeleteExercise={(blockIndex, exerciseIndex) => 
-                  handleDeleteExercise(dayIndex, blockIndex, exerciseIndex)
-                }
-                onUpdateTitle={(newName) => handleUpdateDayName(dayIndex, newName)}
-                onUpdateBlockTitle={(blockIndex, newName) => handleUpdateBlockName(dayIndex, blockIndex, newName)}
-                onDeleteBlock={(blockIndex) => handleDeleteBlock(dayIndex, blockIndex)}
-                onDeleteDay={() => handleDeleteDay(dayIndex)}
-                showVideosInline={showVideosInline}
-              />
-            ))}
-            
-            {/* Botón "Añadir día" después de los días existentes */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 mb-6 shadow-sm">
-              <button 
-                onClick={handleAddDay}
-                className="w-full py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Añadir día
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-sm">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">No hay días en esta rutina</p>
-            <button 
-              onClick={handleAddDay}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Añadir primer día
-            </button>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 } 

@@ -30,41 +30,47 @@ export default memo(function AddCustomerModal({
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Define searchCustomers function
-  const searchCustomers = useCallback(async () => {
+  const searchCustomers = useCallback(async (searchTerm: string) => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/admin/users?role=customer&search=${searchTerm}`);
+      
       if (!response.ok) {
-        throw new Error('Error buscando clientes');
+        throw new Error('Failed to fetch customers');
       }
+      
       const data = await response.json();
-      // Filter out customers that are already assigned and ensure each customer has an ID
-      setCustomers(data.filter((user: User) => !existingCustomerIds.includes(user._id)));
+      
+      // Check if the response has the new structure with pagination
+      const customersList = data.users ? data.users : data;
+      
+      setCustomers(customersList);
     } catch (error) {
-      console.error('Error:', error);
-      // TODO: Mostrar error al usuario
+      console.error('Error searching customers:', error);
+      setError('Error al buscar clientes');
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, existingCustomerIds]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
       setSelectedCustomerId(null);
       setSearchTerm('');
       if (searchTerm.trim() === '') {
-        searchCustomers();
+        searchCustomers(searchTerm);
       }
     }
   }, [isOpen, searchTerm, searchCustomers]);
 
   useEffect(() => {
     if (isOpen) {
-      searchCustomers();
+      searchCustomers(searchTerm);
     }
-  }, [isOpen, searchCustomers]);
+  }, [isOpen, searchTerm, searchCustomers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

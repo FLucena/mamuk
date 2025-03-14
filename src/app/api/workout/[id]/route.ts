@@ -39,7 +39,7 @@ export async function GET(
       throw createApiError('Authentication required', 'UNAUTHORIZED');
     }
 
-    const workout = await getWorkoutById(id);
+    const workout = await getWorkoutById(id, session.user.id);
     
     if (!workout) {
       throw createApiError('Workout not found', 'NOT_FOUND');

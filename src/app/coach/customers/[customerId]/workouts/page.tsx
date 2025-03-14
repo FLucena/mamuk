@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { getCoachByUserId } from '@/lib/services/coach';
 import { getWorkoutsByUserId } from '@/lib/services/workout';
 import WorkoutList from '@/components/workout/WorkoutList';
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
 
 interface CustomerWorkoutsPageProps {
   params: Promise<{
@@ -80,9 +82,18 @@ export default async function CustomerWorkoutsPage({ params }: CustomerWorkoutsP
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-          Rutinas de {customer?.name || 'Cliente'}
-        </h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Rutinas de {customer?.name || 'Cliente'}
+          </h1>
+          <Link
+            href={`/coach/customers/${customerId}/workouts/new`}
+            className="inline-flex items-center px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Crear Rutina
+          </Link>
+        </div>
         <p className="text-gray-600 dark:text-gray-200">
           Aquí puedes ver y gestionar las rutinas de tu cliente.
         </p>

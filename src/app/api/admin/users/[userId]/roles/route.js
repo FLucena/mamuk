@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import User from '@/lib/models/user';
 import { dbConnect } from '@/lib/db';
 import { hasRole } from '@/lib/utils/permissions';
+import { sortRoles } from '@/lib/utils/roles';
 
 // Removed mock for production build
 
@@ -35,7 +36,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
     
-    return NextResponse.json({ roles: user.roles || [] });
+    return NextResponse.json({ roles: sortRoles(user.roles || []) });
   } catch (error) {
     console.error('Error fetching user roles:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
@@ -88,14 +89,27 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
     
+    // Check if admin is trying to remove their own admin role
+    if (session.user.id === userId && 
+        user.roles.includes('admin') && 
+        !roles.includes('admin')) {
+      return NextResponse.json(
+        { error: 'No se puede remover el rol de administrador de sí mismo' }, 
+        { status: 403 }
+      );
+    }
+    
+    // Sort roles before updating
+    const sortedRoles = sortRoles(roles);
+    
     // Update user roles
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { roles: roles },
+      { roles: sortedRoles },
       { new: true }
     );
     
-    return NextResponse.json({ roles: updatedUser.roles || [] });
+    return NextResponse.json({ roles: sortRoles(updatedUser.roles || []) });
   } catch (error) {
     console.error('Error updating user roles:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });

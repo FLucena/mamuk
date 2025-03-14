@@ -22,9 +22,9 @@ interface WorkoutBlockProps {
   showVideosInline?: boolean;
 }
 
-export default memo(function WorkoutBlock({ 
-  title, 
-  exercises,
+export const WorkoutBlock = memo(function WorkoutBlock({
+  title,
+  exercises = [],
   isExpanded = false,
   expandExercises = false,
   expandedExercises = {},
@@ -33,20 +33,21 @@ export default memo(function WorkoutBlock({
   onAddExercise,
   onUpdateExercise,
   onDeleteExercise,
-  onUpdateTitle,
   onDeleteBlock,
-  showVideosInline = true
+  onUpdateTitle,
+  showVideosInline = false
 }: WorkoutBlockProps) {
   const [expanded, setExpanded] = useState(isExpanded);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [blockTitle, setBlockTitle] = useState(title);
-
+  const [localExpandedExercises, setLocalExpandedExercises] = useState<Record<string, boolean>>({});
+  
   useEffect(() => {
     if (expanded !== isExpanded) {
       setExpanded(isExpanded);
     }
-  }, [isExpanded, expanded]);
+  }, [isExpanded]);
   
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,24 +71,43 @@ export default memo(function WorkoutBlock({
   };
 
   const toggleExerciseExpansion = (exerciseIndex: number) => {
-    if (!setExpandedExercises) return;
-    
-    const exerciseKey = `${title}-${exerciseIndex}`;
-    setExpandedExercises(prev => {
-      const newExpandedExercises = { ...prev };
-      if (newExpandedExercises[exerciseKey]) {
-        delete newExpandedExercises[exerciseKey];
-      } else {
-        newExpandedExercises[exerciseKey] = true;
-      }
-      return newExpandedExercises;
-    });
+    if (setExpandedExercises) {
+      const exerciseKey = `${title}-${exerciseIndex}`;
+      setExpandedExercises(prev => {
+        const newExpandedExercises = { ...prev };
+        newExpandedExercises[exerciseKey] = !isExerciseExpanded(exerciseIndex);
+        return newExpandedExercises;
+      });
+    } else {
+      // Si no hay un manejador global, usar el estado local
+      const exerciseKey = `${exerciseIndex}`;
+      setLocalExpandedExercises(prev => {
+        const newLocalExpanded = { ...prev };
+        newLocalExpanded[exerciseKey] = !isExerciseExpanded(exerciseIndex);
+        return newLocalExpanded;
+      });
+    }
   };
 
   const isExerciseExpanded = (exerciseIndex: number) => {
-    if (!expandedExercises) return expandExercises;
-    const exerciseKey = `${title}-${exerciseIndex}`;
-    return expandedExercises[exerciseKey] ?? expandExercises;
+    if (setExpandedExercises && expandedExercises) {
+      const exerciseKey = `${title}-${exerciseIndex}`;
+      // Si el ejercicio tiene un estado explícito en expandedExercises, usar ese valor
+      if (exerciseKey in expandedExercises) {
+        return expandedExercises[exerciseKey];
+      }
+      // Si no tiene un estado explícito, usar expandExercises
+      return expandExercises;
+    } else {
+      // Si no hay un manejador global, usar el estado local
+      const exerciseKey = `${exerciseIndex}`;
+      // Si el ejercicio tiene un estado explícito en localExpandedExercises, usar ese valor
+      if (exerciseKey in localExpandedExercises) {
+        return localExpandedExercises[exerciseKey];
+      }
+      // Si no tiene un estado explícito, usar expandExercises
+      return expandExercises;
+    }
   };
 
   async function handleAddExercise() {
@@ -259,4 +279,6 @@ export default memo(function WorkoutBlock({
       )}
     </div>
   );
-}); 
+});
+
+export default WorkoutBlock; 

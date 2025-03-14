@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { User } from '@/lib/types/user';
+import { sortRoles } from '@/lib/utils/roles';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -58,26 +59,29 @@ export default function UsersPage() {
           } else {
             setError(`Error al cargar usuarios: ${errorData?.error || response.statusText}`);
           }
-          setLoading(false);
           return;
         }
         
         const data = await response.json();
         
-        // Transform the data to match our interface
-        const transformedUsers = data.map((user: any) => ({
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          roles: user.roles || ['customer']
-        }));
-
-        setUsers(transformedUsers);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching users:', err);
+        // Check if the response has the new structure with pagination
+        const usersList = data.users ? data.users : data;
+        
+        // Ensure roles are sorted consistently
+        setUsers(usersList.map((user: any) => ({
+          ...user,
+          roles: sortRoles(user.roles || [])
+        })));
+        
+        // If we have pagination info, store it
+        if (data.pagination) {
+          console.log(`Loaded ${data.pagination.total} users (page ${data.pagination.page} of ${data.pagination.pages})`);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching users:', error);
         setError('Error al cargar usuarios. Por favor, intenta de nuevo más tarde.');
+      } finally {
         setLoading(false);
       }
     };

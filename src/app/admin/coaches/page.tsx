@@ -5,6 +5,8 @@ import { getAllCoaches } from '@/lib/services/coach';
 import CoachList from '@/components/admin/CoachList';
 import type { Viewport } from 'next';
 import { User } from '@/lib/types/user';
+import Link from 'next/link';
+import { UserPlus } from 'lucide-react';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -33,13 +35,22 @@ export default async function CoachesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-          Gestionar Coaches
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Aquí puedes ver y gestionar los coaches de la plataforma.
-        </p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+            Gestionar Coaches
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Aquí puedes ver y gestionar los coaches de la plataforma.
+          </p>
+        </div>
+        <Link 
+          href="/admin/coaches/assign" 
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <UserPlus className="mr-2 h-5 w-5" />
+          Asignar Clientes
+        </Link>
       </div>
 
       <CoachList users={formattedCoaches} />

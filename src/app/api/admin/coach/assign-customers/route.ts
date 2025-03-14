@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     
     await dbConnect();
     
-    // Verify coach exists - find by userId instead of _id
-    const coach = await Coach.findOne({ userId: new Types.ObjectId(coachId) });
+    // Verify coach exists - find by userId
+    const coach = await Coach.findOne({ userId: coachId });
     
     if (!coach) {
       // If coach doesn't exist, create a new coach record
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     const customerObjectIds = customerIds.map(id => new Types.ObjectId(id));
     const customers = await User.find({
       _id: { $in: customerObjectIds },
-      role: 'customer'
+      roles: { $in: ['customer'] }
     });
     
     if (customers.length !== customerIds.length) {
@@ -76,13 +76,26 @@ export async function POST(request: Request) {
     }
     
     // Update coach's customers list
-    coach.customers = customerObjectIds;
+    // Convertir los IDs existentes a strings para comparación
+    const existingCustomerIds = coach.customers.map((id: Types.ObjectId) => id.toString());
+    
+    // Filtrar los IDs que ya están asignados
+    const newCustomerIds = customerIds.filter(id => !existingCustomerIds.includes(id));
+    
+    // Combinar los IDs existentes con los nuevos
+    const updatedCustomerIds = [
+      ...existingCustomerIds,
+      ...newCustomerIds
+    ].map(id => new Types.ObjectId(id));
+    
+    coach.customers = updatedCustomerIds;
     await coach.save();
     
     return NextResponse.json({ 
       success: true,
       message: 'Clientes asignados correctamente',
-      assignedCount: customerIds.length
+      assignedCount: newCustomerIds.length,
+      totalAssigned: updatedCustomerIds.length
     });
   } catch (error) {
     console.error('Error assigning customers:', error);

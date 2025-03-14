@@ -61,7 +61,7 @@ describe('User Roles API', () => {
   it('should return 401 if user is not an admin', async () => {
     // Setup session with non-admin user
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'user-123', role: 'user', roles: ['user'] }
+      user: { id: 'user-123', roles: ['user'] }
     });
 
     // Setup request and params
@@ -79,7 +79,7 @@ describe('User Roles API', () => {
   it('should return 400 if userId is invalid', async () => {
     // Setup admin session
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'admin-123', role: 'admin', roles: ['admin'] }
+      user: { id: 'admin-123', roles: ['admin'] }
     });
 
     // Setup request with invalid userId
@@ -97,7 +97,7 @@ describe('User Roles API', () => {
   it('should return 400 if roles is not an array', async () => {
     // Setup admin session
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'admin-123', role: 'admin', roles: ['admin'] }
+      user: { id: 'admin-123', roles: ['admin'] }
     });
 
     // Setup request with non-array roles
@@ -115,7 +115,7 @@ describe('User Roles API', () => {
   it('should return 400 if roles is an empty array', async () => {
     // Setup admin session
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'admin-123', role: 'admin', roles: ['admin'] }
+      user: { id: 'admin-123', roles: ['admin'] }
     });
 
     // Setup request with empty roles array
@@ -133,7 +133,7 @@ describe('User Roles API', () => {
   it('should return 404 if user is not found', async () => {
     // Setup admin session
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'admin-123', role: 'admin', roles: ['admin'] }
+      user: { id: 'admin-123', roles: ['admin'] }
     });
 
     // Setup request with valid roles
@@ -188,7 +188,7 @@ describe('User Roles API', () => {
   it('should handle errors and return 500', async () => {
     // Setup admin session
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'admin-123', role: 'admin', roles: ['admin'] }
+      user: { id: 'admin-123', roles: ['admin'] }
     });
 
     // Setup request with valid roles
@@ -219,7 +219,7 @@ describe('User Roles API', () => {
     
     // Setup admin session for PUT
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'admin-123', role: 'admin', roles: ['admin'] }
+      user: { id: 'admin-123', roles: ['admin'] }
     });
 
     // Setup request with multiple roles
@@ -244,7 +244,7 @@ describe('User Roles API', () => {
     
     // Setup admin session for GET
     getServerSession.mockResolvedValueOnce({
-      user: { id: 'admin-123', role: 'admin', roles: ['admin'] }
+      user: { id: 'admin-123', roles: ['admin'] }
     });
 
     // Clear previous mock calls
@@ -266,5 +266,66 @@ describe('User Roles API', () => {
     expect(NextResponse.json).toHaveBeenCalledWith({
       roles: ['admin', 'coach', 'customer']
     });
+  });
+
+  it('should return 400 if roles array is empty', async () => {
+    // Setup session with admin user
+    getServerSession.mockResolvedValueOnce({
+      user: { id: 'admin-123', roles: ['admin'] }
+    });
+
+    // Setup request with empty roles array
+    const mockRequest = { json: jest.fn().mockResolvedValue({ roles: [] }) };
+    const mockParams = { params: { userId: 'user-123' } };
+
+    await PUT(mockRequest, mockParams);
+    
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: 'Se requiere al menos un rol' },
+      { status: 400 }
+    );
+  });
+
+  it('should return 400 if roles array contains invalid roles', async () => {
+    // Setup session with admin user
+    getServerSession.mockResolvedValueOnce({
+      user: { id: 'admin-123', roles: ['admin'] }
+    });
+
+    // Setup request with invalid roles
+    const mockRequest = { json: jest.fn().mockResolvedValue({ roles: ['invalid-role'] }) };
+    const mockParams = { params: { userId: 'user-123' } };
+
+    await PUT(mockRequest, mockParams);
+    
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: 'Roles inválidos' },
+      { status: 400 }
+    );
+  });
+
+  it('should return 403 if trying to remove admin role from self', async () => {
+    // Setup session with admin user
+    getServerSession.mockResolvedValueOnce({
+      user: { id: 'admin-123', roles: ['admin'] }
+    });
+
+    // Setup request with valid roles
+    const mockRequest = { json: jest.fn().mockResolvedValue({ roles: ['coach'] }) };
+    const mockParams = { params: { userId: 'admin-123' } };
+
+    // Mock finding the admin user
+    User.findById.mockResolvedValueOnce({
+      _id: 'admin-123',
+      name: 'Admin User',
+      roles: ['admin']
+    });
+
+    await PUT(mockRequest, mockParams);
+    
+    expect(NextResponse.json).toHaveBeenCalledWith(
+      { error: 'No se puede remover el rol de administrador de sí mismo' },
+      { status: 403 }
+    );
   });
 }); 

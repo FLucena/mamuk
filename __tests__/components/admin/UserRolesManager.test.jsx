@@ -103,7 +103,8 @@ describe('UserRolesManager Component', () => {
     });
     
     // Check if onRolesUpdated was called with the updated roles
-    expect(mockOnRolesUpdated).toHaveBeenCalledWith(['customer', 'admin']);
+    // The roles are sorted by priority: admin first, then coach, then customer
+    expect(mockOnRolesUpdated).toHaveBeenCalledWith(['admin', 'customer']);
   });
   
   it('should call onRolesUpdated when a role is removed', async () => {

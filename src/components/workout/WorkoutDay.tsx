@@ -176,7 +176,7 @@ export default memo(function WorkoutDay({
     setExpanded(prevExpanded => {
       const newExpanded = !prevExpanded;
       if (!newExpanded) {
-        // Si estamos colapsando el día, colapsamos todos sus bloques y ejercicios
+        // Si estamos colapsando el día, colapsamos todos sus bloques
         if (setExpandedBlocks) {
           const newExpandedBlocks = { ...expandedBlocks };
           blocks.forEach((_, index) => {
@@ -185,11 +185,13 @@ export default memo(function WorkoutDay({
           setExpandedBlocks(newExpandedBlocks);
         }
         
+        // Si estamos colapsando el día, colapsamos todos sus ejercicios
         if (setExpandedExercises) {
           const newExpandedExercises = { ...expandedExercises };
           blocks.forEach((block) => {
             block.exercises?.forEach((_, exerciseIndex) => {
-              delete newExpandedExercises[`${block.name}-${exerciseIndex}`];
+              const exerciseKey = `${block.name}-${exerciseIndex}`;
+              newExpandedExercises[exerciseKey] = false; // Explícitamente colapsado
             });
           });
           setExpandedExercises(newExpandedExercises);
@@ -222,7 +224,8 @@ export default memo(function WorkoutDay({
       if (block && block.exercises) {
         const newExpandedExercises = { ...expandedExercises };
         block.exercises.forEach((_, exerciseIndex) => {
-          delete newExpandedExercises[`${block.name}-${exerciseIndex}`];
+          const exerciseKey = `${block.name}-${exerciseIndex}`;
+          newExpandedExercises[exerciseKey] = false; // Explícitamente colapsado
         });
         setExpandedExercises(newExpandedExercises);
       }
@@ -288,6 +291,9 @@ export default memo(function WorkoutDay({
                 title={block.name}
                 exercises={block.exercises}
                 isExpanded={isBlockExpanded(blockIndex)}
+                expandExercises={expandExercises}
+                expandedExercises={expandedExercises}
+                setExpandedExercises={setExpandedExercises}
                 onToggle={() => toggleBlockExpansion(blockIndex)}
                 onAddExercise={onAddExercise ? () => handleAddExercise(blockIndex) : undefined}
                 onUpdateExercise={(exerciseIndex, data) => handleUpdateExercise(blockIndex, exerciseIndex, data)}

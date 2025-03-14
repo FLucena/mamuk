@@ -8,6 +8,7 @@ import EditUserModal from './EditUserModal';
 import DeleteUserModal from './DeleteUserModal';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 import { User, Role } from '@/lib/types/user';
+import { sortRoles } from '@/lib/utils/roles';
 
 interface UserListProps {
   users: User[];
@@ -16,6 +17,7 @@ interface UserListProps {
   selectedCoach?: string;
   onSelectCustomers?: (customerIds: string[]) => void;
   selectedCustomers?: string[];
+  assignedCustomers?: string[];
   onAssignCustomers?: () => Promise<void>;
   assignmentLoading?: boolean;
 }
@@ -28,6 +30,7 @@ export default memo(function UserList({
   selectedCoach,
   onSelectCustomers,
   selectedCustomers = [],
+  assignedCustomers,
   onAssignCustomers,
   assignmentLoading = false
 }: UserListProps) {
@@ -221,8 +224,13 @@ export default memo(function UserList({
                   Acciones
                 </th>
                 {onSelectCoach && (
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Asignar
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Seleccionar Coach
+                  </th>
+                )}
+                {onSelectCustomers && selectedCoach && (
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Asignar Cliente
                   </th>
                 )}
               </tr>
@@ -256,7 +264,7 @@ export default memo(function UserList({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-wrap gap-1">
-                      {user.roles && user.roles.map((role, index) => (
+                      {user.roles && sortRoles(user.roles).map((role, index) => (
                         <span
                           key={index}
                           className={`px-2 py-1 text-xs rounded-full ${
@@ -291,7 +299,7 @@ export default memo(function UserList({
                     </div>
                   </td>
                   {onSelectCoach && (
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       {user.roles?.includes('coach') && (
                         <button
                           onClick={() => onSelectCoach(user)}
@@ -304,18 +312,38 @@ export default memo(function UserList({
                           {selectedCoach === user._id ? 'Seleccionado' : 'Seleccionar'}
                         </button>
                       )}
-                      {user.roles?.includes('customer') && onSelectCustomers && selectedCoach && (
-                        <input
-                          type="checkbox"
-                          checked={selectedCustomers.includes(user._id)}
-                          onChange={() => {
-                            const newSelectedCustomers = selectedCustomers.includes(user._id)
-                              ? selectedCustomers.filter(id => id !== user._id)
-                              : [...selectedCustomers, user._id];
-                            onSelectCustomers(newSelectedCustomers);
-                          }}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
-                        />
+                    </td>
+                  )}
+                  {onSelectCustomers && selectedCoach && (
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {user.roles?.includes('customer') && (
+                        <>
+                          {/* No permitir que un coach se asigne a sí mismo como cliente */}
+                          {user._id === selectedCoach ? (
+                            <span className="text-sm text-gray-500 italic">No disponible</span>
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={selectedCustomers.includes(user._id) || (assignedCustomers && assignedCustomers.includes(user._id))}
+                              disabled={assignedCustomers && assignedCustomers.includes(user._id)}
+                              onChange={() => {
+                                // No hacer nada si ya está asignado
+                                if (assignedCustomers && assignedCustomers.includes(user._id)) return;
+                                
+                                const newSelectedCustomers = selectedCustomers.includes(user._id)
+                                  ? selectedCustomers.filter(id => id !== user._id)
+                                  : [...selectedCustomers, user._id];
+                                onSelectCustomers(newSelectedCustomers);
+                              }}
+                              className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                            />
+                          )}
+                          {assignedCustomers && assignedCustomers.includes(user._id) && (
+                            <span className="ml-2 text-xs text-green-600 dark:text-green-400">
+                              Ya asignado
+                            </span>
+                          )}
+                        </>
                       )}
                     </td>
                   )}

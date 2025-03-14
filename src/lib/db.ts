@@ -11,6 +11,8 @@ interface GlobalMongoose {
   promise: Promise<typeof mongoose> | null;
   isConnecting: boolean;
   connectionStartTime?: number;
+  lastUsed?: number;
+  queryTimes: number[];
 }
 
 declare global {
@@ -19,7 +21,12 @@ declare global {
 
 // Initialize the cached connection
 if (!global.mongoose) {
-  global.mongoose = { conn: null, promise: null, isConnecting: false };
+  global.mongoose = { 
+    conn: null, 
+    promise: null, 
+    isConnecting: false,
+    queryTimes: []
+  };
 }
 
 const cached = global.mongoose;
@@ -63,9 +70,54 @@ if (!cached.conn) {
   });
 }
 
+// Function to track slow queries
+function trackQueryPerformance() {
+  // Skip if mongoose.Query is not available (e.g., in test environment)
+  if (!mongoose.Query || !mongoose.Query.prototype || !mongoose.Query.prototype.exec) {
+    console.warn('MongoDB Query tracking not available - skipping performance monitoring');
+    return;
+  }
+
+  // We'll use a simpler approach without schema plugins to avoid TypeScript errors
+  const originalExec = mongoose.Query.prototype.exec;
+  
+  mongoose.Query.prototype.exec = function(this: mongoose.Query<any, any>) {
+    const startTime = Date.now();
+    const collection = this.model.collection.name;
+    // Access operation type safely
+    const operation = (this as any).op || 'unknown';
+    
+    return originalExec.apply(this, arguments as any).then((result: any) => {
+      const queryTime = Date.now() - startTime;
+      
+      // Store query times for analysis (keep last 100)
+      cached.queryTimes.push(queryTime);
+      if (cached.queryTimes.length > 100) {
+        cached.queryTimes.shift();
+      }
+      
+      // Log slow queries (over 500ms)
+      if (queryTime > 500) {
+        console.warn(`[PERFORMANCE] Slow MongoDB query: ${queryTime}ms`, {
+          operation,
+          collection,
+          filter: JSON.stringify(this.getFilter()),
+        });
+      }
+      
+      return result;
+    });
+  };
+}
+
+// Initialize query performance tracking
+trackQueryPerformance();
+
 export async function dbConnect() {
   // If already connected, return the existing connection
   if (cached.conn) {
+    // Update last used timestamp
+    cached.lastUsed = Date.now();
     return cached.conn;
   }
 
@@ -77,21 +129,22 @@ export async function dbConnect() {
   // Set connecting state
   cached.isConnecting = true;
   cached.connectionStartTime = Date.now();
+  cached.lastUsed = Date.now();
 
   // If no connection promise exists, create one
   if (!cached.promise) {
     const opts = {
       bufferCommands: true,
-      maxPoolSize: 20, // Increased from 10 to handle more concurrent connections
-      minPoolSize: 5,  // Keep a minimum of connections open
-      serverSelectionTimeoutMS: 10000, // Increased from 5000 to allow more time for server selection
+      maxPoolSize: 30, // Increased from 20 to handle more concurrent connections
+      minPoolSize: 10,  // Keep a minimum of connections open
+      serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000, // Add connection timeout
+      connectTimeoutMS: 10000,
       family: 4,
       retryWrites: true,
       retryReads: true,
-      // Add connection timeout handling
-      heartbeatFrequencyMS: 10000, // Check server status every 10 seconds
+      heartbeatFrequencyMS: 10000,
+      autoIndex: process.env.NODE_ENV !== 'production', // Only auto-index in development
     };
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
@@ -102,6 +155,18 @@ export async function dbConnect() {
   try {
     cached.conn = await cached.promise;
     cached.isConnecting = false;
+    
+    // Log connection pool stats in development
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        // @ts-ignore - Accessing internal MongoDB driver properties
+        const poolSize = mongoose.connection.client?.topology?.connections?.length || 0;
+        console.log(`MongoDB connection pool size: ${poolSize}`);
+      } catch (err) {
+        console.log('Could not determine MongoDB connection pool size');
+      }
+    }
+    
     return cached.conn;
   } catch (e) {
     cached.promise = null;
@@ -109,4 +174,29 @@ export async function dbConnect() {
     console.error('Database connection error:', e);
     throw e;
   }
+}
+
+// Get database stats for monitoring
+export function getDbStats() {
+  if (!cached.conn) return null;
+  
+  const avgQueryTime = cached.queryTimes.length > 0 
+    ? cached.queryTimes.reduce((sum, time) => sum + time, 0) / cached.queryTimes.length 
+    : 0;
+  
+  let poolSize = 0;
+  try {
+    // @ts-ignore - Accessing internal MongoDB driver properties
+    poolSize = mongoose.connection.client?.topology?.connections?.length || 0;
+  } catch (err) {
+    console.log('Could not determine MongoDB connection pool size');
+  }
+  
+  return {
+    isConnected: mongoose.connection.readyState === 1,
+    poolSize,
+    avgQueryTime: Math.round(avgQueryTime),
+    lastUsed: cached.lastUsed,
+    slowQueries: cached.queryTimes.filter(time => time > 500).length
+  };
 } 

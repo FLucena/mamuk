@@ -46,7 +46,9 @@ export default memo(function WorkoutDays({
 }: WorkoutDaysProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
-  const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
+  const [expandedBlocks, setExpandedBlocks] = useState<Record<BlockKey, boolean>>({});
+  const [expandedExercises, setExpandedExercises] = useState<Record<string, boolean>>({});
+  const [expandExercises, setExpandExercises] = useState(false);
   const [modalDayIndex, setModalDayIndex] = useState<number | null>(null);
   const [modalBlockIndex, setModalBlockIndex] = useState<number | null>(null);
   const [modalExerciseIndex, setModalExerciseIndex] = useState<number | null>(null);
@@ -54,31 +56,31 @@ export default memo(function WorkoutDays({
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   
   // Estados para edición de nombres
-  const [editingDay, setEditingDay] = useState<number | null>(null);
-  const [editingDayName, setEditingDayName] = useState<string>('');
+  const [editingDayIndex, setEditingDayIndex] = useState<number | null>(null);
+  const [dayName, setDayName] = useState('');
   
   // Handlers para edición de nombres
   const handleDayDoubleClick = (dayIndex: number, currentName: string) => {
-    setEditingDay(dayIndex);
-    setEditingDayName(currentName);
+    setEditingDayIndex(dayIndex);
+    setDayName(currentName);
   };
 
   const handleDayNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setEditingDayName(event.target.value);
+    setDayName(event.target.value);
   };
 
   const handleDayNameSubmit = (dayIndex: number) => {
-    if (editingDayName.trim()) {
-      onUpdateDayName(dayIndex, editingDayName);
+    if (dayName.trim()) {
+      onUpdateDayName(dayIndex, dayName);
     }
-    setEditingDay(null);
+    setEditingDayIndex(null);
   };
 
   const handleDayNameKeyDown = (e: React.KeyboardEvent, dayIndex: number) => {
     if (e.key === 'Enter') {
       handleDayNameSubmit(dayIndex);
     } else if (e.key === 'Escape') {
-      setEditingDay(null);
+      setEditingDayIndex(null);
     }
   };
 
@@ -90,11 +92,16 @@ export default memo(function WorkoutDays({
   };
 
   const toggleBlock = (dayIndex: number, blockIndex: number) => {
-    const key = `${dayIndex}-${blockIndex}`;
-    setExpandedBlocks(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    const blockKey = `${dayIndex}-${blockIndex}` as BlockKey;
+    setExpandedBlocks(prev => {
+      const newExpandedBlocks = { ...prev };
+      if (newExpandedBlocks[blockKey]) {
+        delete newExpandedBlocks[blockKey];
+      } else {
+        newExpandedBlocks[blockKey] = true;
+      }
+      return newExpandedBlocks;
+    });
   };
 
   const expandAll = () => {
@@ -106,13 +113,43 @@ export default memo(function WorkoutDays({
       });
       return acc;
     }, {} as Record<BlockKey, boolean>);
+    
+    const allExercises = days.reduce((acc, _, dayIndex) => {
+      days[dayIndex].blocks.forEach((block, blockIndex) => {
+        if (block.exercises) {
+          block.exercises.forEach((_, exerciseIndex) => {
+            const exerciseKey = `${block.name}-${exerciseIndex}`;
+            acc[exerciseKey] = true;
+          });
+        }
+      });
+      return acc;
+    }, {} as Record<string, boolean>);
+    
     setExpandedDays(allDays);
     setExpandedBlocks(allBlocks);
+    setExpandedExercises(allExercises);
   };
 
   const collapseAll = () => {
-    setExpandedDays({});
-    setExpandedBlocks({});
+    const allDaysCollapsed: Record<number, boolean> = {};
+    const allBlocksCollapsed: Record<BlockKey, boolean> = {};
+    const allExercisesCollapsed: Record<string, boolean> = {};
+    
+    days.forEach((day, dayIndex) => {
+      day.blocks.forEach((block, blockIndex) => {
+        if (block.exercises) {
+          block.exercises.forEach((_, exerciseIndex) => {
+            const exerciseKey = `${block.name}-${exerciseIndex}`;
+            allExercisesCollapsed[exerciseKey] = false;
+          });
+        }
+      });
+    });
+    
+    setExpandedDays(allDaysCollapsed);
+    setExpandedBlocks(allBlocksCollapsed);
+    setExpandedExercises(allExercisesCollapsed);
   };
 
   const openModal = (exercise: Exercise) => {
@@ -223,10 +260,10 @@ export default memo(function WorkoutDays({
           <div key={dayIndex} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
-                {editingDay === dayIndex ? (
+                {editingDayIndex === dayIndex ? (
                   <input
                     type="text"
-                    value={editingDayName}
+                    value={dayName}
                     onChange={handleDayNameChange}
                     onBlur={() => handleDayNameSubmit(dayIndex)}
                     onKeyDown={(e) => handleDayNameKeyDown(e, dayIndex)}
@@ -276,6 +313,9 @@ export default memo(function WorkoutDays({
                       title={block.name}
                       exercises={block.exercises || []}
                       isExpanded={isBlockExpanded}
+                      expandExercises={expandExercises}
+                      expandedExercises={expandedExercises}
+                      setExpandedExercises={setExpandedExercises}
                       onToggle={() => toggleBlock(dayIndex, blockIndex)}
                       onAddExercise={() => handleAddExercise(dayIndex, blockIndex)}
                       onUpdateExercise={(exerciseIndex, data) => 

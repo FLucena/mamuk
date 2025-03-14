@@ -62,6 +62,11 @@ userSchema.index({ roles: 1 });
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ sub: 1 }, { sparse: true });
 
+// Add compound indexes for common queries
+userSchema.index({ roles: 1, name: 1 });
+userSchema.index({ roles: 1, email: 1 });
+userSchema.index({ name: 'text', email: 'text' });
+
 // Add a pre-save hook to ensure roles is always an array
 userSchema.pre('save', function(next) {
   // Ensure roles is an array

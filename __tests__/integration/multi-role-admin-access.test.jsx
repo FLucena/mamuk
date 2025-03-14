@@ -10,11 +10,10 @@ jest.mock('next-auth/react', () => ({
   useSession: jest.fn(() => ({
     data: {
       user: {
-        id: 'multi-role-user',
-        name: 'Multi-Role User',
-        email: 'multi@example.com',
-        role: 'admin', // Primary role
-        roles: ['admin', 'coach', 'customer'], // Multiple roles
+        id: 'admin-123',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        roles: ['admin', 'coach', 'customer'],
       }
     },
     status: 'authenticated'
@@ -42,10 +41,9 @@ jest.mock('next/navigation', () => ({
 // Mock the AuthContext
 const mockAuthContext = createMockAuthContext({
   user: {
-    id: 'multi-role-user',
-    name: 'Multi-Role User',
-    email: 'multi@example.com',
-    role: 'admin',
+    id: 'admin-123',
+    name: 'Admin User',
+    email: 'admin@example.com',
     roles: ['admin', 'coach', 'customer'],
   },
   role: 'admin',
@@ -69,10 +67,9 @@ jest.mock('@/hooks/useAuthRedirect', () => ({
   useAuthRedirect: jest.fn(() => ({
     session: {
       user: {
-        id: 'multi-role-user',
-        name: 'Multi-Role User',
-        email: 'multi@example.com',
-        role: 'admin',
+        id: 'admin-123',
+        name: 'Admin User',
+        email: 'admin@example.com',
         roles: ['admin', 'coach', 'customer'],
       }
     },
@@ -136,7 +133,7 @@ describe('Multi-Role Admin Access', () => {
     render(<MockAchievementsPage />);
     
     expect(screen.getByText('Achievements Page')).toBeInTheDocument();
-    expect(screen.getByText('Welcome, Multi-Role User')).toBeInTheDocument();
+    expect(screen.getByText('Welcome, Admin User')).toBeInTheDocument();
     expect(screen.getByText('Primary Role: admin')).toBeInTheDocument();
     expect(screen.getByTestId('all-roles')).toHaveTextContent('admin, coach, customer');
     

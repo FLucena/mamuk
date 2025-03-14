@@ -5,6 +5,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Edit2, Check, X, Loader } from 'lucide-react';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 import FormErrorBoundary from '@/components/FormErrorBoundary';
+import { sortRoles } from '@/lib/utils/roles';
 
 interface User {
   _id: string;
@@ -50,8 +51,8 @@ export default memo(function EditUserModal({
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   
-  // Initialize selectedRoles from user.roles
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(user.roles || ['customer']);
+  // Initialize selectedRoles from user.roles, ensuring they're sorted
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(sortRoles(user.roles || ['customer']));
   const [primaryRole, setPrimaryRole] = useState<string>(getHighestPriorityRole(user.roles || ['customer']));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,7 +61,7 @@ export default memo(function EditUserModal({
   useEffect(() => {
     setName(user.name);
     setEmail(user.email);
-    setSelectedRoles(user.roles || ['customer']);
+    setSelectedRoles(sortRoles(user.roles || ['customer']));
     setPrimaryRole(getHighestPriorityRole(user.roles || ['customer']));
   }, [user]);
 
@@ -69,7 +70,7 @@ export default memo(function EditUserModal({
     if (isOpen) {
       setName(user.name);
       setEmail(user.email);
-      setSelectedRoles(user.roles || ['customer']);
+      setSelectedRoles(sortRoles(user.roles || ['customer']));
       setPrimaryRole(getHighestPriorityRole(user.roles || ['customer']));
       setErrors({});
       setIsSubmitting(false);
@@ -98,12 +99,11 @@ export default memo(function EditUserModal({
     
     // Ensure at least one role is selected
     if (newRoles.length === 0) {
-      // If trying to remove the last role, don't allow it
-      return;
+      newRoles = ['customer'];
     }
     
-    setSelectedRoles(newRoles);
-    // Primary role will be updated by the useEffect
+    // Sort roles before setting state
+    setSelectedRoles(sortRoles(newRoles));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -167,7 +167,7 @@ export default memo(function EditUserModal({
   const resetForm = useCallback(() => {
     setName(user.name);
     setEmail(user.email);
-    setSelectedRoles(user.roles || ['customer']);
+    setSelectedRoles(sortRoles(user.roles || ['customer']));
     setPrimaryRole(getHighestPriorityRole(user.roles || ['customer']));
     setErrors({});
     setIsSubmitting(false);

@@ -5,6 +5,7 @@ import UserList from '@/components/admin/UserList';
 import ArchivedRoutines from '@/components/admin/ArchivedRoutines';
 import { Role, User } from '@/lib/types/user';
 import { toast } from 'react-hot-toast';
+import { sortRoles } from '@/lib/utils/roles';
 
 // Interfaz para usuarios con rol específico
 interface UserWithRole extends User {
@@ -43,6 +44,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const [error, setError] = useState<string | null>(null);
   const [selectedCoach, setSelectedCoach] = useState<User | null>(null);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [assignedCustomers, setAssignedCustomers] = useState<string[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
 
   // Cargar datos al montar el componente
@@ -72,6 +74,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   // Obtener usuarios
   const fetchUsers = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/admin/users');
       
       if (!response.ok) {
@@ -80,13 +83,29 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       
       const data = await response.json();
       
-      setUsers(data.map((user: any) => ({
+      // Check if the response has the new structure with pagination
+      const usersList = data.users ? data.users : data;
+      
+      setUsers(usersList.map((user: any) => ({
         ...user,
-        roles: user.roles || []
+        roles: sortRoles(user.roles || [])
       })));
+      
+      // If we have pagination info, store it
+      if (data.pagination) {
+        console.log(`Loaded ${data.pagination.total} users (page ${data.pagination.page} of ${data.pagination.pages})`);
+      }
+      
+      // Log performance data if available
+      const executionTime = response.headers.get('X-Execution-Time');
+      if (executionTime) {
+        console.log(`API execution time: ${executionTime}ms`);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,9 +132,24 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
     fetchData();
   };
 
-  const handleSelectCoach = (coach: User) => {
+  const handleSelectCoach = async (coach: User) => {
     setSelectedCoach(coach);
     setSelectedCustomers([]);
+    
+    // Fetch assigned customers for this coach
+    try {
+      const response = await fetch(`/api/admin/coaches/${coach._id}/customers`);
+      if (response.ok) {
+        const data = await response.json();
+        setAssignedCustomers(data.customers || []);
+      } else {
+        console.error('Error fetching assigned customers');
+        setAssignedCustomers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching assigned customers:', error);
+      setAssignedCustomers([]);
+    }
   };
 
   const handleSelectCustomers = (customerIds: string[]) => {
@@ -127,7 +161,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
     
     setAssignmentLoading(true);
     try {
-      const response = await fetch('/api/admin/assign-customers', {
+      const response = await fetch('/api/admin/coach/assign-customers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,12 +176,22 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
         throw new Error('Failed to assign customers');
       }
       
-      toast.success(`${selectedCustomers.length} customers assigned to ${selectedCoach.name}`);
-      setSelectedCoach(null);
+      const data = await response.json();
+      
+      // Actualizar la lista de clientes asignados
+      if (selectedCoach) {
+        const response = await fetch(`/api/admin/coaches/${selectedCoach._id}/customers`);
+        if (response.ok) {
+          const data = await response.json();
+          setAssignedCustomers(data.customers || []);
+        }
+      }
+      
+      toast.success(`${selectedCustomers.length} clientes asignados a ${selectedCoach.name}`);
       setSelectedCustomers([]);
     } catch (error) {
       console.error('Error assigning customers:', error);
-      toast.error('Failed to assign customers');
+      toast.error('Error al asignar clientes');
     } finally {
       setAssignmentLoading(false);
     }
@@ -221,6 +265,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
               selectedCoach={selectedCoach?._id} 
               onSelectCustomers={handleSelectCustomers}
               selectedCustomers={selectedCustomers}
+              assignedCustomers={assignedCustomers}
               onAssignCustomers={assignCustomersToCoach}
               assignmentLoading={assignmentLoading}
             />

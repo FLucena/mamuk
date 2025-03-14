@@ -11,7 +11,7 @@ import { Workout } from '@/lib/models/workout';
 import { dbConnect } from '@/lib/db';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { getCurrentUserRole } from '@/lib/utils/permissions';
+import { getCurrentUserRole, getCurrentUserRoles } from '@/lib/utils/permissions';
 import SchemaOrg from '@/components/SchemaOrg';
 import { generateWorkoutSchema } from '@/lib/utils/schema';
 import { Metadata } from 'next';
@@ -32,11 +32,16 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
 
   const { id } = await params;
   
-  const workoutDoc = await getWorkout(id) as any;
+  const workoutDoc = await getWorkout(id, session.user.id) as any;
   
   if (!workoutDoc) {
     redirect('/workout');
   }
+
+  // Obtener los roles del usuario
+  const userRoles = await getCurrentUserRoles(session.user.id);
+  const isAdmin = userRoles.includes('admin');
+  const isCoach = userRoles.includes('coach');
 
   // Serialize the workout data to ensure all MongoDB objects are converted to plain objects
   const workout = JSON.parse(JSON.stringify({
@@ -114,6 +119,8 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
           deleteWorkout={actions.deleteWorkout}
           updateDayName={actions.updateDayName}
           updateBlockName={actions.updateBlockName}
+          isAdmin={isAdmin}
+          isCoach={isCoach}
         />
       </Suspense>
     </>
@@ -123,10 +130,13 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
 // Generar metadatos dinámicos para la página
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   try {
+    console.log(`[DEBUG] Generando metadatos para workout ${params.id}`);
+    
     await dbConnect();
     const workout = await Workout.findById(params.id).lean();
     
     if (!workout) {
+      console.log(`[DEBUG] Workout no encontrado para metadatos: ${params.id}`);
       return generatePageMetadata({
         title: 'Rutina no encontrada',
         description: 'La rutina de entrenamiento que buscas no existe o ha sido eliminada.',
@@ -139,6 +149,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     const workoutData = workout as any;
     const workoutName = workoutData.name || 'Rutina de entrenamiento';
     const workoutDescription = workoutData.description || 'Detalles de la rutina de entrenamiento personalizada en Mamuk.';
+    
+    console.log(`[DEBUG] Metadatos generados para workout: ${workoutName}`);
     
     return generatePageMetadata({
       title: workoutName,

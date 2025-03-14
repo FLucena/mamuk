@@ -80,17 +80,34 @@ export function hasAnyRole(user: UserWithRole, roles: string[]): boolean {
 
 /**
  * Obtiene el rol principal de un usuario desde la base de datos
- * @param email El email del usuario
+ * @param userId El ID o email del usuario
  * @returns El rol principal del usuario o null si no se encuentra
  */
-export async function getCurrentUserRole(email: string): Promise<string | null> {
-  if (!email) {
+export async function getCurrentUserRole(userId: string): Promise<string | null> {
+  if (!userId) {
     return null;
   }
   
   try {
     await dbConnect();
-    const user = await User.findOne({ email }).select('roles');
+    
+    let user = null;
+    
+    // Intentar buscar por ID primero
+    if (Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId).select('roles');
+    }
+    
+    // Si no se encuentra, intentar buscar por email
+    if (!user) {
+      user = await User.findOne({ email: userId }).select('roles');
+    }
+    
+    // Si aún no se encuentra, intentar buscar por sub (para OAuth)
+    if (!user) {
+      user = await User.findOne({ sub: userId }).select('roles');
+    }
+    
     if (!user) return null;
     
     // If roles array exists, return the highest priority role
@@ -121,17 +138,34 @@ function getHighestPriorityRole(roles: string[]): string {
 
 /**
  * Obtiene los roles actualizados de un usuario desde la base de datos
- * @param email El email del usuario
+ * @param userId El ID o email del usuario
  * @returns Array con los roles del usuario o array vacío si no se encuentra
  */
-export async function getCurrentUserRoles(email: string): Promise<string[]> {
-  if (!email) {
+export async function getCurrentUserRoles(userId: string): Promise<string[]> {
+  if (!userId) {
     return [];
   }
   
   try {
     await dbConnect();
-    const user = await User.findOne({ email }).select('roles');
+    
+    let user = null;
+    
+    // Intentar buscar por ID primero
+    if (Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId).select('roles');
+    }
+    
+    // Si no se encuentra, intentar buscar por email
+    if (!user) {
+      user = await User.findOne({ email: userId }).select('roles');
+    }
+    
+    // Si aún no se encuentra, intentar buscar por sub (para OAuth)
+    if (!user) {
+      user = await User.findOne({ sub: userId }).select('roles');
+    }
+    
     if (!user) return [];
     
     // If roles array exists, return it
@@ -148,17 +182,34 @@ export async function getCurrentUserRoles(email: string): Promise<string[]> {
 
 /**
  * Gets all roles for a user
- * @param email The user's email
+ * @param userId The user's ID or email
  * @returns Array of roles or empty array if not found
  */
-export async function getUserRoles(email: string): Promise<string[]> {
-  if (!email) {
+export async function getUserRoles(userId: string): Promise<string[]> {
+  if (!userId) {
     return [];
   }
   
   try {
     await dbConnect();
-    const user = await User.findOne({ email }).select('roles');
+    
+    let user = null;
+    
+    // Intentar buscar por ID primero
+    if (Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId).select('roles');
+    }
+    
+    // Si no se encuentra, intentar buscar por email
+    if (!user) {
+      user = await User.findOne({ email: userId }).select('roles');
+    }
+    
+    // Si aún no se encuentra, intentar buscar por sub (para OAuth)
+    if (!user) {
+      user = await User.findOne({ sub: userId }).select('roles');
+    }
+    
     if (!user) return [];
     
     if (user.roles && Array.isArray(user.roles)) {

@@ -3,13 +3,14 @@ import userEvent from '@testing-library/user-event';
 import EditUserModal from '../EditUserModal';
 import '@testing-library/jest-dom';
 import { waitForAnimations } from '@/test/setup';
+import { Role } from '@/types/models';
 
 describe('EditUserModal', () => {
   const mockUser = {
-    id: '1',
+    _id: '1',
     name: 'John Doe',
     email: 'john@example.com',
-    roles: ['customer']
+    roles: ['customer'] as Role[]
   };
 
   const mockProps = {

@@ -6,6 +6,7 @@ import { dbConnect } from '@/lib/db';
 import { validateMongoId } from '@/lib/utils/security';
 import { Types } from 'mongoose';
 import { UserRole } from '@/lib/models/user';
+import { sortRoles } from '@/lib/utils/roles';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -82,7 +83,7 @@ export async function GET(
       name: user.name,
       email: user.email,
       image: user.image,
-      roles: user.roles || ['customer']
+      roles: sortRoles(user.roles || ['customer'])
     };
 
     return NextResponse.json(transformedUser);
@@ -132,7 +133,7 @@ export async function PUT(
 
     // Ensure roles is an array and contains at least one role
     const userRoles = Array.isArray(roles) && roles.length > 0 
-      ? roles 
+      ? sortRoles(roles) 
       : ['customer'];
 
     const user = await User.findByIdAndUpdate(
@@ -158,7 +159,7 @@ export async function PUT(
       name: user.name,
       email: user.email,
       image: user.image,
-      roles: user.roles || ['customer']
+      roles: sortRoles(user.roles || ['customer'])
     };
 
     return NextResponse.json(transformedUser);

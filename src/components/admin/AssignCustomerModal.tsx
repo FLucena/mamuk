@@ -47,17 +47,21 @@ export default function AssignCustomerModal({
   const fetchCustomers = async () => {
     try {
       setIsLoading(true);
-      setError(null);
       const response = await fetch('/api/admin/users?role=customer');
+      
       if (!response.ok) {
-        throw new Error('Error al cargar clientes');
+        throw new Error('Failed to fetch customers');
       }
+      
       const data = await response.json();
-      setCustomers(data);
-    } catch (err) {
-      console.error('Error fetching customers:', err);
-      setError('Error al cargar clientes. Por favor, intenta de nuevo.');
-      toast.error('Error al cargar clientes');
+      
+      // Check if the response has the new structure with pagination
+      const customersList = data.users ? data.users : data;
+      
+      setCustomers(customersList);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      setError('Error al cargar los clientes');
     } finally {
       setIsLoading(false);
     }
