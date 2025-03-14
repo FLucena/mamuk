@@ -59,7 +59,13 @@
   ],
   "redirects": [
     {
-      "source": "https://mamuk.com.ar/:path*",
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "mamuk.com.ar"
+        }
+      ],
       "destination": "https://www.mamuk.com.ar/:path*",
       "permanent": true
     }
