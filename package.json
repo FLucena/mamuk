@@ -23,8 +23,6 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:ci": "npm run test && npm run test:e2e",
-    "test:page-content": "node scripts/test-page-content.js",
-    "check:page-content": "node scripts/check-page-content.js",
     "test:navigation": "node disable-throttling.js",
     "migrate:roles": "node scripts/run-role-migration.js",
     "fix:roles": "node scripts/fix-user-roles.js",
