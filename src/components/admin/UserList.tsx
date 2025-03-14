@@ -2,27 +2,35 @@
 
 import { useState, useEffect, memo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Edit2, Trash2 } from 'lucide-react';
+import { User as UserIcon, Mail, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import EditUserModal from './EditUserModal';
 import DeleteUserModal from './DeleteUserModal';
 import { IconWrapper } from '@/components/ui/IconWrapper';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  image?: string;
-  roles: string[];
-}
+import { User, Role } from '@/lib/types/user';
 
 interface UserListProps {
   users: User[];
   onRefresh?: () => void;
+  onSelectCoach?: (coach: User) => void;
+  selectedCoach?: string;
+  onSelectCustomers?: (customerIds: string[]) => void;
+  selectedCustomers?: string[];
+  onAssignCustomers?: () => Promise<void>;
+  assignmentLoading?: boolean;
 }
 
 // Memoize the UserList component to prevent unnecessary re-renders
-export default memo(function UserList({ users: initialUsers, onRefresh }: UserListProps) {
+export default memo(function UserList({ 
+  users: initialUsers, 
+  onRefresh,
+  onSelectCoach,
+  selectedCoach,
+  onSelectCustomers,
+  selectedCustomers = [],
+  onAssignCustomers,
+  assignmentLoading = false
+}: UserListProps) {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -77,7 +85,7 @@ export default memo(function UserList({ users: initialUsers, onRefresh }: UserLi
       // Update the user in the local state
       setUsers(prevUsers => 
         prevUsers.map(user => 
-          user.id === userId 
+          user._id === userId 
             ? { 
                 ...user, 
                 name: updatedUser.name, 
@@ -108,33 +116,35 @@ export default memo(function UserList({ users: initialUsers, onRefresh }: UserLi
     if (!selectedUser) return;
     
     try {
-      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      // Ensure we have a valid ID for the API call
+      const userId = selectedUser._id;
+      if (!userId) {
+        toast.error('ID de usuario no válido');
+        return;
+      }
+      
+      setIsLoading(true);
+      const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
       });
-
+      
       if (!response.ok) {
-        throw new Error('Failed to delete user');
+        throw new Error('Error al eliminar el usuario');
       }
-
-      // Remove the user from the local state
-      setUsers(prevUsers => 
-        prevUsers.filter(user => user.id !== selectedUser.id)
-      );
-
-      setShowDeleteModal(false);
-      toast.success('Usuario eliminado exitosamente');
+      
+      toast.success('Usuario eliminado correctamente');
       
       // Call onRefresh if provided
       if (onRefresh) {
         onRefresh();
       }
       
-      // Return the response to indicate success
-      return response;
+      setShowDeleteModal(false);
     } catch (error) {
-      toast.error('Error al eliminar usuario');
-      // Re-throw the error so the calling component can handle it
-      throw error;
+      console.error('Error deleting user:', error);
+      toast.error('Error al eliminar el usuario');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -181,96 +191,169 @@ export default memo(function UserList({ users: initialUsers, onRefresh }: UserLi
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {users.map((user) => {
-          // Get all roles
-          const allRoles = user.roles || [];
-          // Sort roles by priority
-          const sortedRoles = sortRolesByPriority(allRoles);
-          // Primary role should be the highest priority one
-          const primaryRole = sortedRoles[0];
-          // Secondary roles are all other roles
-          const secondaryRoles = sortedRoles.slice(1);
-          
-          return (
-            <div
-              key={user.id || (user as any)._id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
-            >
-              <div className="flex items-center space-x-4 mb-4">
-                {user.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.name}
-                    className="w-12 h-12 rounded-full"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                    <User className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{user.name}</h3>
-                  <div className="flex items-center text-gray-500 dark:text-gray-400">
-                    <Mail className="w-4 h-4 mr-1" />
-                    <span className="text-sm">{user.email}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                {/* Display primary role with a star */}
-                {primaryRole && (
-                  <span
-                    key={`primary-${primaryRole}`}
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                      primaryRole
-                    )}`}
-                  >
-                    <span className="mr-1">★</span> {getRoleLabel(primaryRole)}
-                  </span>
-                )}
-                
-                {/* Display secondary roles */}
-                {secondaryRoles.map(role => (
-                  <span
-                    key={role}
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                      role
-                    )}`}
-                  >
-                    {getRoleLabel(role)}
-                  </span>
-                ))}
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => handleEditClick(user)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-full transition-colors"
-                  aria-label={`Edit ${user.name}`}
-                >
-                  <IconWrapper icon={Edit2} className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleDeleteClick(user)}
-                  className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-full transition-colors"
-                  aria-label={`Delete ${user.name}`}
-                >
-                  <IconWrapper icon={Trash2} className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-
-        {users.length === 0 && (
-          <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
-            No hay usuarios registrados aún.
-          </div>
-        )}
+      <div className="mb-4 flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Usuarios</h2>
+        <button
+          onClick={() => router.push('/admin/users/new')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Nuevo Usuario
+        </button>
       </div>
 
+      {/* Display users in a table */}
+      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Table header */}
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Usuario
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Email
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Roles
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Acciones
+                </th>
+                {onSelectCoach && (
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Asignar
+                  </th>
+                )}
+              </tr>
+            </thead>
+            
+            {/* Table body */}
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {users.map((user) => (
+                <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10 bg-gray-100 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                        {user.image ? (
+                          <img className="h-10 w-10 rounded-full" src={user.image} alt={user.name} />
+                        ) : (
+                          <IconWrapper icon={UserIcon} className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                        )}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user.name}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <IconWrapper icon={Mail} className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-wrap gap-1">
+                      {user.roles && user.roles.map((role, index) => (
+                        <span
+                          key={index}
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            role === 'admin'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                              : role === 'coach'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          }`}
+                        >
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditClick(user)}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        aria-label="Edit user"
+                      >
+                        <IconWrapper icon={Edit2} className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(user)}
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        aria-label="Delete user"
+                      >
+                        <IconWrapper icon={Trash2} className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </td>
+                  {onSelectCoach && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.roles?.includes('coach') && (
+                        <button
+                          onClick={() => onSelectCoach(user)}
+                          className={`px-3 py-1 rounded text-white text-sm ${
+                            selectedCoach === user._id
+                              ? 'bg-blue-700 hover:bg-blue-800'
+                              : 'bg-blue-500 hover:bg-blue-600'
+                          }`}
+                        >
+                          {selectedCoach === user._id ? 'Seleccionado' : 'Seleccionar'}
+                        </button>
+                      )}
+                      {user.roles?.includes('customer') && onSelectCustomers && selectedCoach && (
+                        <input
+                          type="checkbox"
+                          checked={selectedCustomers.includes(user._id)}
+                          onChange={() => {
+                            const newSelectedCustomers = selectedCustomers.includes(user._id)
+                              ? selectedCustomers.filter(id => id !== user._id)
+                              : [...selectedCustomers, user._id];
+                            onSelectCustomers(newSelectedCustomers);
+                          }}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                        />
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Assignment button */}
+      {onAssignCustomers && selectedCoach && selectedCustomers.length > 0 && (
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={onAssignCustomers}
+            disabled={assignmentLoading}
+            className={`px-4 py-2 rounded-md text-white font-medium ${
+              assignmentLoading
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {assignmentLoading ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Asignando...
+              </span>
+            ) : (
+              `Asignar ${selectedCustomers.length} cliente${selectedCustomers.length !== 1 ? 's' : ''}`
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Modals */}
       {selectedUser && (
         <>
           <EditUserModal
@@ -280,11 +363,17 @@ export default memo(function UserList({ users: initialUsers, onRefresh }: UserLi
               setSelectedUser(null);
             }}
             onConfirm={(data) => {
-              if (selectedUser && selectedUser.id) {
-                handleEditUser(selectedUser.id, data);
+              if (selectedUser) {
+                const userId = selectedUser._id;
+                if (userId) {
+                  handleEditUser(userId, data);
+                } else {
+                  console.error('Cannot update user: userId is undefined');
+                  toast.error('Error al actualizar el usuario: ID no válido');
+                }
               } else {
-                console.error('Cannot update user: userId is undefined');
-                toast.error('Error al actualizar el usuario: ID no válido');
+                console.error('Cannot update user: selectedUser is null');
+                toast.error('Error al actualizar el usuario: Usuario no seleccionado');
               }
             }}
             user={{

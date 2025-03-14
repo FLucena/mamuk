@@ -66,12 +66,11 @@ export default function UsersPage() {
         
         // Transform the data to match our interface
         const transformedUsers = data.map((user: any) => ({
-          id: user._id || user.id,
+          _id: user._id,
           name: user.name,
           email: user.email,
           image: user.image,
-          role: user.role,
-          roles: user.roles || [user.role]
+          roles: user.roles || ['customer']
         }));
 
         setUsers(transformedUsers);

@@ -5,8 +5,15 @@ import { initFontOptimization } from '@/utils/fontOptimizer';
 import { monitorMemoryUsage } from '@/utils/memoryMonitor';
 import { initServiceWorker } from '@/utils/serviceWorkerRegistration';
 
+interface FontPreloadOptions {
+  path: string;
+  as: string;
+  type: string;
+  crossOrigin?: string;
+}
+
 interface PerformanceOptimizerProps {
-  criticalFonts?: string[];
+  criticalFonts?: (string | FontPreloadOptions)[];
   enableServiceWorker?: boolean;
   enableMemoryMonitoring?: boolean;
   memoryCheckInterval?: number;

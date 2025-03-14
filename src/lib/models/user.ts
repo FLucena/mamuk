@@ -23,7 +23,6 @@ const userSchema = new mongoose.Schema<IUser>({
   email: {
     type: String,
     required: true,
-    unique: true,
   },
   emailVerified: {
     type: Date,
@@ -47,8 +46,6 @@ const userSchema = new mongoose.Schema<IUser>({
   // Google-specific fields
   sub: {
     type: String,
-    unique: true,
-    sparse: true,
     required: false
   },
   provider: {

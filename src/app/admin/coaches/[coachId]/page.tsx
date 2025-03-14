@@ -61,7 +61,7 @@ export default async function CoachPage({ params }: CoachPageProps) {
   const coach = {
     id: (coachData as MongoDBCoach)._id.toString(),
     userId: {
-      id: (coachData as MongoDBCoach).userId?._id?.toString() || '',
+      _id: (coachData as MongoDBCoach).userId?._id?.toString() || '',
       name: (coachData as MongoDBCoach).userId?.name || 'Sin nombre',
       email: (coachData as MongoDBCoach).userId?.email || 'Sin email',
       image: (coachData as MongoDBCoach).userId?.image

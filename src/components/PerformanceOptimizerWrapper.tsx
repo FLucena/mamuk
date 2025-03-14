@@ -2,8 +2,15 @@
 
 import PerformanceOptimizer from './PerformanceOptimizer';
 
+interface FontPreloadOptions {
+  path: string;
+  as: string;
+  type: string;
+  crossOrigin?: string;
+}
+
 interface PerformanceOptimizerWrapperProps {
-  criticalFonts?: string[];
+  criticalFonts?: (string | FontPreloadOptions)[];
   enableServiceWorker?: boolean;
   enableMemoryMonitoring?: boolean;
   memoryCheckInterval?: number;

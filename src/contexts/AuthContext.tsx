@@ -59,8 +59,8 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
     // Handle the case where roles might not exist on the session user
     const user = session?.user;
     
-    // Debug log in development
-    if (process.env.NODE_ENV === 'development' && user) {
+    // Debug log only if AUTH_DEBUG is enabled
+    if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true' && user) {
       console.log('AuthContext: Session user roles:', {
         roles: user.roles,
         isArray: Array.isArray(user.roles),
@@ -86,8 +86,8 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
     const isCoach = isAdmin || roles.includes('coach');
     const isCustomer = roles.includes('customer');
 
-    // Debug log in development
-    if (process.env.NODE_ENV === 'development') {
+    // Debug log only if AUTH_DEBUG is enabled
+    if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true') {
       console.log('AuthContext: Updating state with roles:', {
         roles,
         isAdmin,

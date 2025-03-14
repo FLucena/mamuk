@@ -7,7 +7,7 @@ import { IconWrapper } from '@/components/ui/IconWrapper';
 import FormErrorBoundary from '@/components/FormErrorBoundary';
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   image?: string;

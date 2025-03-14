@@ -20,19 +20,15 @@ export async function GET(request: NextRequest) {
     const query = roleFilter.length > 0 ? { roles: { $in: roleFilter } } : {};
     const users = await User.find(query).lean<IUser[]>();
 
-    const validatedUsers = users.map(user => {
-      if (!user._id || !validateMongoId(user._id.toString())) {
-        throw new Error('ID de usuario inválido');
-      }
-      return {
-        id: user._id.toString(),
-        name: user.name || '',
-        email: user.email || '',
-        roles: user.roles || []
-      };
-    });
+    const transformedUsers = users.map(user => ({
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      roles: user.roles || ['customer']
+    }));
 
-    return NextResponse.json(validatedUsers);
+    return NextResponse.json(transformedUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

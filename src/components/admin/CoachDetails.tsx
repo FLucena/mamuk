@@ -9,7 +9,7 @@ import DeleteCoachModal from './DeleteCoachModal';
 import AddCustomerModal from './AddCustomerModal';
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   image?: string;

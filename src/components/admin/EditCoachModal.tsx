@@ -3,9 +3,9 @@
 import { Fragment, useState, useCallback, memo } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Edit2 } from 'lucide-react';
-import { MongoUser } from '@/lib/types/user';
+import { User } from '@/lib/types/user';
 
-interface Coach extends MongoUser {
+interface Coach extends User {
   specialties?: string[];
   bio?: string;
   customers?: string[];

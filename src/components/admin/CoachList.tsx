@@ -2,24 +2,24 @@
 
 import { useState, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Edit2, Trash2, Users, UserPlus } from 'lucide-react';
+import { User as UserIcon, Mail, Edit2, Trash2, Users, UserPlus } from 'lucide-react';
 import EditCoachModal from './EditCoachModal';
 import DeleteCoachModal from './DeleteCoachModal';
 import Image from 'next/image';
-import { MongoUser } from '@/lib/types/user';
+import { User } from '@/lib/types/user';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import AssignCustomerModal from './AssignCustomerModal';
 
-interface Coach extends MongoUser {
+interface Coach extends User {
   specialties?: string[];
   bio?: string;
   customers?: string[];
 }
 
 interface CoachListProps {
-  users?: MongoUser[];
+  users?: User[];
   isLoading?: boolean;
 }
 
@@ -200,7 +200,7 @@ export default memo(function CoachList({ users = [], isLoading = false }: CoachL
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                          <User className="h-6 w-6 text-gray-400 dark:text-gray-300" />
+                          <UserIcon className="h-6 w-6 text-gray-400 dark:text-gray-300" />
                         </div>
                       )}
                     </div>

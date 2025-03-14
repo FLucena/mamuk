@@ -54,13 +54,13 @@ export async function GET(request: Request) {
       .select('name email image roles')
       .lean<DbUser[]>();
 
-    // Transform _id to id for consistency
+    // Transformar los datos para la respuesta
     const transformedUsers = users.map(user => ({
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email,
       image: user.image,
-      roles: user.roles || []
+      roles: user.roles || ['customer']
     }));
 
     return NextResponse.json(transformedUsers);

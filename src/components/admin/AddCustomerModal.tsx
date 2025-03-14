@@ -5,7 +5,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { UserPlus, Search } from 'lucide-react';
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   image?: string;
@@ -26,34 +26,45 @@ export default memo(function AddCustomerModal({
   onConfirm,
   existingCustomerIds,
 }: AddCustomerModalProps) {
-  const [searchTerm, setSearchTerm] = useState('');
   const [customers, setCustomers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Define searchCustomers function
+  const searchCustomers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/admin/users?role=customer&search=${searchTerm}`);
+      if (!response.ok) {
+        throw new Error('Error buscando clientes');
+      }
+      const data = await response.json();
+      // Filter out customers that are already assigned and ensure each customer has an ID
+      setCustomers(data.filter((user: User) => !existingCustomerIds.includes(user._id)));
+    } catch (error) {
+      console.error('Error:', error);
+      // TODO: Mostrar error al usuario
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchTerm, existingCustomerIds]);
 
   useEffect(() => {
-    if (isOpen && searchTerm.length >= 3) {
-      const searchCustomers = async () => {
-        setIsLoading(true);
-        try {
-          const response = await fetch(`/api/admin/users?role=customer&search=${searchTerm}`);
-          if (!response.ok) {
-            throw new Error('Error buscando clientes');
-          }
-          const data = await response.json();
-          setCustomers(data.filter((user: User) => !existingCustomerIds.includes(user.id)));
-        } catch (error) {
-          console.error('Error:', error);
-          // TODO: Mostrar error al usuario
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      const debounce = setTimeout(searchCustomers, 300);
-      return () => clearTimeout(debounce);
+    if (isOpen) {
+      setSelectedCustomerId(null);
+      setSearchTerm('');
+      if (searchTerm.trim() === '') {
+        searchCustomers();
+      }
     }
-  }, [isOpen, searchTerm, existingCustomerIds]);
+  }, [isOpen, searchTerm, searchCustomers]);
+
+  useEffect(() => {
+    if (isOpen) {
+      searchCustomers();
+    }
+  }, [isOpen, searchCustomers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +72,15 @@ export default memo(function AddCustomerModal({
       onConfirm(selectedCustomerId);
     }
   };
+
+  // Get filtered customers
+  const filteredCustomers = customers.filter(customer => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      customer.name.toLowerCase().includes(searchLower) ||
+      customer.email.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -74,7 +94,7 @@ export default memo(function AddCustomerModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className="fixed inset-0 bg-black bg-opacity-25 dark:bg-opacity-50" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -89,110 +109,91 @@ export default memo(function AddCustomerModal({
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-                    <UserPlus
-                      className="h-6 w-6 text-blue-600 dark:text-blue-200"
-                      aria-hidden="true"
+                <Dialog.Title
+                  as="h3"
+                  className="text-lg font-medium leading-6 text-gray-900 dark:text-white flex items-center"
+                >
+                  <UserPlus className="mr-2 h-5 w-5" /> Agregar Cliente
+                </Dialog.Title>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Selecciona un cliente para asignar a este coach.
+                  </p>
+                </div>
+
+                <div className="mt-4">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-white"
+                      placeholder="Buscar clientes..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
                 </div>
 
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 text-center mb-4"
-                >
-                  Agregar Cliente
-                </Dialog.Title>
-
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-4">
-                    <div className="relative">
-                      <input
-                        id="customer-search-input"
-                        name="customer-search"
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Buscar cliente por nombre o email..."
-                        className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                      />
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <div className="mt-4 max-h-60 overflow-y-auto">
+                  {isLoading ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                     </div>
-                  </div>
-
-                  <div className="mb-6 max-h-60 overflow-y-auto">
-                    {isLoading ? (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Buscando...
-                      </div>
-                    ) : customers.length > 0 ? (
-                      <div className="space-y-2">
-                        {customers.map((customer) => (
-                          <label
-                            key={customer.id}
-                            className={`flex items-center p-3 rounded-lg cursor-pointer ${
-                              selectedCustomerId === customer.id
-                                ? 'bg-blue-50 dark:bg-blue-900'
-                                : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="customer"
-                              value={customer.id}
-                              checked={selectedCustomerId === customer.id}
-                              onChange={() => setSelectedCustomerId(customer.id)}
-                              className="sr-only"
-                            />
-                            <div className="flex items-center flex-1">
-                              <div className="ml-3">
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                  {customer.name}
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                  {customer.email}
-                                </p>
-                              </div>
+                  ) : filteredCustomers.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                      {searchTerm ? 'No se encontraron clientes con ese término de búsqueda' : 'No hay clientes disponibles para asignar'}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredCustomers.map((customer) => (
+                        <div
+                          key={customer._id}
+                          className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                            selectedCustomerId === customer._id
+                              ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent'
+                          }`}
+                          onClick={() => setSelectedCustomerId(customer._id)}
+                        >
+                          <input
+                            type="radio"
+                            name="customer"
+                            value={customer._id}
+                            checked={selectedCustomerId === customer._id}
+                            onChange={() => setSelectedCustomerId(customer._id)}
+                            className="sr-only"
+                          />
+                          <div className="flex items-center flex-1">
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{customer.email}</p>
                             </div>
-                            <div
-                              className={`w-4 h-4 rounded-full border-2 ${
-                                selectedCustomerId === customer.id
-                                  ? 'border-blue-600 bg-blue-600'
-                                  : 'border-gray-300 dark:border-gray-600'
-                              }`}
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    ) : searchTerm.length >= 3 ? (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        No se encontraron clientes.
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Ingresa al menos 3 caracteres para buscar.
-                      </div>
-                    )}
-                  </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                  <div className="flex justify-center space-x-4">
-                    <button
-                      type="submit"
-                      disabled={!selectedCustomerId}
-                      className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Agregar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    onClick={onClose}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSubmit}
+                    disabled={!selectedCustomerId}
+                  >
+                    Agregar
+                  </button>
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>
@@ -200,5 +201,4 @@ export default memo(function AddCustomerModal({
       </Dialog>
     </Transition>
   );
-} 
-);
+});

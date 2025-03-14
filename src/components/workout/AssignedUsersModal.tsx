@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast';
 import { ErrorSeverity, ErrorType } from '@/contexts/ErrorContext';
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   image?: string;
@@ -63,9 +63,9 @@ export default function AssignedUsersModal({
           const availableData = await availableResponse.json();
           
           // Filter out already assigned users
-          const assignedIds = assignedData.map((user: User) => user.id);
+          const assignedIds = assignedData.map((user: User) => user._id);
           const filteredUsers = availableData.filter(
-            (user: User) => !assignedIds.includes(user.id)
+            (user: User) => !assignedIds.includes(user._id)
           );
           
           setAvailableUsers(filteredUsers);
@@ -108,10 +108,10 @@ export default function AssignedUsersModal({
       }
       
       // Update the UI
-      const assignedUser = availableUsers.find(user => user.id === selectedUserId);
+      const assignedUser = availableUsers.find(user => user._id === selectedUserId);
       if (assignedUser) {
         setAssignedUsers([...assignedUsers, assignedUser]);
-        setAvailableUsers(availableUsers.filter(user => user.id !== selectedUserId));
+        setAvailableUsers(availableUsers.filter(user => user._id !== selectedUserId));
       }
       
       setSelectedUserId('');
@@ -150,9 +150,9 @@ export default function AssignedUsersModal({
       }
       
       // Update the UI
-      const removedUser = assignedUsers.find(user => user.id === userId);
+      const removedUser = assignedUsers.find(user => user._id === userId);
       if (removedUser) {
-        setAssignedUsers(assignedUsers.filter(user => user.id !== userId));
+        setAssignedUsers(assignedUsers.filter(user => user._id !== userId));
         setAvailableUsers([...availableUsers, removedUser]);
       }
       
@@ -203,7 +203,7 @@ export default function AssignedUsersModal({
               >
                 <option value="">Select a user</option>
                 {availableUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
+                  <option key={user._id} value={user._id}>
                     {user.name}
                   </option>
                 ))}
@@ -231,41 +231,41 @@ export default function AssignedUsersModal({
             <p className="text-gray-500">No users assigned to this workout</p>
           ) : (
             <ul className="space-y-2">
-              {assignedUsers.map((user) => (
-                <li
-                  key={user.id}
-                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-md"
-                >
-                  <div className="flex items-center">
-                    {user.image ? (
-                      <img
-                        src={user.image}
-                        alt={user.name}
-                        className="w-8 h-8 rounded-full mr-2"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mr-2">
-                        {user.name.charAt(0)}
+              {assignedUsers.map((user) => {
+                return (
+                  <li
+                    key={user._id}
+                    className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-md"
+                  >
+                    <div className="flex items-center">
+                      {user.image ? (
+                        <img
+                          src={user.image}
+                          alt={user.name}
+                          className="w-8 h-8 rounded-full mr-2"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mr-2">
+                          {user.name.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                       </div>
-                    )}
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
                     </div>
-                  </div>
-                  
-                  {(isAdmin || isCoach) && (
                     <button
                       type="button"
-                      onClick={() => handleRemoveUser(user.id)}
-                      disabled={isLoading}
-                      className="text-red-500 hover:text-red-700"
+                      onClick={() => handleRemoveUser(user._id)}
+                      className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                     >
-                      Remove
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
                     </button>
-                  )}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

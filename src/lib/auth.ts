@@ -189,8 +189,8 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
-      // Debug log in development
-      if (process.env.NODE_ENV === 'development') {
+      // Debug log only if AUTH_DEBUG is enabled
+      if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true') {
         console.log('Session after processing:', {
           id: session.user.id,
           email: session.user.email,

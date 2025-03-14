@@ -76,13 +76,13 @@ export async function GET(
       );
     }
 
-    // Transformar _id a id para mantener consistencia
+    // Transformar los datos para la respuesta
     const transformedUser = {
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email,
       image: user.image,
-      roles: user.roles || []
+      roles: user.roles || ['customer']
     };
 
     return NextResponse.json(transformedUser);
@@ -152,13 +152,13 @@ export async function PUT(
       );
     }
 
-    // Transformar _id a id para mantener consistencia
+    // Transformar los datos para la respuesta
     const transformedUser = {
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email,
       image: user.image,
-      roles: user.roles || []
+      roles: user.roles || ['customer']
     };
 
     return NextResponse.json(transformedUser);

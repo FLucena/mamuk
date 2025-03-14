@@ -5,19 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import SchemaOrg from '@/components/SchemaOrg';
 import { generateOrganizationSchema, generateWebPageSchema, generateFAQSchema } from '@/lib/utils/schema';
-import type { Viewport } from 'next';
 import { SignInButtons } from '@/components/auth/SignInButtons';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants/site';
-
-// Configuración de viewport para la página principal
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
-  themeColor: '#f9fafb', // Color gris claro que coincide con el bg-gray-50
-  colorScheme: 'light'
-};
 
 // Enable incremental static regeneration with a 1 hour revalidation period
 // This makes the page static for unauthenticated users, improving server response time

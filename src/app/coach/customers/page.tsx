@@ -47,7 +47,7 @@ export default async function CustomersPage() {
         image: session.user.image || undefined
       },
       customers: allCustomers.map(customer => ({
-        _id: customer.id,
+        _id: customer._id,
         name: customer.name || 'Cliente sin nombre',
         email: customer.email,
         image: customer.image

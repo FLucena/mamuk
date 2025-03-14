@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getAllCoaches } from '@/lib/services/coach';
 import CoachList from '@/components/admin/CoachList';
 import type { Viewport } from 'next';
-import { MongoUser } from '@/lib/types/user';
+import { User } from '@/lib/types/user';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -22,8 +22,8 @@ export default async function CoachesPage() {
 
   const coachesData = await getAllCoaches();
   
-  // Transformar los datos de los coaches al formato MongoUser
-  const formattedCoaches: MongoUser[] = coachesData.map((coach: any) => ({
+  // Transformar los datos de los coaches al formato User
+  const formattedCoaches: User[] = coachesData.map((coach: any) => ({
     _id: coach._id.toString(),
     name: coach.userId?.name || 'Sin nombre',
     email: coach.userId?.email || 'Sin email',

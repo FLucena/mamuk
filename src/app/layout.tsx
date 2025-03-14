@@ -34,6 +34,8 @@ import ErrorNotification from '@/components/ErrorNotification'
 import RoleDebugger from '@/components/RoleDebugger'
 import { SpinnerProvider } from '@/contexts/SpinnerContext'
 import NavigationSpinnerHandler from '@/components/NavigationSpinnerHandler'
+import JsonLd from './components/JsonLd'
+import { Analytics } from './components/Analytics'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -97,11 +99,14 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  manifest: `${SITE_URL}/manifest.json`,
+  manifest: process.env.NODE_ENV === 'development' ? '/manifest.json' : `${SITE_URL}/manifest.json`,
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico' }
+    ],
+    shortcut: '/icon.png',
+    apple: '/apple-touch-icon.png'
   },
   verification: {
     // google: 'your-google-verification-code',
@@ -112,7 +117,7 @@ export const metadata: Metadata = {
 
 // Critical fonts to preload
 const CRITICAL_FONTS = [
-  '/fonts/inter-var-latin.woff2',
+  { path: '/fonts/inter-var-latin.woff2', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
 ];
 
 export const fetchCache = 'auto';
@@ -124,7 +129,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     <html lang="es" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -145,6 +149,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             `,
           }}
         />
+        <JsonLd />
       </head>
       <body className={`${inter.className} bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col`}>
         <ThemeProvider>
@@ -179,6 +184,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                     <CookieConsent />
                     <ErrorNotification />
                     <Toaster position="top-right" />
+                    <Analytics />
                     
                     {process.env.NODE_ENV === 'development' && (
                       <>

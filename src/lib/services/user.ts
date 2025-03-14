@@ -35,9 +35,9 @@ export async function getActiveUsers() {
     
     // Removed console.log
 
-    // Transformar _id a id para mantener consistencia
+    // Transformar _id a string para mantener consistencia
     const transformedUsers = users.map(user => ({
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email,
       image: user.image,
@@ -70,9 +70,9 @@ export async function getUserById(userId: string) {
     return null;
   }
 
-  // Transformar _id a id para mantener consistencia
+  // Transformar _id a string para mantener consistencia
   return {
-    id: user._id.toString(),
+    _id: user._id.toString(),
     name: user.name,
     email: user.email,
     image: user.image,
@@ -107,9 +107,9 @@ export async function getCustomers() {
     
     // Removed console.log
 
-    // Transformar _id a id para mantener consistencia
+    // Transformar _id a string para mantener consistencia
     const transformedUsers = users.map(user => ({
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email,
       image: user.image,

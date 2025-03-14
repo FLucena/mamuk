@@ -8,6 +8,20 @@ jest.mock('next-auth', () => ({
   getServerSession: jest.fn()
 }))
 
+// Mock User model
+jest.mock('@/lib/models/user', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn().mockResolvedValue(null),
+    findById: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockImplementation(data => ({
+      _id: 'mock-user-id',
+      ...data,
+    })),
+    findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+  }
+}))
+
 // Mock NextRequest and NextResponse
 jest.mock('next/server', () => {
   return {

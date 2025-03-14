@@ -3,6 +3,13 @@
  * Helps with tracking and optimizing font loading performance
  */
 
+interface FontPreloadOptions {
+  path: string;
+  as: string;
+  type: string;
+  crossOrigin?: string;
+}
+
 // Track when fonts are loaded
 export function trackFontPerformance() {
   if (typeof window === 'undefined') return;
@@ -67,11 +74,13 @@ export const fontDisplayOptions = {
 };
 
 // Preload critical fonts
-export function preloadCriticalFonts(fontUrls: string[]) {
+export function preloadCriticalFonts(fontUrls: (string | FontPreloadOptions)[]) {
   if (typeof document === 'undefined') return;
   
-  fontUrls.forEach(url => {
+  fontUrls.forEach(font => {
     try {
+      const url = typeof font === 'string' ? font : font.path;
+      
       // Check if the font file exists before preloading
       fetch(url, { method: 'HEAD' })
         .then(response => {
@@ -79,9 +88,20 @@ export function preloadCriticalFonts(fontUrls: string[]) {
             const linkElement = document.createElement('link');
             linkElement.rel = 'preload';
             linkElement.href = url;
-            linkElement.as = 'font';
-            linkElement.type = 'font/woff2';
-            linkElement.crossOrigin = 'anonymous';
+            
+            if (typeof font === 'string') {
+              // Default values for string format
+              linkElement.as = 'font';
+              linkElement.type = 'font/woff2';
+              linkElement.crossOrigin = 'anonymous';
+            } else {
+              // Use values from object format
+              linkElement.as = font.as;
+              linkElement.type = font.type;
+              if (font.crossOrigin) {
+                linkElement.crossOrigin = font.crossOrigin;
+              }
+            }
             
             document.head.appendChild(linkElement);
           } else {
@@ -92,13 +112,14 @@ export function preloadCriticalFonts(fontUrls: string[]) {
           console.warn(`[PERFORMANCE] Error checking font file: ${url}`, error);
         });
     } catch (error) {
+      const url = typeof font === 'string' ? font : font.path;
       console.warn(`[PERFORMANCE] Error preloading font: ${url}`, error);
     }
   });
 }
 
 // Initialize font optimization
-export function initFontOptimization(criticalFonts?: string[]) {
+export function initFontOptimization(criticalFonts?: (string | FontPreloadOptions)[]) {
   // Track font performance
   trackFontPerformance();
   

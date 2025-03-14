@@ -79,15 +79,6 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // For debugging in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Middleware token:', {
-            id: token?.id,
-            email: token?.email,
-            roles: token?.roles,
-            path: req.nextUrl.pathname
-          });
-        }
         
         // Verificar que el token existe
         if (!token) {
@@ -101,14 +92,18 @@ export default withAuth(
         // If no roles are defined but we have a token with email, consider it valid
         // but assign default customer role
         if (!tokenWithRoles.roles && tokenWithRoles.email) {
-          console.log('Middleware: Token has email but no roles, assigning default role');
+          if (process.env.AUTH_DEBUG === 'true') {
+            console.log('Middleware: Token has email but no roles, assigning default role');
+          }
           tokenWithRoles.roles = ['customer'];
           return true;
         }
         
         // Check if roles is an array
         if (!Array.isArray(tokenWithRoles.roles)) {
-          console.log('Middleware: Token roles is not an array');
+          if (process.env.AUTH_DEBUG === 'true') {
+            console.log('Middleware: Token roles is not an array');
+          }
           return false;
         }
         
@@ -118,7 +113,7 @@ export default withAuth(
           validRoles.includes(role)
         );
         
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true') {
           console.log('Middleware: Has valid role:', hasValidRole);
         }
         

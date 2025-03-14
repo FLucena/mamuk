@@ -13,7 +13,7 @@ import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <main className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
           Página no encontrada
@@ -28,6 +28,6 @@ export default function NotFound() {
           Volver al inicio
         </Link>
       </div>
-    </main>
+    </div>
   );
-} 
+}
