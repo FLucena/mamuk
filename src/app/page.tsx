@@ -101,27 +101,6 @@ export default async function Home() {
               ))}
             </div>
           </div>
-          
-          <div className="mt-12 mb-8">
-            <Link 
-              href="/about" 
-              className="text-blue-600 dark:text-blue-400 hover:underline mr-6"
-            >
-              Sobre Nosotros
-            </Link>
-            <Link 
-              href="/features" 
-              className="text-blue-600 dark:text-blue-400 hover:underline mr-6"
-            >
-              Características
-            </Link>
-            <Link 
-              href="/contact" 
-              className="text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Contacto
-            </Link>
-          </div>
         </div>
       </main>
     </>

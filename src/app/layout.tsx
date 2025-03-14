@@ -99,7 +99,7 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  manifest: process.env.NODE_ENV === 'development' ? '/manifest.json' : `${SITE_URL}/manifest.json`,
+  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/icon.png', type: 'image/png' },

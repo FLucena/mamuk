@@ -11,14 +11,14 @@ describe('PWA Configuration', () => {
     });
 
     it('should have correct basic PWA properties', () => {
-      expect(manifest.name).toBe('Mamuk Training');
+      expect(manifest.name).toBe('Mamuk');
       expect(manifest.short_name).toBe('Mamuk');
       expect(manifest.start_url).toBe('/');
       expect(manifest.display).toBe('standalone');
     });
 
     it('should have proper icon configuration', () => {
-      expect(manifest.icons).toHaveLength(3);
+      expect(manifest.icons).toHaveLength(2);
       expect(manifest.icons).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -32,12 +32,12 @@ describe('PWA Configuration', () => {
 
     it('should have proper shortcuts', () => {
       expect(manifest.shortcuts).toHaveLength(2);
-      expect(manifest.shortcuts[0]).toHaveProperty('name', 'Mi Perfil');
-      expect(manifest.shortcuts[1]).toHaveProperty('name', 'Entrenamientos');
+      expect(manifest.shortcuts[0]).toHaveProperty('name', 'Dashboard');
+      expect(manifest.shortcuts[1]).toHaveProperty('name', 'Rutinas');
     });
 
     it('should have proper language and direction settings', () => {
-      expect(manifest.lang).toBe('es-ES');
+      expect(manifest.lang).toBe('es-AR');
       expect(manifest.dir).toBe('ltr');
     });
   });

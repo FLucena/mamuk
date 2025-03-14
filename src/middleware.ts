@@ -11,6 +11,22 @@ interface Token {
 }
 
 /**
+ * Verifica si la solicitud debe ser redirigida a www
+ */
+function checkDomainRedirect(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  const hostname = request.headers.get('host') || '';
+  
+  // Redirigir de mamuk.com.ar a www.mamuk.com.ar
+  if (hostname === 'mamuk.com.ar') {
+    url.hostname = 'www.mamuk.com.ar';
+    return NextResponse.redirect(url);
+  }
+  
+  return null;
+}
+
+/**
  * Aplica cabeceras de seguridad a la respuesta
  */
 function applySecurityHeaders(request: NextRequest, response: NextResponse) {
@@ -21,6 +37,10 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    // Añadir cabeceras CORS para resolver el problema de manifest.json
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
   
   // Aplicar las cabeceras de seguridad
@@ -70,6 +90,12 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
  */
 export default withAuth(
   function middleware(request) {
+    // Primero verificar si necesitamos redirigir el dominio
+    const redirectResponse = checkDomainRedirect(request);
+    if (redirectResponse) {
+      return redirectResponse;
+    }
+    
     // Obtener la respuesta original
     const response = NextResponse.next();
     
@@ -149,5 +175,7 @@ export const config = {
     '/achievements/:path*',
     '/coach/:path*',
     '/admin/:path*',
+    // Añadir manifest.json para manejar CORS
+    '/manifest.json',
   ],
 }; 
