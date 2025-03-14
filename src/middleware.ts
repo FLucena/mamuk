@@ -10,6 +10,9 @@ interface Token {
   id?: string;
 }
 
+// Almacén en memoria para rate limiting (en producción debería usar Redis u otro almacén distribuido)
+const ipRequests: Record<string, { count: number; resetTime: number }> = {};
+
 /**
  * Verifica si la solicitud debe ser redirigida a www
  */
@@ -27,6 +30,42 @@ function checkDomainRedirect(request: NextRequest) {
 }
 
 /**
+ * Implementa rate limiting basado en IP
+ * @returns true si la solicitud debe ser bloqueada, false en caso contrario
+ */
+function shouldRateLimit(request: NextRequest): boolean {
+  // Solo aplicar rate limiting a endpoints críticos
+  const isCriticalEndpoint = 
+    (request.nextUrl.pathname === '/api/auth/login' || 
+     request.nextUrl.pathname === '/api/auth/register' ||
+     request.nextUrl.pathname === '/api/auth/reset-password') &&
+    request.method === 'POST';
+  
+  if (!isCriticalEndpoint) {
+    return false;
+  }
+  
+  const ip = request.headers.get('x-forwarded-for') || 
+             request.headers.get('x-real-ip') || 
+             'unknown';
+  
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutos
+  const maxRequests = 10; // Máximo 10 intentos en 15 minutos
+  
+  // Inicializar o limpiar entradas antiguas
+  if (!ipRequests[ip] || ipRequests[ip].resetTime < now) {
+    ipRequests[ip] = { count: 0, resetTime: now + windowMs };
+  }
+  
+  // Incrementar contador
+  ipRequests[ip].count += 1;
+  
+  // Verificar si excede el límite
+  return ipRequests[ip].count > maxRequests;
+}
+
+/**
  * Aplica cabeceras de seguridad a la respuesta
  */
 function applySecurityHeaders(request: NextRequest, response: NextResponse) {
@@ -41,11 +80,26 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    'X-Frame-Options': 'DENY', // Denegar por defecto, se eliminará para rutas específicas
   };
   
-  // Añadir cabeceras CORS para todos los recursos
+  // Añadir cabeceras CORS para recursos específicos
   if (isManifestRequest || isServiceWorkerRequest) {
-    securityHeaders['Access-Control-Allow-Origin'] = '*';
+    // Restringir CORS a dominios específicos
+    const allowedOrigins = [
+      'https://www.mamuk.com.ar',
+      'https://mamuk.com.ar',
+      'http://localhost:3000'
+    ];
+    
+    const origin = request.headers.get('origin');
+    if (origin && allowedOrigins.includes(origin)) {
+      securityHeaders['Access-Control-Allow-Origin'] = origin;
+    } else {
+      // En producción, usar solo el dominio principal
+      securityHeaders['Access-Control-Allow-Origin'] = 'https://www.mamuk.com.ar';
+    }
+    
     securityHeaders['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
     securityHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
     
@@ -63,6 +117,9 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     response.headers.set(key, value);
   });
   
+  // Generar nonce para scripts
+  const nonce = crypto.randomUUID();
+  
   // Permitir iframes para videos en rutas específicas
   if (
     request.nextUrl.pathname.startsWith('/workout') ||
@@ -74,7 +131,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     // Configurar CSP para permitir iframes de YouTube y Vimeo
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com https://*.firebasestorage.googleapis.com https://*.amazonaws.com https://*.cloudfront.net https://*.cloudinary.com; object-src 'none'; base-uri 'self';"
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com; object-src 'none'; base-uri 'self'; require-trusted-types-for 'script';`
     );
   } else if (
     request.nextUrl.pathname.startsWith('/dashboard') ||
@@ -83,18 +140,42 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   ) {
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*; frame-src 'none'; object-src 'none'; base-uri 'self';"
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar; frame-src 'none'; object-src 'none'; base-uri 'self'; require-trusted-types-for 'script';`
+    );
+  } else {
+    // CSP para otras rutas
+    response.headers.set(
+      'Content-Security-Policy',
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar; frame-src 'none'; object-src 'none'; base-uri 'self'; require-trusted-types-for 'script';`
     );
   }
   
-  // Implementar protección básica contra ataques de fuerza bruta
+  // Pasar el nonce a la respuesta para que pueda ser utilizado en scripts inline
+  const html = response.headers.get('content-type')?.includes('text/html');
+  if (html) {
+    response.headers.set('x-csp-nonce', nonce);
+  }
+  
+  // Implementar protección contra ataques de fuerza bruta con rate limiting
   if (
     (request.nextUrl.pathname === '/api/auth/login' || 
-     request.nextUrl.pathname === '/api/auth/register') &&
+     request.nextUrl.pathname === '/api/auth/register' ||
+     request.nextUrl.pathname === '/api/auth/reset-password') &&
     request.method === 'POST'
   ) {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    response.headers.set('X-Rate-Limit-By', ip);
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               'unknown';
+    
+    // Añadir cabeceras de rate limiting
+    if (ipRequests[ip]) {
+      const remaining = Math.max(0, 10 - ipRequests[ip].count);
+      const reset = Math.ceil((ipRequests[ip].resetTime - Date.now()) / 1000);
+      
+      response.headers.set('X-RateLimit-Limit', '10');
+      response.headers.set('X-RateLimit-Remaining', remaining.toString());
+      response.headers.set('X-RateLimit-Reset', reset.toString());
+    }
   }
   
   return response;
@@ -109,6 +190,23 @@ export default withAuth(
     const redirectResponse = checkDomainRedirect(request);
     if (redirectResponse) {
       return redirectResponse;
+    }
+    
+    // Verificar rate limiting
+    if (shouldRateLimit(request)) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Too many requests', 
+          message: 'Please try again later' 
+        }),
+        { 
+          status: 429, 
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '900' // 15 minutos en segundos
+          }
+        }
+      );
     }
     
     // Obtener la respuesta original

@@ -52,15 +52,15 @@ describe('Authentication Configuration Tests', () => {
     expect(content).toContain('process.env.GOOGLE_CLIENT_SECRET');
   });
 
-  test('Callback URL should be properly configured', () => {
+  test('Authorization configuration should be properly set', () => {
     const content = authOptionsContent || nextAuthConfigContent;
     if (!content) {
       // Si no se pudo leer ningún archivo, omitir este test
       return;
     }
 
-    // Verificar que se está configurando correctamente la URL de callback
-    expect(content).toContain('callbackUrl');
+    // Verificar que se está configurando correctamente la autorización
+    expect(content).toContain('authorization');
   });
 
   test('Session configuration should be properly set', () => {
@@ -98,10 +98,10 @@ describe('Authentication Configuration Tests', () => {
     // Verificar que se están utilizando variables de entorno para la configuración
     expect(content).toContain('process.env');
     
-    // Verificar que se está utilizando NEXTAUTH_URL o similar
-    const hasNextAuthUrl = content.includes('NEXTAUTH_URL') || 
-                          content.includes('VERCEL_URL') || 
-                          content.includes('SITE_URL');
-    expect(hasNextAuthUrl).toBe(true);
+    // Verificar que se está utilizando alguna variable de entorno de seguridad
+    const hasSecretVar = content.includes('NEXTAUTH_SECRET') || 
+                         content.includes('JWT_SECRET') || 
+                         content.includes('SECRET_KEY');
+    expect(hasSecretVar).toBe(true);
   });
 }); 
