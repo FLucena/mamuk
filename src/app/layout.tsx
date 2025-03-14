@@ -153,6 +153,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           }}
         />
         <JsonLd />
+        <script src="/sw-register.js" defer />
       </head>
       <body className={`${inter.className} bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col overflow-x-hidden w-full`}>
         <ThemeProvider>

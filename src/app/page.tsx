@@ -66,6 +66,7 @@ export default async function Home() {
                 height={150}
                 className="mx-auto"
                 priority
+                centered
               />
             </div>
             <ResponsiveHeading1 className="mb-4 text-gray-900 dark:text-white">

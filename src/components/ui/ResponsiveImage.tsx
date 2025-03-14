@@ -15,6 +15,7 @@ interface ResponsiveImageProps {
   fill?: boolean;
   objectFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
   objectPosition?: string;
+  centered?: boolean;
 }
 
 export default function ResponsiveImage({
@@ -29,14 +30,21 @@ export default function ResponsiveImage({
   fill = false,
   objectFit = 'cover',
   objectPosition = 'center',
+  centered = false,
 }: ResponsiveImageProps) {
   const imageStyle = {
     objectFit,
     objectPosition,
   };
 
+  const containerClassName = cn(
+    'relative',
+    centered && 'flex justify-center items-center',
+    className
+  );
+
   return (
-    <div className={cn('relative', className)}>
+    <div className={containerClassName}>
       {fill ? (
         <Image
           src={src}
@@ -58,7 +66,7 @@ export default function ResponsiveImage({
           priority={priority}
           quality={quality}
           style={imageStyle}
-          className="img-fluid"
+          className={cn("img-fluid", centered && "mx-auto")}
         />
       )}
     </div>

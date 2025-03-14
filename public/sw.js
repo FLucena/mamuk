@@ -2,9 +2,12 @@
 const CACHE_NAME = 'mamuk-cache-v1';
 const OFFLINE_URL = '/offline.html';
 
+// Get the current scope
+const scope = self.registration.scope || '/';
+
 // Assets to cache on install
 const STATIC_ASSETS = [
-  '/',
+  scope,
   '/offline.html',
   '/manifest.json',
   '/favicon.ico',

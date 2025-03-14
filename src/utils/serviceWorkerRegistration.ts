@@ -62,6 +62,16 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
       return navigator.serviceWorker.register('/api/sw', { 
         scope: '/',
         type: 'classic' // Explicitly set the type
+      })
+      .catch(error => {
+        // If there's a scope error, try registering with the default scope
+        if (error.name === 'SecurityError' && error.message.includes('scope')) {
+          console.warn('[ServiceWorker] Scope error, trying with default scope');
+          return navigator.serviceWorker.register('/api/sw', { 
+            type: 'classic'
+          });
+        }
+        throw error; // Re-throw if it's not a scope error
       });
     })
     .then((registration) => {

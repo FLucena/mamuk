@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
     response.headers.set('Content-Type', 'application/javascript; charset=utf-8');
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Service-Worker-Allowed', '/');
     
     return response;
   } catch (error) {
@@ -104,6 +105,7 @@ export async function HEAD(request: NextRequest) {
     response.headers.set('Content-Type', 'application/javascript; charset=utf-8');
     response.headers.set('Content-Length', stats.size.toString());
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Service-Worker-Allowed', '/');
     
     return response;
   } catch (error) {
