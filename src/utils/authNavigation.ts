@@ -197,7 +197,7 @@ export function getHomeRedirect(session: Session | null): string {
   }
   
   if (userRoles.includes('coach')) {
-    return '/coach/customers';  // Redirect coaches to their customers page
+    return '/coach';  // Redirect coaches to coach dashboard
   }
   
   if (userRoles.includes('customer')) {

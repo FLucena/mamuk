@@ -18,13 +18,28 @@ describe('PWA Configuration', () => {
     });
 
     it('should have proper icon configuration', () => {
-      expect(manifest.icons).toHaveLength(2);
+      expect(manifest.icons).toHaveLength(4);
       expect(manifest.icons).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'any',
+          }),
+          expect.objectContaining({
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          }),
+          expect.objectContaining({
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          }),
+          expect.objectContaining({
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable',
           }),
         ])
       );
