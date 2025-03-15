@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Dispatch, SetStateAction, memo } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction, memo, useCallback } from 'react';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
 import WorkoutBlock from './WorkoutBlock';
 import { LoadingOverlay } from '@/components/ui/loading';
@@ -25,6 +25,20 @@ interface WorkoutDayProps {
   onDeleteBlock?: (blockIndex: number) => Promise<void>;
   onDeleteDay?: () => Promise<void>;
   showVideosInline?: boolean;
+}
+
+// Add comparison function for memo
+function arePropsEqual(prevProps: WorkoutDayProps, nextProps: WorkoutDayProps) {
+  return (
+    prevProps.title === nextProps.title &&
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.expandExercises === nextProps.expandExercises &&
+    prevProps.dayIndex === nextProps.dayIndex &&
+    prevProps.showVideosInline === nextProps.showVideosInline &&
+    JSON.stringify(prevProps.blocks) === JSON.stringify(nextProps.blocks) &&
+    JSON.stringify(prevProps.expandedBlocks) === JSON.stringify(nextProps.expandedBlocks) &&
+    JSON.stringify(prevProps.expandedExercises) === JSON.stringify(nextProps.expandedExercises)
+  );
 }
 
 // Memoize the WorkoutDay component to prevent unnecessary re-renders
@@ -59,7 +73,11 @@ export default memo(function WorkoutDay({
     }
   }, [isExpanded]);
 
-  async function handleAddBlock() {
+  useEffect(() => {
+    setDayTitle(title);
+  }, [title]);
+
+  const handleAddBlock = useCallback(async () => {
     if (!onAddBlock) return;
     setIsLoading(true);
     try {
@@ -67,9 +85,9 @@ export default memo(function WorkoutDay({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onAddBlock]);
 
-  async function handleAddExercise(blockIndex: number) {
+  const handleAddExercise = useCallback(async (blockIndex: number) => {
     if (!onAddExercise) return;
     setIsLoading(true);
     try {
@@ -77,9 +95,9 @@ export default memo(function WorkoutDay({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onAddExercise]);
 
-  async function handleUpdateExercise(blockIndex: number, exerciseIndex: number, data: Partial<Exercise>) {
+  const handleUpdateExercise = useCallback(async (blockIndex: number, exerciseIndex: number, data: Partial<Exercise>) => {
     if (!onUpdateExercise) return;
     setIsLoading(true);
     try {
@@ -87,9 +105,9 @@ export default memo(function WorkoutDay({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onUpdateExercise]);
 
-  async function handleDeleteExercise(blockIndex: number, exerciseIndex: number) {
+  const handleDeleteExercise = useCallback(async (blockIndex: number, exerciseIndex: number) => {
     if (!onDeleteExercise) return;
     setIsLoading(true);
     try {
@@ -97,9 +115,9 @@ export default memo(function WorkoutDay({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onDeleteExercise]);
 
-  async function handleDeleteBlock(blockIndex: number) {
+  const handleDeleteBlock = useCallback(async (blockIndex: number) => {
     if (!onDeleteBlock) return;
     if (!confirm('¿Estás seguro de que deseas eliminar este bloque?')) return;
     
@@ -109,9 +127,9 @@ export default memo(function WorkoutDay({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onDeleteBlock]);
 
-  async function handleDeleteDay() {
+  const handleDeleteDay = useCallback(async () => {
     if (!onDeleteDay) return;
     if (!confirm('¿Estás seguro de que deseas eliminar este día completo?')) return;
     
@@ -121,9 +139,9 @@ export default memo(function WorkoutDay({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onDeleteDay]);
 
-  async function handleUpdateBlockTitle(blockIndex: number, newTitle: string) {
+  const handleUpdateBlockTitle = useCallback(async (blockIndex: number, newTitle: string) => {
     if (!onUpdateBlockTitle) return;
     setIsLoading(true);
     try {
@@ -131,18 +149,18 @@ export default memo(function WorkoutDay({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onUpdateBlockTitle]);
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = useCallback(() => {
     setIsEditing(true);
     setDayTitle(title);
-  };
+  }, [title]);
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setDayTitle(e.target.value);
-  };
+  }, []);
 
-  const handleNameSubmit = async () => {
+  const handleNameSubmit = useCallback(async () => {
     if (dayTitle.trim() && onUpdateTitle) {
       setIsLoading(true);
       try {
@@ -152,24 +170,24 @@ export default memo(function WorkoutDay({
       }
     }
     setIsEditing(false);
-  };
+  }, [dayTitle, onUpdateTitle]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleNameSubmit();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
       setDayTitle(title);
     }
-  };
+  }, [handleNameSubmit, title]);
 
-  const isBlockExpanded = (blockIndex: number) => {
+  const isBlockExpanded = useCallback((blockIndex: number) => {
     if (!expandedBlocks || dayIndex === undefined) return false;
     const key = `${dayIndex}-${blockIndex}`;
     return !!expandedBlocks[key];
-  };
+  }, [expandedBlocks, dayIndex]);
 
-  const handleToggle = (e: React.MouseEvent) => {
+  const handleToggle = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -191,7 +209,7 @@ export default memo(function WorkoutDay({
           blocks.forEach((block) => {
             block.exercises?.forEach((_, exerciseIndex) => {
               const exerciseKey = `${block.name}-${exerciseIndex}`;
-              newExpandedExercises[exerciseKey] = false; // Explícitamente colapsado
+              newExpandedExercises[exerciseKey] = false;
             });
           });
           setExpandedExercises(newExpandedExercises);
@@ -199,15 +217,14 @@ export default memo(function WorkoutDay({
       }
       return newExpanded;
     });
-  };
+  }, [blocks, dayIndex, expandedBlocks, expandedExercises, setExpandedBlocks, setExpandedExercises]);
 
-  const toggleBlockExpansion = (blockIndex: number) => {
+  const toggleBlockExpansion = useCallback((blockIndex: number) => {
     if (!setExpandedBlocks) return;
     
     const blockKey = `${dayIndex}-${blockIndex}`;
     const isCurrentlyExpanded = expandedBlocks[blockKey];
     
-    // Actualizar estado de expansión del bloque
     setExpandedBlocks(prev => {
       const newExpandedBlocks = { ...prev };
       if (isCurrentlyExpanded) {
@@ -218,19 +235,20 @@ export default memo(function WorkoutDay({
       return newExpandedBlocks;
     });
     
-    // Si estamos colapsando un bloque, colapsamos todos sus ejercicios
     if (isCurrentlyExpanded && setExpandedExercises) {
       const block = blocks[blockIndex];
       if (block && block.exercises) {
-        const newExpandedExercises = { ...expandedExercises };
-        block.exercises.forEach((_, exerciseIndex) => {
-          const exerciseKey = `${block.name}-${exerciseIndex}`;
-          newExpandedExercises[exerciseKey] = false; // Explícitamente colapsado
+        setExpandedExercises(prev => {
+          const newExpandedExercises = { ...prev };
+          block.exercises.forEach((_, exerciseIndex) => {
+            const exerciseKey = `${block.name}-${exerciseIndex}`;
+            newExpandedExercises[exerciseKey] = false;
+          });
+          return newExpandedExercises;
         });
-        setExpandedExercises(newExpandedExercises);
       }
     }
-  };
+  }, [blocks, dayIndex, expandedBlocks, setExpandedBlocks, setExpandedExercises]);
 
   return (
     <div className="relative">
@@ -318,4 +336,4 @@ export default memo(function WorkoutDay({
       </div>
     </div>
   );
-});
+}, arePropsEqual);

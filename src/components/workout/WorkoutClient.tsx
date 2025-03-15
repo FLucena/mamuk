@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, SetStateAction } from 'react';
 import { useRouter } from 'next/navigation';
 import { WorkoutDay, Exercise, Workout } from '@/types/models';
 import WorkoutDetailHeader from '@/components/workout/WorkoutDetailHeader';
@@ -69,6 +69,15 @@ interface WorkoutClientProps {
   isCoach: boolean;
 }
 
+interface UIState {
+  expandedDays: Record<number, boolean>;
+  expandedBlocks: Record<string, boolean>;
+  expandedExercises: Record<string, boolean>;
+  expandExercises: boolean;
+  isLoading: boolean;
+  isDeleting: boolean;
+}
+
 export default function WorkoutClient({
   workout: initialWorkout,
   addDay,
@@ -86,26 +95,30 @@ export default function WorkoutClient({
   isAdmin,
   isCoach
 }: WorkoutClientProps) {
-  // Removed console.log
-  
   const router = useRouter();
-  const [workout, setWorkout] = useState<Workout>(initialWorkout);
   const { data: session } = useSession();
   const { roles: userRoles, loading: rolesLoading } = useRealUserRoles();
   
-  const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
-  const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
-  const [expandedExercises, setExpandedExercises] = useState<Record<string, boolean>>({});
-  const [expandExercises, setExpandExercises] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  // Use a single state object for UI state to reduce re-renders
+  const [uiState, setUiState] = useState<UIState>({
+    expandedDays: {},
+    expandedBlocks: {},
+    expandedExercises: {},
+    expandExercises: false,
+    isLoading: false,
+    isDeleting: false
+  });
 
-  useEffect(() => {
-    setWorkout(initialWorkout);
-  }, [initialWorkout]);
+  // Use useMemo for workout data to prevent unnecessary re-renders
+  const workout = useMemo(() => initialWorkout, [initialWorkout]);
+
+  // Helper function to update UI state
+  const updateUIState = (updates: Partial<UIState>) => {
+    setUiState(prev => ({ ...prev, ...updates }));
+  };
 
   const handleAddDay = async () => {
-    setIsLoading(true);
+    updateUIState({ isLoading: true });
     try {
       const workoutId = workout.id || '';
       if (!workoutId) {
@@ -113,74 +126,58 @@ export default function WorkoutClient({
       }
       
       const result = await addDay(workoutId, userId);
-      // Actualizar el estado local con el resultado
-      setWorkout(result);
       
-      // Expandir automáticamente el día recién creado
+      // Expand the new day
       const newDayIndex = (result.days?.length || 0) - 1;
       if (newDayIndex >= 0) {
-        setExpandedDays(prev => ({
-          ...prev,
-          [newDayIndex]: true
-        }));
+        updateUIState({
+          expandedDays: {
+            ...uiState.expandedDays,
+            [newDayIndex]: true
+          }
+        });
       }
       
       toast.success('Día agregado correctamente');
+      router.refresh();
     } catch (error: any) {
       console.error('Error al agregar día:', error);
       toast.error(`Error al agregar día: ${error.message || 'Error desconocido'}`);
     } finally {
-      setIsLoading(false);
+      updateUIState({ isLoading: false });
     }
   };
 
   const handleAddBlock = async (dayIndex: number) => {
-    setIsLoading(true);
+    updateUIState({ isLoading: true });
     
     try {
       const result = await addBlock(workout, dayIndex);
       
-      // Actualizar el estado local con el resultado
-      setWorkout(result);
-      
-      // Expandir automáticamente el día
-      setExpandedDays(prev => ({
-        ...prev,
-        [dayIndex]: true
-      }));
-      
-      // Expandir automáticamente el bloque recién creado
+      // Update expanded states in a single update
       const blockIndex = (result.days[dayIndex].blocks?.length || 0) - 1;
       const key = `${dayIndex}-${blockIndex}`;
-      setExpandedBlocks(prev => ({
-        ...prev,
-        [key]: true
-      }));
+      
+      updateUIState({
+        expandedDays: { ...uiState.expandedDays, [dayIndex]: true },
+        expandedBlocks: { ...uiState.expandedBlocks, [key]: true }
+      });
       
       toast.success('Bloque agregado correctamente');
+      router.refresh();
     } catch (error: any) {
       console.error('Error al agregar bloque:', error);
-      
-      if (error.message === 'Day not found') {
-        toast.error('Día no encontrado');
-      } else if (error.message === 'Workout not found') {
-        toast.error('Rutina no encontrada');
-      } else if (error.message === 'No autorizado') {
-        toast.error('No tienes permiso para agregar bloques');
-      } else {
-        toast.error(`Error al agregar bloque: ${error.message || 'Error desconocido'}`);
-      }
+      toast.error(error.message || 'Error al agregar bloque');
     } finally {
-      setIsLoading(false);
+      updateUIState({ isLoading: false });
     }
   };
 
   const handleAddExercise = async (dayIndex: number, blockIndex: number) => {
     try {
       const result = await addExercise(workout, dayIndex, blockIndex);
-      // Actualizar el estado local con el resultado
-      setWorkout(result);
       toast.success('Ejercicio añadido correctamente');
+      router.refresh();
     } catch (error) {
       console.error('Error adding exercise:', error);
       toast.error('Error al añadir el ejercicio');
@@ -190,9 +187,8 @@ export default function WorkoutClient({
   const handleUpdateExercise = async (dayIndex: number, blockIndex: number, exerciseIndex: number, data: any) => {
     try {
       const result = await updateExercise(workout, dayIndex, blockIndex, exerciseIndex, data);
-      // Actualizar el estado local con el resultado
-      setWorkout(result);
       toast.success('Ejercicio actualizado correctamente');
+      router.refresh();
     } catch (error) {
       console.error('Error updating exercise:', error);
       toast.error('Error al actualizar el ejercicio');
@@ -202,9 +198,8 @@ export default function WorkoutClient({
   const handleDeleteExercise = async (dayIndex: number, blockIndex: number, exerciseIndex: number) => {
     try {
       const result = await deleteExercise(workout, dayIndex, blockIndex, exerciseIndex);
-      // Actualizar el estado local con el resultado
-      setWorkout(result);
       toast.success('Ejercicio eliminado correctamente');
+      router.refresh();
     } catch (error) {
       console.error('Error deleting exercise:', error);
       toast.error('Error al eliminar el ejercicio');
@@ -214,32 +209,22 @@ export default function WorkoutClient({
   const handleDeleteBlock = async (dayIndex: number, blockIndex: number) => {
     try {
       const result = await deleteBlock(workout, dayIndex, blockIndex);
-      // Actualizar el estado local con el resultado
-      setWorkout(result);
       toast.success('Bloque eliminado correctamente');
+      router.refresh();
       
-      // Actualizar los bloques expandidos
-      setExpandedBlocks(prev => {
-        const newExpandedBlocks: Record<string, boolean> = {};
-        
-        Object.keys(prev).forEach(key => {
-          const [day, block] = key.split('-').map(Number);
-          
-          if (day !== dayIndex) {
-            // Mantener los bloques de otros días
-            newExpandedBlocks[key] = prev[key];
-          } else if (block < blockIndex) {
-            // Mantener los bloques anteriores del mismo día
-            newExpandedBlocks[key] = prev[key];
-          } else if (block > blockIndex) {
-            // Reajustar los índices para los bloques posteriores
-            newExpandedBlocks[`${day}-${block - 1}`] = prev[key];
+      // Update expanded blocks state
+      const newExpandedBlocks = { ...uiState.expandedBlocks };
+      Object.keys(newExpandedBlocks).forEach(key => {
+        const [day, block] = key.split('-').map(Number);
+        if (day === dayIndex && block >= blockIndex) {
+          delete newExpandedBlocks[key];
+          if (block > blockIndex) {
+            newExpandedBlocks[`${day}-${block - 1}`] = true;
           }
-          // El bloque eliminado no se incluye
-        });
-        
-        return newExpandedBlocks;
+        }
       });
+      
+      updateUIState({ expandedBlocks: newExpandedBlocks });
     } catch (error) {
       console.error('Error deleting block:', error);
       toast.error('Error al eliminar el bloque');
@@ -249,45 +234,39 @@ export default function WorkoutClient({
   const handleDeleteDay = async (dayIndex: number) => {
     try {
       const result = await deleteDay(workout, dayIndex);
-      // Actualizar el estado local con el resultado
-      setWorkout(result);
       toast.success('Día eliminado correctamente');
+      router.refresh();
 
-      // Actualizar también los estados expandidos para evitar referencias a días que ya no existen
-      setExpandedDays(prev => {
-        const newExpandedDays = { ...prev };
-        delete newExpandedDays[dayIndex];
-        
-        // Reajustar las claves para los días posteriores al eliminado
-        Object.keys(newExpandedDays).forEach(key => {
-          const keyNum = parseInt(key);
-          if (keyNum > dayIndex) {
-            newExpandedDays[keyNum - 1] = newExpandedDays[keyNum];
-            delete newExpandedDays[keyNum];
-          }
-        });
-        
-        return newExpandedDays;
+      // Update expanded states
+      const newExpandedDays = { ...uiState.expandedDays };
+      const newExpandedBlocks = { ...uiState.expandedBlocks };
+      
+      // Remove the deleted day from expanded days
+      delete newExpandedDays[dayIndex];
+      
+      // Update indices for remaining days
+      Object.keys(newExpandedDays).forEach(key => {
+        const day = parseInt(key);
+        if (day > dayIndex) {
+          newExpandedDays[day - 1] = newExpandedDays[day];
+          delete newExpandedDays[day];
+        }
       });
       
-      // Actualizar también los bloques expandidos
-      setExpandedBlocks(prev => {
-        const newExpandedBlocks: Record<string, boolean> = {};
-        
-        Object.keys(prev).forEach(key => {
-          const [day, block] = key.split('-').map(Number);
-          
-          if (day < dayIndex) {
-            // Mantener los bloques de días anteriores
-            newExpandedBlocks[key] = prev[key];
-          } else if (day > dayIndex) {
-            // Reajustar los índices para los días posteriores
-            newExpandedBlocks[`${day - 1}-${block}`] = prev[key];
-          }
-          // Los bloques del día eliminado no se incluyen
-        });
-        
-        return newExpandedBlocks;
+      // Update block indices
+      Object.keys(newExpandedBlocks).forEach(key => {
+        const [day, block] = key.split('-').map(Number);
+        if (day === dayIndex) {
+          delete newExpandedBlocks[key];
+        } else if (day > dayIndex) {
+          delete newExpandedBlocks[key];
+          newExpandedBlocks[`${day - 1}-${block}`] = true;
+        }
+      });
+      
+      updateUIState({
+        expandedDays: newExpandedDays,
+        expandedBlocks: newExpandedBlocks
       });
     } catch (error) {
       console.error('Error deleting day:', error);
@@ -298,69 +277,53 @@ export default function WorkoutClient({
   const handleDeleteWorkout = async () => {
     if (!workout?.id) return;
     
-    setIsDeleting(true);
+    updateUIState({ isDeleting: true });
     
     try {
       await deleteWorkout(workout.id, userId);
       toast.success('Rutina eliminada exitosamente');
-      // Removed console.log');
       router.replace('/workout');
     } catch (error) {
       toast.error('Error al eliminar la rutina');
-      setIsDeleting(false);
+      updateUIState({ isDeleting: false });
     }
   };
 
   const handleUpdateDayName = async (dayIndex: number, newName: string) => {
-    setIsLoading(true);
+    updateUIState({ isLoading: true });
     
     try {
       if (!updateDayName) {
-        throw new Error('Función de actualizar nombre del día no disponible');
+        throw new Error('Función de actualización no disponible');
       }
       
       await updateDayName(workout, dayIndex, newName);
-      setWorkout((prev: Workout) => {
-        const newWorkout = {...prev};
-        if (newWorkout.days && newWorkout.days[dayIndex]) {
-          newWorkout.days[dayIndex].name = newName;
-        }
-        return newWorkout;
-      });
-      toast.success('Nombre del día actualizado correctamente');
+      toast.success('Nombre actualizado correctamente');
+      router.refresh();
     } catch (error: any) {
-      console.error('Error al actualizar el nombre del día:', error);
+      console.error('Error updating day name:', error);
       toast.error(`Error al actualizar el nombre: ${error.message || 'Error desconocido'}`);
     } finally {
-      setIsLoading(false);
+      updateUIState({ isLoading: false });
     }
   };
 
   const handleUpdateBlockName = async (dayIndex: number, blockIndex: number, newName: string) => {
-    setIsLoading(true);
+    updateUIState({ isLoading: true });
     
     try {
       if (!updateBlockName) {
-        throw new Error('Función de actualizar nombre del bloque no disponible');
+        throw new Error('Función de actualización no disponible');
       }
       
       await updateBlockName(workout, dayIndex, blockIndex, newName);
-      setWorkout((prev: Workout) => {
-        const newWorkout = {...prev};
-        if (newWorkout.days && 
-            newWorkout.days[dayIndex] && 
-            newWorkout.days[dayIndex].blocks && 
-            newWorkout.days[dayIndex].blocks[blockIndex]) {
-          newWorkout.days[dayIndex].blocks[blockIndex].name = newName;
-        }
-        return newWorkout;
-      });
-      toast.success('Nombre del bloque actualizado correctamente');
+      toast.success('Nombre actualizado correctamente');
+      router.refresh();
     } catch (error: any) {
-      console.error('Error al actualizar el nombre del bloque:', error);
+      console.error('Error updating block name:', error);
       toast.error(`Error al actualizar el nombre: ${error.message || 'Error desconocido'}`);
     } finally {
-      setIsLoading(false);
+      updateUIState({ isLoading: false });
     }
   };
 
@@ -393,21 +356,21 @@ export default function WorkoutClient({
     
     // Actualizar los estados en un solo batch para evitar múltiples re-renders
     // que podrían causar loops infinitos
-    const shouldUpdateDays = JSON.stringify(expandedDays) !== JSON.stringify(allDaysExpanded);
-    const shouldUpdateBlocks = JSON.stringify(expandedBlocks) !== JSON.stringify(allBlocksExpanded);
-    const shouldUpdateExercises = JSON.stringify(expandedExercises) !== JSON.stringify(allExercisesExpanded);
+    const shouldUpdateDays = JSON.stringify(uiState.expandedDays) !== JSON.stringify(allDaysExpanded);
+    const shouldUpdateBlocks = JSON.stringify(uiState.expandedBlocks) !== JSON.stringify(allBlocksExpanded);
+    const shouldUpdateExercises = JSON.stringify(uiState.expandedExercises) !== JSON.stringify(allExercisesExpanded);
     
     // Solo actualizar si hay cambios para evitar loops infinitos
     if (shouldUpdateDays) {
-      setExpandedDays(allDaysExpanded);
+      updateUIState({ expandedDays: allDaysExpanded });
     }
     
     if (shouldUpdateBlocks) {
-      setExpandedBlocks(allBlocksExpanded);
+      updateUIState({ expandedBlocks: allBlocksExpanded });
     }
     
     if (shouldUpdateExercises) {
-      setExpandedExercises(allExercisesExpanded);
+      updateUIState({ expandedExercises: allExercisesExpanded });
     }
   };
 
@@ -438,9 +401,11 @@ export default function WorkoutClient({
     }
     
     // Actualizar los estados
-    setExpandedDays(allDaysCollapsed);
-    setExpandedBlocks(allBlocksCollapsed);
-    setExpandedExercises(allExercisesCollapsed);
+    updateUIState({
+      expandedDays: allDaysCollapsed,
+      expandedBlocks: allBlocksCollapsed,
+      expandedExercises: allExercisesCollapsed
+    });
     
     // Ya no necesitamos este estado global
     // if (expandExercises) {
@@ -487,15 +452,27 @@ export default function WorkoutClient({
               <>
                 {workout.days.map((day, dayIndex) => (
                   <WorkoutDayComponent
-                    key={dayIndex}
+                    key={`day-${dayIndex}-${day.name}`}
                     title={day.name}
                     blocks={day.blocks || []}
-                    isExpanded={expandedDays[dayIndex] || false}
-                    expandExercises={expandExercises}
-                    expandedBlocks={expandedBlocks}
-                    setExpandedBlocks={setExpandedBlocks}
-                    expandedExercises={expandedExercises}
-                    setExpandedExercises={setExpandedExercises}
+                    isExpanded={uiState.expandedDays[dayIndex] || false}
+                    expandExercises={uiState.expandExercises}
+                    expandedBlocks={uiState.expandedBlocks}
+                    setExpandedBlocks={(value: SetStateAction<Record<string, boolean>>) => {
+                      if (typeof value === 'function') {
+                        setUiState(prev => ({ ...prev, expandedBlocks: value(prev.expandedBlocks) }));
+                      } else {
+                        setUiState(prev => ({ ...prev, expandedBlocks: value }));
+                      }
+                    }}
+                    expandedExercises={uiState.expandedExercises}
+                    setExpandedExercises={(value: SetStateAction<Record<string, boolean>>) => {
+                      if (typeof value === 'function') {
+                        setUiState(prev => ({ ...prev, expandedExercises: value(prev.expandedExercises) }));
+                      } else {
+                        setUiState(prev => ({ ...prev, expandedExercises: value }));
+                      }
+                    }}
                     dayIndex={dayIndex}
                     onAddBlock={() => handleAddBlock(dayIndex)}
                     onAddExercise={(blockIndex) => handleAddExercise(dayIndex, blockIndex)}

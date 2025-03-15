@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Dispatch, SetStateAction, memo } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction, memo, useCallback } from 'react';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
 import Exercise from './Exercise';
 import { LoadingOverlay } from '@/components/ui/loading';
@@ -20,6 +20,18 @@ interface WorkoutBlockProps {
   onUpdateTitle?: (newTitle: string) => Promise<void>;
   onDeleteBlock?: () => Promise<void>;
   showVideosInline?: boolean;
+}
+
+// Add comparison function for memo
+function arePropsEqual(prevProps: WorkoutBlockProps, nextProps: WorkoutBlockProps) {
+  return (
+    prevProps.title === nextProps.title &&
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.expandExercises === nextProps.expandExercises &&
+    prevProps.showVideosInline === nextProps.showVideosInline &&
+    JSON.stringify(prevProps.exercises) === JSON.stringify(nextProps.exercises) &&
+    JSON.stringify(prevProps.expandedExercises) === JSON.stringify(nextProps.expandedExercises)
+  );
 }
 
 export const WorkoutBlock = memo(function WorkoutBlock({
@@ -48,8 +60,28 @@ export const WorkoutBlock = memo(function WorkoutBlock({
       setExpanded(isExpanded);
     }
   }, [isExpanded]);
+
+  useEffect(() => {
+    setBlockTitle(title);
+  }, [title]);
+
+  const isExerciseExpanded = useCallback((exerciseIndex: number) => {
+    if (setExpandedExercises && expandedExercises) {
+      const exerciseKey = `${title}-${exerciseIndex}`;
+      if (exerciseKey in expandedExercises) {
+        return expandedExercises[exerciseKey];
+      }
+      return expandExercises;
+    } else {
+      const exerciseKey = `${exerciseIndex}`;
+      if (exerciseKey in localExpandedExercises) {
+        return localExpandedExercises[exerciseKey];
+      }
+      return expandExercises;
+    }
+  }, [title, expandedExercises, expandExercises, localExpandedExercises, setExpandedExercises]);
   
-  const handleToggle = (e: React.MouseEvent) => {
+  const handleToggle = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -68,9 +100,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({
     } else {
       setExpanded(newExpanded);
     }
-  };
+  }, [expanded, exercises, expandedExercises, onToggle, setExpandedExercises, title]);
 
-  const toggleExerciseExpansion = (exerciseIndex: number) => {
+  const toggleExerciseExpansion = useCallback((exerciseIndex: number) => {
     if (setExpandedExercises) {
       const exerciseKey = `${title}-${exerciseIndex}`;
       setExpandedExercises(prev => {
@@ -79,7 +111,6 @@ export const WorkoutBlock = memo(function WorkoutBlock({
         return newExpandedExercises;
       });
     } else {
-      // Si no hay un manejador global, usar el estado local
       const exerciseKey = `${exerciseIndex}`;
       setLocalExpandedExercises(prev => {
         const newLocalExpanded = { ...prev };
@@ -87,30 +118,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({
         return newLocalExpanded;
       });
     }
-  };
+  }, [title, setExpandedExercises, isExerciseExpanded]);
 
-  const isExerciseExpanded = (exerciseIndex: number) => {
-    if (setExpandedExercises && expandedExercises) {
-      const exerciseKey = `${title}-${exerciseIndex}`;
-      // Si el ejercicio tiene un estado explícito en expandedExercises, usar ese valor
-      if (exerciseKey in expandedExercises) {
-        return expandedExercises[exerciseKey];
-      }
-      // Si no tiene un estado explícito, usar expandExercises
-      return expandExercises;
-    } else {
-      // Si no hay un manejador global, usar el estado local
-      const exerciseKey = `${exerciseIndex}`;
-      // Si el ejercicio tiene un estado explícito en localExpandedExercises, usar ese valor
-      if (exerciseKey in localExpandedExercises) {
-        return localExpandedExercises[exerciseKey];
-      }
-      // Si no tiene un estado explícito, usar expandExercises
-      return expandExercises;
-    }
-  };
-
-  async function handleAddExercise() {
+  const handleAddExercise = useCallback(async () => {
     if (!onAddExercise) return;
     setIsLoading(true);
     try {
@@ -118,9 +128,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onAddExercise]);
 
-  async function handleUpdateExercise(index: number, data: Partial<ExerciseType>) {
+  const handleUpdateExercise = useCallback(async (index: number, data: Partial<ExerciseType>) => {
     if (!onUpdateExercise) return;
     setIsLoading(true);
     try {
@@ -128,9 +138,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onUpdateExercise]);
 
-  async function handleDeleteExercise(index: number) {
+  const handleDeleteExercise = useCallback(async (index: number) => {
     if (!onDeleteExercise) return;
     setIsLoading(true);
     try {
@@ -138,9 +148,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onDeleteExercise]);
 
-  async function handleDeleteBlock() {
+  const handleDeleteBlock = useCallback(async () => {
     if (!onDeleteBlock) return;
     setIsLoading(true);
     try {
@@ -148,18 +158,18 @@ export const WorkoutBlock = memo(function WorkoutBlock({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [onDeleteBlock]);
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = useCallback(() => {
     setIsEditing(true);
     setBlockTitle(title);
-  };
+  }, [title]);
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setBlockTitle(e.target.value);
-  };
+  }, []);
 
-  const handleNameSubmit = async () => {
+  const handleNameSubmit = useCallback(async () => {
     if (blockTitle.trim() && onUpdateTitle) {
       setIsLoading(true);
       try {
@@ -169,16 +179,16 @@ export const WorkoutBlock = memo(function WorkoutBlock({
       }
     }
     setIsEditing(false);
-  };
+  }, [blockTitle, onUpdateTitle]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleNameSubmit();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
       setBlockTitle(title);
     }
-  };
+  }, [handleNameSubmit, title]);
 
   return (
     <div className={`relative bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4 transition-all duration-200 ${!expanded ? 'shadow-sm' : 'shadow-md'}`}>
@@ -279,6 +289,6 @@ export const WorkoutBlock = memo(function WorkoutBlock({
       )}
     </div>
   );
-});
+}, arePropsEqual);
 
 export default WorkoutBlock; 

@@ -217,23 +217,6 @@ export default function WorkoutPage() {
   return (
     <main className="bg-gray-50 dark:bg-gray-950 min-h-screen py-8">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">
-            Rutinas
-          </h1>
-          
-          <div className="flex flex-wrap gap-2">
-            <button 
-              onClick={fetchData}
-              disabled={isDataLoading}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Refrescar rutinas"
-            >
-              <RefreshCw className={`w-4 h-4 ${isDataLoading ? 'animate-spin' : ''}`} />
-              Refrescar
-            </button>
-          </div>
-        </div>
         
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">

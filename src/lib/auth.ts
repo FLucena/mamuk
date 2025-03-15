@@ -74,18 +74,14 @@ export const authOptions: NextAuthOptions = {
   ],
   logger: {
     error(code: string, metadata: any) {
-      if (process.env.NODE_ENV !== 'production' || code !== 'CLIENT_FETCH_ERROR') {
-        console.error('AUTH ERROR:', code, metadata);
-      }
+      console.error('AUTH ERROR:', { code, metadata });
     },
     warn(code: string) {
-      if (code !== 'DEBUG_ENABLED') {
-        // Removed console.warn
-      }
+      console.warn('AUTH WARNING:', code);
     },
     debug(code: string, metadata: any) {
-      if (process.env.NODE_ENV === 'development') {
-        // Removed console.log
+      if (process.env.AUTH_DEBUG === 'true') {
+        console.log('AUTH DEBUG:', { code, metadata });
       }
     },
   },
@@ -93,6 +89,7 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/signin',
     signOut: '/auth/signin',
     error: '/auth/error',
+    verifyRequest: '/auth/verify-request',
   },
   session: {
     strategy: 'jwt',
@@ -105,9 +102,8 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-        partitioned: process.env.NODE_ENV === 'production'
+        secure: true,
+        domain: process.env.NODE_ENV === 'production' ? '.mamuk.com.ar' : undefined,
       },
     },
     callbackUrl: {
@@ -115,9 +111,8 @@ export const authOptions: NextAuthOptions = {
       options: {
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60, // 1 hour
-        partitioned: process.env.NODE_ENV === 'production'
+        secure: true,
+        domain: process.env.NODE_ENV === 'production' ? '.mamuk.com.ar' : undefined,
       },
     },
     csrfToken: {
@@ -126,9 +121,8 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60, // 1 hour
-        partitioned: process.env.NODE_ENV === 'production'
+        secure: true,
+        domain: process.env.NODE_ENV === 'production' ? '.mamuk.com.ar' : undefined,
       },
     },
   },
@@ -262,17 +256,10 @@ export const authOptions: NextAuthOptions = {
           });
         }
         
-        // Ensure user has roles array
-        if (dbUser && (!dbUser.roles || !Array.isArray(dbUser.roles) || dbUser.roles.length === 0)) {
-          await User.findByIdAndUpdate(dbUser._id, {
-            roles: ['customer']
-          });
-        }
-        
         return true;
       } catch (error) {
         console.error('Error in signIn callback:', error);
-        return false;
+        return '/auth/error?error=DatabaseError';
       }
     },
   },

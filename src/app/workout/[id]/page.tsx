@@ -105,24 +105,22 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
       {/* Esquema JSON-LD para SEO */}
       <SchemaOrg schema={workoutSchema} />
       
-      <Suspense fallback={<LoadingSpinner />}>
-        <WorkoutClient
-          workout={workout}
-          userId={session.user.id}
-          addDay={actions.addDay}
-          addBlock={actions.addBlock}
-          addExercise={actions.addExercise}
-          updateExercise={actions.updateExercise}
-          deleteExercise={actions.deleteExercise}
-          deleteBlock={actions.deleteBlock}
-          deleteDay={actions.deleteDay}
-          deleteWorkout={actions.deleteWorkout}
-          updateDayName={actions.updateDayName}
-          updateBlockName={actions.updateBlockName}
-          isAdmin={isAdmin}
-          isCoach={isCoach}
-        />
-      </Suspense>
+      <WorkoutClient
+        workout={workout}
+        userId={session.user.id}
+        addDay={actions.addDay}
+        addBlock={actions.addBlock}
+        addExercise={actions.addExercise}
+        updateExercise={actions.updateExercise}
+        deleteExercise={actions.deleteExercise}
+        deleteBlock={actions.deleteBlock}
+        deleteDay={actions.deleteDay}
+        deleteWorkout={actions.deleteWorkout}
+        updateDayName={actions.updateDayName}
+        updateBlockName={actions.updateBlockName}
+        isAdmin={isAdmin}
+        isCoach={isCoach}
+      />
     </>
   );
 }
