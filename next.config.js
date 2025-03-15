@@ -48,7 +48,8 @@ const nextConfig = {
   },
   experimental: {
     optimizeCss: true, // Enable CSS optimization
-    optimizePackageImports: ['@heroicons/react', 'date-fns', 'lodash'],
+    optimizePackageImports: ['@heroicons/react', 'date-fns', 'lodash', '@/components'],
+    scrollRestoration: true, // Better scroll handling
     turbo: {
       loaders: {
         // Add loaders for better performance
@@ -101,7 +102,24 @@ const nextConfig = {
   },
   // Let Next.js handle webpack optimization
   webpack: (config, { dev, isServer }) => {
-    // Add any custom webpack configurations here if needed
+    // Add bundle analyzer in development
+    if (dev && !isServer) {
+      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'server',
+          analyzerPort: 8888,
+          openAnalyzer: false,
+        })
+      );
+    }
+    
+    // Optimize module concatenation
+    config.optimization = {
+      ...config.optimization,
+      concatenateModules: true,
+    };
+    
     return config;
   },
 };

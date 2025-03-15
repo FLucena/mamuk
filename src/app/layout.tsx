@@ -10,14 +10,15 @@ import { Providers } from '@/providers'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from 'react-hot-toast'
 import { Metadata, Viewport } from 'next'
-import CookieConsent from '@/components/CookieConsent'
-import Footer from '@/components/Footer'
-import NavigationTracker from '@/components/NavigationTracker'
-import NavigationPatcher from '@/components/NavigationPatcher'
-import PerformanceMonitor from '@/components/PerformanceMonitor'
-import PerformanceOptimizerWrapper from '@/components/PerformanceOptimizerWrapper'
-import DebugButton from '@/components/DebugButton'
-import DebugRenderCounter from '@/components/DebugRenderCounter'
+import JsonLd from './components/JsonLd'
+import { Analytics } from './components/Analytics'
+import { NonceMetaTag } from '@/lib/csp'
+import React, { Suspense } from 'react'
+import dynamic from 'next/dynamic'
+import { ErrorProvider } from '@/contexts/ErrorContext'
+import NavbarErrorBoundary from '@/components/navbar/NavbarErrorBoundary'
+import ContentErrorBoundary from '@/components/ContentErrorBoundary'
+import { SpinnerProvider } from '@/contexts/SpinnerContext'
 import GlobalSpinner from '@/components/ui/GlobalSpinner'
 import { 
   SITE_URL, 
@@ -27,19 +28,6 @@ import {
   TWITTER_HANDLE,
   COPYRIGHT_HOLDER
 } from '@/lib/constants/site'
-import NavbarErrorBoundary from '@/components/navbar/NavbarErrorBoundary'
-import ContentErrorBoundary from '@/components/ContentErrorBoundary'
-import { ErrorProvider } from '@/contexts/ErrorContext'
-import ErrorNotification from '@/components/ErrorNotification'
-import RoleDebugger from '@/components/RoleDebugger'
-import { SpinnerProvider } from '@/contexts/SpinnerContext'
-import NavigationSpinnerHandler from '@/components/NavigationSpinnerHandler'
-import JsonLd from './components/JsonLd'
-import { Analytics } from './components/Analytics'
-import { NonceMetaTag } from '@/lib/csp'
-import Script from 'next/script'
-import React from 'react'
-import dynamic from 'next/dynamic'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -127,6 +115,63 @@ const CRITICAL_FONTS: { path: string; as: string; type: string; crossOrigin?: st
 
 export const fetchCache = 'auto';
 
+// Dynamically import non-critical components
+const DynamicCookieConsent = dynamic(() => import('@/components/CookieConsent'), {
+  ssr: false,
+  loading: () => null
+});
+
+const DynamicFooter = dynamic(() => import('@/components/Footer'), {
+  loading: () => null
+});
+
+const DynamicErrorNotification = dynamic(() => import('@/components/ErrorNotification'), {
+  ssr: false,
+  loading: () => null
+});
+
+// Development-only components
+const DevComponents = dynamic(() => 
+  process.env.NODE_ENV === 'development' 
+    ? import('@/components/DevComponents').then((mod) => mod.default)
+    : Promise.resolve(() => null)
+, {
+  ssr: false,
+  loading: () => null
+});
+
+// Optimize performance monitoring
+const PerformanceComponents = dynamic(() => 
+  Promise.all([
+    import('@/components/NavigationTracker'),
+    import('@/components/NavigationPatcher'),
+    import('@/components/PerformanceMonitor'),
+    import('@/components/PerformanceOptimizerWrapper'),
+  ]).then(([
+    { default: NavigationTracker },
+    { default: NavigationPatcher },
+    { default: PerformanceMonitor },
+    { default: PerformanceOptimizerWrapper }
+  ]) => {
+    return function CombinedPerformanceComponents({ criticalFonts }: { criticalFonts: any[] }) {
+      return (
+        <>
+          <NavigationTracker />
+          <NavigationPatcher />
+          <PerformanceMonitor />
+          <PerformanceOptimizerWrapper 
+            criticalFonts={criticalFonts}
+            enableServiceWorker={true}
+            enableMemoryMonitoring={true}
+          />
+        </>
+      );
+    };
+  }), {
+  ssr: false,
+  loading: () => null
+});
+
 export default async function RootLayout({ children }: RootLayoutProps) {
   const session = await getServerSession(authOptions);
 
@@ -155,7 +200,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             `,
           }}
         />
-        {/* Service worker is registered by PerformanceOptimizer component */}
         <JsonLd />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#4f46e5" />
@@ -167,16 +211,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               <SessionProvider session={session}>
                 <AuthProvider>
                   <SpinnerProvider>
-                    <NavigationPatcher />
-                    <NavigationTracker />
-                    <NavigationSpinnerHandler />
-                    <PerformanceMonitor />
-                    <PerformanceOptimizerWrapper 
-                      criticalFonts={CRITICAL_FONTS}
-                      enableServiceWorker={true}
-                      enableMemoryMonitoring={true}
-                    />
-                    <DebugRenderCounter />
                     <GlobalSpinner />
                     
                     <NavbarErrorBoundary>
@@ -189,19 +223,18 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                       </ContentErrorBoundary>
                     </main>
                     
-                    <Footer />
-                    <CookieConsent />
-                    <ErrorNotification />
+                    <DynamicFooter />
+                    
+                    {/* Dynamically loaded components */}
+                    <Suspense fallback={null}>
+                      <DynamicCookieConsent />
+                      <DynamicErrorNotification />
+                      <PerformanceComponents criticalFonts={CRITICAL_FONTS} />
+                      {process.env.NODE_ENV === 'development' && <DevComponents />}
+                    </Suspense>
+                    
                     <Toaster position="top-right" />
                     <Analytics />
-                    
-                    {process.env.NODE_ENV === 'development' && (
-                      <>
-                        <DebugButton />
-                        <RoleDebugger />
-                        <PerformanceDebugWrapper />
-                      </>
-                    )}
                   </SpinnerProvider>
                 </AuthProvider>
               </SessionProvider>
@@ -210,15 +243,5 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         </ThemeProvider>
       </body>
     </html>
-  )
-}
-
-// Dynamically import the performance debug component to avoid including it in production bundles
-function PerformanceDebugWrapper() {
-  return (
-    <React.Suspense fallback={null}>
-      {/* @ts-ignore - Dynamic import */}
-      {React.createElement(dynamic(() => import('@/components/debug/PerformanceDebug'), { ssr: false }))}
-    </React.Suspense>
   );
 } 
