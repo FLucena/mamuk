@@ -1,4 +1,4 @@
-import ScreenshotHelper from '@/components/ScreenshotHelper';
+import { ScreenshotHelper } from '@/components/ScreenshotHelper';
 import HomePage from '@/app/page';
 
 export default function DesktopHomeScreenshot() {

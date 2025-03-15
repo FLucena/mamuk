@@ -1,4 +1,4 @@
-import ScreenshotHelper from '@/components/ScreenshotHelper';
+import { ScreenshotHelper } from '@/components/ScreenshotHelper';
 import WorkoutPage from '@/app/workout/page';
 
 export default function MobileWorkoutScreenshot() {

@@ -3,9 +3,10 @@ import html2canvas from 'html2canvas';
 
 type ScreenshotHelperProps = {
   type: 'desktop' | 'mobile';
+  children: React.ReactNode;
 };
 
-const ScreenshotHelper = ({ type }: ScreenshotHelperProps) => {
+export const ScreenshotHelper = ({ type, children }: ScreenshotHelperProps) => {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,8 +50,7 @@ const ScreenshotHelper = ({ type }: ScreenshotHelperProps) => {
         <br />
         Dimensions: {dimensions.width}x{dimensions.height}
       </div>
+      {children}
     </div>
   );
-}; 
-
-export default ScreenshotHelper;
+};
