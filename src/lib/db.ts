@@ -87,6 +87,10 @@ function trackQueryPerformance() {
     // Access operation type safely
     const operation = (this as any).op || 'unknown';
     
+    // Check if query has hints or indexes
+    const hasHint = !!(this as any)._hint;
+    const filter = this.getFilter();
+    
     return originalExec.apply(this, arguments as any).then((result: any) => {
       const queryTime = Date.now() - startTime;
       
@@ -96,12 +100,25 @@ function trackQueryPerformance() {
         cached.queryTimes.shift();
       }
       
-      // Log slow queries (over 500ms)
-      if (queryTime > 500) {
+      // Adaptive threshold based on query complexity and collection size
+      let threshold = 500; // Default threshold
+      
+      // Adjust threshold based on operation type
+      if (operation === 'find' && Object.keys(filter).length <= 1) {
+        threshold = 200; // Simple finds should be faster
+      } else if (operation === 'aggregate') {
+        threshold = 800; // Aggregations can be more complex
+      }
+      
+      // Log slow queries
+      if (queryTime > threshold) {
         console.warn(`[PERFORMANCE] Slow MongoDB query: ${queryTime}ms`, {
           operation,
           collection,
-          filter: JSON.stringify(this.getFilter()),
+          filter: JSON.stringify(filter),
+          hasHint,
+          // Suggest adding an index if query is consistently slow
+          suggestion: !hasHint ? 'Consider adding an index or using .hint()' : undefined
         });
       }
       

@@ -10,7 +10,7 @@ export default function AuthError() {
   const [errorDescription, setErrorDescription] = useState<string>('');
 
   useEffect(() => {
-    const error = searchParams.get('error');
+    const error = searchParams?.get('error');
     
     if (error) {
       switch (error) {

@@ -34,11 +34,11 @@ export default function WorkoutFilters({ onFilterChange }: WorkoutFiltersProps) 
   
   // Initialize filters from URL params
   const [filters, setFilters] = useState<WorkoutFilters>({
-    search: searchParams.get('search') || '',
-    customerId: searchParams.get('customerId') || undefined,
-    status: (searchParams.get('status') as WorkoutFilters['status']) || 'active',
-    sortBy: (searchParams.get('sortBy') as WorkoutFilters['sortBy']) || 'date',
-    sortOrder: (searchParams.get('sortOrder') as WorkoutFilters['sortOrder']) || 'desc',
+    search: searchParams?.get('search') || '',
+    customerId: searchParams?.get('customerId') || undefined,
+    status: (searchParams?.get('status') as WorkoutFilters['status']) || 'active',
+    sortBy: (searchParams?.get('sortBy') as WorkoutFilters['sortBy']) || 'date',
+    sortOrder: (searchParams?.get('sortOrder') as WorkoutFilters['sortOrder']) || 'desc',
   });
 
   // Fetch customers for the dropdown (only for admins and coaches)

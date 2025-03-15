@@ -21,7 +21,7 @@ export default function RouteGuard({ children }: RouteGuardProps) {
     if (status === 'loading') return;
 
     // Check if route requires authentication
-    const { hasAccess, redirectTo, reason } = checkRouteAccess(pathname, session);
+    const { hasAccess, redirectTo, reason } = checkRouteAccess(pathname || '', session);
 
     if (process.env.NODE_ENV === 'development') {
       console.log(`RouteGuard: ${pathname} - ${hasAccess ? 'Access granted' : 'Access denied'} - ${reason}`);

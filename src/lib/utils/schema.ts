@@ -18,8 +18,6 @@ export function generateOrganizationSchema() {
     url: process.env.NEXT_PUBLIC_APP_URL || SITE_URL,
     logo: `${process.env.NEXT_PUBLIC_APP_URL || SITE_URL}/logo.png`,
     sameAs: [
-      'https://facebook.com/mamuk',
-      'https://twitter.com/mamuk',
       'https://www.instagram.com/mamuk_fa/',
     ],
     contactPoint: {

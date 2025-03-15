@@ -80,9 +80,14 @@ function navbarContentPropsAreEqual() {
   return true;
 }
 
-// Track why a component re-rendered
+// Track why a component re-rendered - optimize to reduce overhead
 function useWhyDidYouRender(componentName: string, props: Record<string, any>) {
   const prevPropsRef = useRef<Record<string, any> | null>(null);
+  
+  // Only run in development mode to avoid performance impact in production
+  if (process.env.NODE_ENV !== 'development') {
+    return;
+  }
   
   // Use a proper dependency array to prevent infinite loops
   useEffect(() => {
@@ -124,41 +129,38 @@ const NavbarContent = memo(function NavbarContent() {
   const transitionRouter = useViewTransitionRouter();
   const { theme, setTheme } = useTheme();
   
-  // Track why this component re-rendered
+  // Track why this component re-rendered - only in development
   const sessionEmail = session?.user?.email || '';
-  useWhyDidYouRender('NavbarContent', {
-    isAdmin,
-    isCoach,
-    sessionEmail,
-    pathname,
-    theme
-  });
+  if (process.env.NODE_ENV === 'development') {
+    useWhyDidYouRender('NavbarContent', {
+      isAdmin,
+      isCoach,
+      sessionEmail,
+      pathname,
+      theme
+    });
+  }
   
-  // Debug logging to track state changes with detailed comparison
+  // Optimize effect dependencies to reduce re-renders
   useEffect(() => {
-    if (prevValuesRef.current.isAdmin !== isAdmin || prevValuesRef.current.isCoach !== isCoach) {
-      prevValuesRef.current.isAdmin = isAdmin;
-      prevValuesRef.current.isCoach = isCoach;
+    // Batch updates to prevValuesRef to reduce effect calls
+    const hasRoleChange = prevValuesRef.current.isAdmin !== isAdmin || prevValuesRef.current.isCoach !== isCoach;
+    const hasSessionChange = prevValuesRef.current.sessionEmail !== sessionEmail;
+    const hasPathChange = prevValuesRef.current.pathname !== pathname;
+    const hasThemeChange = prevValuesRef.current.theme !== theme;
+    
+    // Only update if something changed
+    if (hasRoleChange || hasSessionChange || hasPathChange || hasThemeChange) {
+      // Update all values at once
+      prevValuesRef.current = {
+        isAdmin,
+        isCoach,
+        sessionEmail,
+        pathname: pathname || '',
+        theme: theme || ''
+      };
     }
-  }, [isAdmin, isCoach]);
-  
-  useEffect(() => {
-    if (prevValuesRef.current.sessionEmail !== sessionEmail) {
-      prevValuesRef.current.sessionEmail = sessionEmail;
-    }
-  }, [session]);
-  
-  useEffect(() => {
-    if (prevValuesRef.current.pathname !== pathname) {
-      prevValuesRef.current.pathname = pathname;
-    }
-  }, [pathname]);
-  
-  useEffect(() => {
-    if (prevValuesRef.current.theme !== theme) {
-      prevValuesRef.current.theme = theme || '';
-    }
-  }, [theme]);
+  }, [isAdmin, isCoach, sessionEmail, pathname, theme]);
   
   // State for mobile menu
   const [isOpen, setIsOpen] = useState(false);

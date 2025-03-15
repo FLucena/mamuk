@@ -51,31 +51,20 @@ const NavigationTracker = memo(function NavigationTracker() {
     []
   );
   
-  // Usar un efecto separado para el pathname y searchParams para reducir las actualizaciones
+  // Optimize by combining the pathname and searchParams effects
   useEffect(() => {
-    // Ignorar cambios menores en searchParams si el pathname no ha cambiado
-    if (!isFirstRender.current && prevPathRef.current === pathname) {
+    // Skip work in development mode for faster hot reloading
+    if (process.env.NODE_ENV === 'development' && 
+        window.location.hostname === 'localhost' && 
+        navigationCountRef.current < 3) {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        prevPathRef.current = pathname;
+      }
       return;
     }
     
-    handleNavigation();
-  }, [pathname]); // Solo depende de pathname
-  
-  // Efecto separado para searchParams con un debounce más agresivo
-  useEffect(() => {
-    if (isFirstRender.current) return;
-    
-    // Usar un timeout para debounce de cambios en searchParams
-    const timer = setTimeout(() => {
-      handleNavigation();
-    }, 500); // Debounce de 500ms para cambios en searchParams
-    
-    return () => clearTimeout(timer);
-  }, [searchParams]); // Solo depende de searchParams
-  
-  // Función para manejar la navegación
-  const handleNavigation = useCallback(() => {
-    // Create the full URL
+    // Create the full URL - do this calculation only once per effect
     const fullUrl = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
     
     // Skip tracking on first render to avoid counting initial page load as navigation
@@ -88,8 +77,9 @@ const NavigationTracker = memo(function NavigationTracker() {
         navigationCountRef.current = parseInt(storedCount, 10);
       }
       
-      // Set initial URL
+      // Set initial URL and path
       currentUrlRef.current = fullUrl;
+      prevPathRef.current = pathname;
       
       return;
     }
@@ -97,18 +87,21 @@ const NavigationTracker = memo(function NavigationTracker() {
     // Check if this is an actual navigation (URL changed)
     const isActualNavigation = fullUrl !== currentUrlRef.current;
     
+    // Early return if no actual navigation occurred
+    if (!isActualNavigation) return;
+    
     // Check for navigation throttling
     const now = Date.now();
     const timeSinceLastNavigation = now - lastNavigationTimeRef.current;
     
     // Only log and process if there's an actual navigation and not throttled
-    if (isActualNavigation && timeSinceLastNavigation > navigationThrottleTimeRef.current) {
+    if (timeSinceLastNavigation > navigationThrottleTimeRef.current) {
       // Update last navigation time
       lastNavigationTimeRef.current = now;
       
       // Track navigation between pages - use debounced version
       if (prevPathRef.current && prevPathRef.current !== pathname) {
-        debouncedTrackNavigation(prevPathRef.current, pathname);
+        debouncedTrackNavigation(prevPathRef.current, pathname || '');
       }
       
       // Update previous path
@@ -117,27 +110,24 @@ const NavigationTracker = memo(function NavigationTracker() {
       // Count renders in this session (only increment on actual navigation)
       navigationCountRef.current += 1;
       
-      // Limit the frequency of sessionStorage updates
-      if (navigationCountRef.current % 10 === 0) { // Reducir frecuencia de actualizaciones
+      // Limit the frequency of sessionStorage updates - use modulo 20 instead of 10
+      if (navigationCountRef.current % 20 === 0) { // Reducir frecuencia de actualizaciones
         sessionStorage.setItem('navigation-count', navigationCountRef.current.toString());
       }
         
-      if (navigationCountRef.current > 30) { // Aumentar el umbral
+      if (navigationCountRef.current > 50) { // Aumentar el umbral de 30 a 50
         // Use debounced version to avoid excessive logging
         debouncedLogStats();
       }
       
-      // Log stats on every 20th navigation (reducir frecuencia)
-      if (navigationCountRef.current % 20 === 0 && navigationCountRef.current > 0) {
+      // Log stats on every 30th navigation (reducir frecuencia from 20 to 30)
+      if (navigationCountRef.current % 30 === 0 && navigationCountRef.current > 0) {
         debouncedLogStats();
       }
-      
-      // Update current URL reference
-      currentUrlRef.current = fullUrl;
-    } else if (isActualNavigation) {
-      // Still update the current URL reference to prevent further throttling
-      currentUrlRef.current = fullUrl;
     }
+    
+    // Always update current URL reference to prevent further throttling
+    currentUrlRef.current = fullUrl;
   }, [pathname, searchParams, debouncedTrackNavigation, debouncedLogStats]);
 
   // This component doesn't render anything
