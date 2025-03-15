@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
 import { Role } from './lib/types/user';
 import type { NextRequest } from 'next/server';
-import { isProtectedRoute, getRequiredRoles } from './utils/authNavigation';
+import { isProtectedRoute, getRequiredRoles, checkRouteAccess, trackRedirect } from './utils/authNavigation';
 import { getToken } from 'next-auth/jwt';
 
 interface Token {
@@ -311,94 +311,97 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
  */
 export default withAuth(
   async function middleware(request: NextRequest) {
-    // Start server timing
-    const startTime = performance.now();
-    const requestId = Math.random().toString(36).substring(2, 10);
+    // Get the pathname of the request
+    const path = request.nextUrl.pathname;
     
-    // Check for domain redirect
+    // Skip middleware for static files and API routes
+    if (
+      path.startsWith('/_next') ||
+      path.startsWith('/static') ||
+      path.startsWith('/api') ||
+      path.includes('.') ||
+      path === '/favicon.ico'
+    ) {
+      return NextResponse.next();
+    }
+    
+    // Check for domain redirect first
     const domainRedirect = checkDomainRedirect(request);
     if (domainRedirect) return domainRedirect;
-    
-    // Check for debug routes protection
-    const debugProtection = protectDebugRoutes(request);
-    if (debugProtection) return debugProtection;
-    
-    // Check for rate limiting
-    if (shouldRateLimit(request)) {
-      const response = new NextResponse(
-        JSON.stringify({ error: 'Too many requests, please try again later' }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
-      );
-      return response;
-    }
     
     // Handle service worker files
     const swResponse = handleServiceWorkerFiles(request);
     if (swResponse) return swResponse;
     
-    // Handle session API requests
+    // Handle session requests
     const sessionResponse = handleSessionRequests(request);
     if (sessionResponse) return sessionResponse;
     
-    // Get the JWT token from the session
-    const token = await getToken({ 
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
+    // Protect debug routes in production
+    const debugResponse = protectDebugRoutes(request);
+    if (debugResponse) return debugResponse;
     
-    // Protected routes that require authentication
-    const protectedRoutes = ['/workouts', '/profile', '/achievements', '/admin'];
-    const isProtectedRoute = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route));
+    // Check rate limiting for critical endpoints
+    if (shouldRateLimit(request)) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Too many requests' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
-    // Admin routes that require admin role
-    const adminRoutes = ['/admin'];
-    const isAdminRoute = adminRoutes.some(route => request.nextUrl.pathname.startsWith(route));
-    
-    // Auth routes that should redirect authenticated users
-    const authRoutes = ['/signin', '/signup', '/forgot-password'];
-    const isAuthRoute = authRoutes.some(route => request.nextUrl.pathname.startsWith(route));
-    
-    // Handle protected routes
-    if (isProtectedRoute) {
-      // If not authenticated, redirect to signin
-      if (!token) {
-        const response = NextResponse.redirect(new URL('/signin', request.url));
-        cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
-        return response;
+    try {
+      // Get the token from the request
+      const token = await getToken({ req: request });
+      
+      // Create a session-like object from the token
+      const session = token ? {
+        user: {
+          id: token.id || '',
+          roles: token.roles || ['customer'],
+          email: token.email,
+          name: token.name
+        },
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+      } : null;
+      
+      // Check route access
+      const { hasAccess, redirectTo, reason } = checkRouteAccess(path, session);
+      
+      // If redirect is needed and it's safe to do so
+      if (!hasAccess && redirectTo && trackRedirect(path, redirectTo)) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = redirectTo;
+        
+        // If redirecting to signin, add the callback URL
+        if (redirectTo === '/auth/signin') {
+          redirectUrl.searchParams.set('callbackUrl', path);
+        }
+        
+        // Log the redirect in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Auth] Redirecting from ${path} to ${redirectUrl.pathname} - Reason: ${reason}`);
+        }
+        
+        return NextResponse.redirect(redirectUrl);
       }
       
-      // If admin route but user is not admin, redirect to unauthorized
-      if (isAdminRoute && !token.roles?.includes('admin')) {
-        const response = NextResponse.redirect(new URL('/unauthorized', request.url));
-        cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
-        return response;
-      }
-    }
-    
-    // Handle auth routes - redirect authenticated users to dashboard
-    if (isAuthRoute && token) {
-      const response = NextResponse.redirect(new URL('/dashboard', request.url));
-      cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
+      // Continue with the request
+      const response = NextResponse.next();
+      
+      // Apply security headers
+      applySecurityHeaders(request, response);
+      
       return response;
+    } catch (error) {
+      console.error('Middleware error:', error);
+      return NextResponse.next();
     }
-    
-    // Allow the request to proceed
-    const response = NextResponse.next();
-    cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
-    
-    // Apply security headers
-    applySecurityHeaders(request, response);
-    
-    // Add server timing header
-    const endTime = performance.now();
-    response.headers.set('Server-Timing', `middleware;dur=${(endTime - startTime).toFixed(2)};desc="Middleware processing time"`);
-    
-    return response;
   },
   {
     callbacks: {
-      authorized: async ({ req, token }) => {
-        // ... existing authorized callback ...
+      authorized: ({ token }) => {
+        // This is called by next-auth before our middleware
+        // We'll do our actual auth check in the middleware
         return true;
       },
     },

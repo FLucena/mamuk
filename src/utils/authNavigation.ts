@@ -31,14 +31,20 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   
   // Authenticated routes
   { path: '/workout', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
+  { path: '/workout/new', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
+  { path: '/workout/archived', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
   { path: '/achievements', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
   { path: '/profile', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
   
   // Coach routes
-  { path: '/coach', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
+  { path: '/coach', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/unauthorized' },
+  { path: '/coach/customers', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/unauthorized' },
+  { path: '/coach/customers/workouts', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/unauthorized' },
   
   // Admin routes
   { path: '/admin', requiredRoles: ['admin'], redirectUnauthenticated: '/unauthorized' },
+  { path: '/admin/users', requiredRoles: ['admin'], redirectUnauthenticated: '/unauthorized' },
+  { path: '/admin/coaches', requiredRoles: ['admin'], redirectUnauthenticated: '/unauthorized' },
 ];
 
 // Add a redirect history tracker to prevent redirect loops and multiple redirects
@@ -179,21 +185,26 @@ export function checkRouteAccess(path: string, session: Session | null): {
  * @returns The path to redirect to
  */
 export function getHomeRedirect(session: Session | null): string {
-  if (!session) {
+  if (!session?.user?.roles) {
     return '/';
   }
   
-  const userRoles = session.user?.roles || [];
+  const userRoles = session.user.roles;
   
+  // Check roles in order of priority
   if (userRoles.includes('admin')) {
     return '/admin';
   }
   
   if (userRoles.includes('coach')) {
-    return '/coach';
+    return '/coach/customers';  // Redirect coaches to their customers page
   }
   
-  return '/workout';
+  if (userRoles.includes('customer')) {
+    return '/workout';  // Redirect customers to workout page
+  }
+  
+  return '/';  // Fallback to home page
 }
 
 /**
