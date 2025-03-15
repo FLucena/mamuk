@@ -12,7 +12,7 @@ import { Toaster } from 'react-hot-toast'
 import { Metadata, Viewport } from 'next'
 import JsonLd from './components/JsonLd'
 import { Analytics } from './components/Analytics'
-import { NonceMetaTag } from '@/lib/csp'
+import { NonceMetaTag, getNonce } from '@/lib/csp'
 import React, { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { ErrorProvider } from '@/contexts/ErrorContext'
@@ -20,6 +20,7 @@ import NavbarErrorBoundary from '@/components/navbar/NavbarErrorBoundary'
 import ContentErrorBoundary from '@/components/ContentErrorBoundary'
 import { SpinnerProvider } from '@/contexts/SpinnerContext'
 import GlobalSpinner from '@/components/ui/GlobalSpinner'
+import { headers } from 'next/headers'
 import { 
   SITE_URL, 
   SITE_NAME, 
@@ -174,6 +175,7 @@ const PerformanceComponents = dynamic(() =>
 
 export default async function RootLayout({ children }: RootLayoutProps) {
   const session = await getServerSession(authOptions);
+  const nonce = headers().get('x-csp-nonce') || '';
 
   return (
     <html lang="es" suppressHydrationWarning>
@@ -181,6 +183,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <NonceMetaTag />
         <meta charSet="utf-8" />
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               (function() {

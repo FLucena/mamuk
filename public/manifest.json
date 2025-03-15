@@ -8,19 +8,60 @@
   "theme_color": "#4f46e5",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-home.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Homescreen of Mamuk"
+    },
+    {
+      "src": "/screenshots/desktop-workout.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Workout tracking interface"
+    },
+    {
+      "src": "/screenshots/mobile-home.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "label": "Mamuk mobile homescreen"
+    },
+    {
+      "src": "/screenshots/mobile-workout.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "label": "Mobile workout tracking"
     }
   ],
   "scope": "/",
-  "orientation": "portrait",
+  "orientation": "any",
   "lang": "es-AR",
   "dir": "ltr",
   "prefer_related_applications": false,
@@ -31,14 +72,26 @@
       "short_name": "Dashboard",
       "description": "Ver tu dashboard",
       "url": "/dashboard",
-      "icons": [{ "src": "/icons/dashboard.png", "sizes": "96x96" }]
+      "icons": [{ 
+        "src": "/icons/shortcut-dashboard.png", 
+        "sizes": "96x96",
+        "type": "image/png"
+      }]
     },
     {
       "name": "Rutinas",
       "short_name": "Rutinas",
       "description": "Ver tus rutinas de entrenamiento",
       "url": "/workout",
-      "icons": [{ "src": "/icons/workout.png", "sizes": "96x96" }]
+      "icons": [{ 
+        "src": "/icons/shortcut-workout.png", 
+        "sizes": "96x96",
+        "type": "image/png"
+      }]
     }
-  ]
+  ],
+  "categories": ["fitness", "health", "lifestyle"],
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  }
 } 

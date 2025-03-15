@@ -218,65 +218,47 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   const connectSrc = isDevelopment
     ? `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar http://localhost:* ws://localhost:*`
     : `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar`;
-  
-  // Permitir iframes para videos en rutas específicas
+
+  // Base CSP directives that are common for all routes
+  const baseCSP = {
+    'default-src': ["'self'"],
+    'script-src': isDevelopment 
+      ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"] 
+      : ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net"],
+    'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Next.js requires unsafe-inline for styles
+    'img-src': [imgSrc],
+    'font-src': ["'self'", "https://fonts.gstatic.com"],
+    'connect-src': [connectSrc],
+    'frame-src': ["'self'"],
+    'object-src': ["'none'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"],
+    'manifest-src': ["'self'"],
+    'media-src': ["'self'"],
+    'worker-src': ["'self'", "blob:"],
+    'child-src': ["'self'", "blob:"],
+  };
+
+  // Add frame-src exceptions for routes that need video embeds
   if (
     request.nextUrl.pathname.startsWith('/workout') ||
     request.nextUrl.pathname.startsWith('/coach')
   ) {
-    // No establecer X-Frame-Options para permitir iframes
+    baseCSP['frame-src'] = ["'self'", "https://www.youtube.com", "https://youtube.com", "https://player.vimeo.com", "https://vimeo.com"];
+    // Remove X-Frame-Options to allow iframes
     response.headers.delete('X-Frame-Options');
-    
-    // Configurar CSP para permitir iframes de YouTube y Vimeo
-    // En desarrollo, permitir 'unsafe-inline' y 'unsafe-eval'
-    const scriptSrc = isDevelopment 
-      ? `'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net` 
-      : `'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`;
-    
-    const styleSrc = isDevelopment
-      ? `'self' 'unsafe-inline' https://fonts.googleapis.com`
-      : `'self' https://fonts.googleapis.com`;
-    
-    response.headers.set(
-      'Content-Security-Policy',
-      `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; font-src 'self' https://fonts.gstatic.com; connect-src ${connectSrc}; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com; object-src 'none'; base-uri 'self';`
-    );
-  } else if (
-    request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/profile') ||
-    request.nextUrl.pathname.startsWith('/achievements')
-  ) {
-    const scriptSrc = isDevelopment 
-      ? `'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net` 
-      : `'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`;
-    
-    const styleSrc = isDevelopment
-      ? `'self' 'unsafe-inline' https://fonts.googleapis.com`
-      : `'self' https://fonts.googleapis.com`;
-    
-    response.headers.set(
-      'Content-Security-Policy',
-      `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; font-src 'self' https://fonts.gstatic.com; connect-src ${connectSrc}; frame-src 'none'; object-src 'none'; base-uri 'self';`
-    );
-  } else {
-    // CSP para otras rutas
-    const scriptSrc = isDevelopment 
-      ? `'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net` 
-      : `'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`;
-    
-    const styleSrc = isDevelopment
-      ? `'self' 'unsafe-inline' https://fonts.googleapis.com`
-      : `'self' https://fonts.googleapis.com`;
-    
-    response.headers.set(
-      'Content-Security-Policy',
-      `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src ${imgSrc}; font-src 'self' https://fonts.gstatic.com; connect-src ${connectSrc}; frame-src 'none'; object-src 'none'; base-uri 'self';`
-    );
   }
-  
-  // Pasar el nonce a la respuesta para que pueda ser utilizado en scripts inline
-  const html = response.headers.get('content-type')?.includes('text/html');
-  if (html) {
+
+  // Convert CSP object to string
+  const cspString = Object.entries(baseCSP)
+    .map(([key, values]) => `${key} ${Array.isArray(values) ? values.join(' ') : values}`)
+    .join('; ');
+
+  // Set the CSP header
+  response.headers.set('Content-Security-Policy', cspString);
+
+  // Pass the nonce to the response for HTML pages
+  if (response.headers.get('content-type')?.includes('text/html')) {
     response.headers.set('x-csp-nonce', nonce);
   }
   
