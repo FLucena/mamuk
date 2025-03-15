@@ -51,9 +51,9 @@ const nextConfig = {
     optimizePackageImports: ['@heroicons/react', 'date-fns', 'lodash', '@/components'],
     scrollRestoration: true, // Better scroll handling
     turbo: {
-      loaders: {
-        // Add loaders for better performance
-        '.svg': ['@svgr/webpack'],
+      rules: {
+        // Add rules for better performance
+        '*.svg': ['@svgr/webpack'],
       },
     },
   },
