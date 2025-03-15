@@ -5,7 +5,7 @@ type ScreenshotHelperProps = {
   type: 'desktop' | 'mobile';
 };
 
-export const ScreenshotHelper = ({ type }: ScreenshotHelperProps) => {
+const ScreenshotHelper = ({ type }: ScreenshotHelperProps) => {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,3 +52,5 @@ export const ScreenshotHelper = ({ type }: ScreenshotHelperProps) => {
     </div>
   );
 }; 
+
+export default ScreenshotHelper;
