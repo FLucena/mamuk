@@ -71,7 +71,7 @@ describe('RouteGuard', () => {
   test('should render children when user has access', async () => {
     (useSession as jest.Mock).mockReturnValue({
       data: { user: { roles: ['customer'] } },
-      status: 'authenticated',
+      status: 'loading',
     });
     
     (checkRouteAccess as jest.Mock).mockReturnValue({
@@ -80,7 +80,7 @@ describe('RouteGuard', () => {
       reason: 'User has access',
     });
     
-    render(
+    const { rerender } = render(
       <RouteGuard>
         <div>Protected Content</div>
       </RouteGuard>
@@ -88,6 +88,19 @@ describe('RouteGuard', () => {
     
     // Initially shows loading spinner
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+    
+    // Change session status to authenticated
+    (useSession as jest.Mock).mockReturnValue({
+      data: { user: { roles: ['customer'] } },
+      status: 'authenticated',
+    });
+    
+    // Rerender with updated session
+    rerender(
+      <RouteGuard>
+        <div>Protected Content</div>
+      </RouteGuard>
+    );
     
     // Then shows content
     await waitFor(() => {

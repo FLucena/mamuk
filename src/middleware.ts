@@ -124,7 +124,9 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   });
   
   // Generar nonce para scripts
-  const nonce = crypto.randomUUID();
+  const nonce = typeof crypto.randomUUID === 'function' 
+    ? crypto.randomUUID() 
+    : Math.random().toString(36).substring(2, 15);
   
   // Determinar si estamos en desarrollo o producción
   const isDevelopment = process.env.NODE_ENV === 'development';

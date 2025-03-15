@@ -2,15 +2,28 @@
 const CACHE_NAME = 'mamuk-cache-v1';
 const OFFLINE_URL = '/offline';
 
-// Assets to cache
-const urlsToCache = [
+// Cache strategies
+const CACHE_STRATEGIES = {
+  'cache-first': 'cache-first',
+  'network-first': 'network-first',
+  'network-only': 'network-only'
+};
+
+// Static assets to cache
+const STATIC_ASSETS = [
   '/',
   '/offline',
+  '/manifest.json',
   '/api/manifest',
   '/logo.png',
   '/favicon.ico',
   '/api/sw-register',
   '/api/sw',
+];
+
+// Assets to cache
+const urlsToCache = [
+  ...STATIC_ASSETS
 ];
 
 // Install event - cache assets
@@ -22,6 +35,9 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
       .then(() => self.skipWaiting())
+      .catch((error) => {
+        console.error('Service worker install failed:', error);
+      })
   );
 });
 
@@ -38,11 +54,14 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => self.clients.claim())
+    .catch((error) => {
+      console.error('Service worker activation error:', error);
+    })
   );
 });
 
-// Fetch event - serve from cache or network
-self.addEventListener('fetch', (event) => {
+// Handle fetch events
+function handleFetch(event) {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
@@ -68,7 +87,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Return cached response if found
+        // Return cached response if found (cache-first strategy)
         if (response) {
           return response;
         }
@@ -76,7 +95,7 @@ self.addEventListener('fetch', (event) => {
         // Clone the request
         const fetchRequest = event.request.clone();
 
-        // Make network request
+        // Make network request (network-first strategy)
         return fetch(fetchRequest)
           .then((response) => {
             // Check if valid response
@@ -91,11 +110,15 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_NAME)
               .then((cache) => {
                 cache.put(event.request, responseToCache);
+              })
+              .catch(error => {
+                console.error('Error caching response:', error);
               });
 
             return response;
           })
-          .catch(() => {
+          .catch((error) => {
+            console.error('Fetch error:', error);
             // If the request is for a page, return the offline page
             if (event.request.mode === 'navigate') {
               return caches.match(OFFLINE_URL);
@@ -103,7 +126,10 @@ self.addEventListener('fetch', (event) => {
           });
       })
   );
-});
+}
+
+// Fetch event - serve from cache or network
+self.addEventListener('fetch', handleFetch);
 
 // Handle push notifications
 self.addEventListener('push', (event) => {
@@ -120,6 +146,9 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     self.registration.showNotification('Mamuk Training', options)
+      .catch(error => {
+        console.error('Notification error:', error);
+      })
   );
 });
 
@@ -128,5 +157,8 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     clients.openWindow('/')
+      .catch(error => {
+        console.error('Error opening window:', error);
+      })
   );
 }); 

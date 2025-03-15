@@ -36,10 +36,10 @@ export default function RouteGuard({ children }: RouteGuardProps) {
   }, [pathname, session, status, router]);
 
   // Show loading indicator while checking authentication
-  if (status === 'loading') {
-    return <LoadingSpinner />;
+  if (status === 'loading' || !authorized) {
+    return <LoadingSpinner data-testid="loading-spinner" />;
   }
 
   // Show children only if authorized
-  return authorized ? <>{children}</> : <LoadingSpinner />;
+  return <>{children}</>;
 } 

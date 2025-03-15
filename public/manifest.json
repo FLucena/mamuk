@@ -1,5 +1,5 @@
 {
-  "name": "Mamuk Training",
+  "name": "Mamuk",
   "short_name": "Mamuk",
   "description": "Fitness training and workout tracking app",
   "start_url": "/",
@@ -15,7 +15,8 @@
     {
       "src": "/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
   "scope": "/",

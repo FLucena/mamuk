@@ -287,10 +287,17 @@ afterAll(() => {
   console.warn = originalConsole.warn;
 });
 
-// Mock Request object
+// Mock Request class for NextRequest
 global.Request = class {
   constructor(input, init) {
-    this.url = input;
+    // Use a getter for url to prevent direct assignment
+    Object.defineProperty(this, 'url', {
+      get() {
+        return input instanceof URL ? input.toString() : input;
+      },
+      enumerable: true,
+      configurable: false
+    });
     this.method = init?.method || 'GET';
     this.headers = new Headers(init?.headers);
     this.body = init?.body;
