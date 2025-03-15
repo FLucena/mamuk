@@ -14,11 +14,9 @@ const STATIC_ASSETS = [
   '/',
   '/offline',
   '/manifest.json',
-  '/api/manifest',
   '/logo.png',
   '/favicon.ico',
-  '/api/sw-register',
-  '/api/sw',
+  '/sw.js',
 ];
 
 // Assets to cache
@@ -77,10 +75,8 @@ function handleFetch(event) {
     return;
   }
 
-  // Skip API requests except for our service worker API
-  if (event.request.url.includes('/api/') && 
-      !event.request.url.includes('/api/sw') && 
-      !event.request.url.includes('/api/sw-register')) {
+  // Skip all API requests
+  if (event.request.url.includes('/api/')) {
     return;
   }
 

@@ -38,6 +38,8 @@ import JsonLd from './components/JsonLd'
 import { Analytics } from './components/Analytics'
 import { NonceMetaTag } from '@/lib/csp'
 import Script from 'next/script'
+import React from 'react'
+import dynamic from 'next/dynamic'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -101,7 +103,7 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  manifest: '/api/manifest',
+  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/icon.png', type: 'image/png' },
@@ -153,8 +155,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             `,
           }}
         />
+        {/* Service worker is registered by PerformanceOptimizer component */}
         <JsonLd />
-        <link rel="manifest" href="/api/manifest" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#4f46e5" />
       </head>
       <body className={`${inter.className} bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col overflow-x-hidden w-full`}>
@@ -196,6 +199,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                       <>
                         <DebugButton />
                         <RoleDebugger />
+                        <PerformanceDebugWrapper />
                       </>
                     )}
                   </SpinnerProvider>
@@ -203,23 +207,18 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               </SessionProvider>
             </ErrorProvider>
           </Providers>
-          <Script id="sw-registration" strategy="afterInteractive">
-            {`
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/api/sw')
-                    .then(function(registration) {
-                      console.log('Service Worker registered with scope:', registration.scope);
-                    })
-                    .catch(function(error) {
-                      console.error('Service Worker registration failed:', error);
-                    });
-                });
-              }
-            `}
-          </Script>
         </ThemeProvider>
       </body>
     </html>
   )
+}
+
+// Dynamically import the performance debug component to avoid including it in production bundles
+function PerformanceDebugWrapper() {
+  return (
+    <React.Suspense fallback={null}>
+      {/* @ts-ignore - Dynamic import */}
+      {React.createElement(dynamic(() => import('@/components/debug/PerformanceDebug'), { ssr: false }))}
+    </React.Suspense>
+  );
 } 

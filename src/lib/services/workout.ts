@@ -150,63 +150,91 @@ export function mapWorkoutToResponse(doc: MongoWorkout): WorkoutType {
 export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   await dbConnect();
   
-  let currentUser = await User.findOne({ email: userId });
-  if (!currentUser && Types.ObjectId.isValid(userId)) {
-    currentUser = await User.findOne({ _id: new Types.ObjectId(userId) });
-  }
-  if (!currentUser) {
-    currentUser = await User.findOne({ 'sub': userId });
-  }
-  if (!currentUser) throw new Error('Usuario no encontrado');
-
-  if (currentUser.roles.includes('admin')) {
-    const workouts = await Workout.find({ 
-      status: { $ne: 'archived' }
-    }).sort({ createdAt: -1 }).lean<MongoWorkout[]>();
-    return workouts.map(mapWorkoutToResponse);
-  }
-
-  if (currentUser.roles.includes('coach')) {
-    const coach = await Coach.findOne({ userId: currentUser._id });
+  try {
+    // Handle different possible userId formats
+    let currentUser = null;
     
-    // If coach profile doesn't exist, create it
-    if (!coach) {
-      const newCoach = await ensureCoachExists(currentUser._id.toString());
+    // Try to find by email first
+    currentUser = await User.findOne({ email: userId });
+    
+    // If not found and it's a valid ObjectId, try by _id
+    if (!currentUser && Types.ObjectId.isValid(userId)) {
+      currentUser = await User.findOne({ _id: new Types.ObjectId(userId) });
+    }
+    
+    // If still not found, try by sub (for OAuth users)
+    if (!currentUser) {
+      currentUser = await User.findOne({ 'sub': userId });
+    }
+    
+    // If user is still not found, return empty array instead of throwing error
+    if (!currentUser) {
+      console.warn(`User not found with ID: ${userId}`);
+      return [];
+    }
+
+    // Admin users can see all active workouts
+    if (currentUser.roles.includes('admin')) {
+      const workouts = await Workout.find({ 
+        status: { $ne: 'archived' }
+      }).sort({ createdAt: -1 }).lean<MongoWorkout[]>();
+      return workouts.map(mapWorkoutToResponse);
+    }
+
+    // Coach users can see their own workouts and their customers' workouts
+    if (currentUser.roles.includes('coach')) {
+      const coach = await Coach.findOne({ userId: currentUser._id });
       
-      // If we still couldn't create a coach, just return workouts created by this user
-      if (!newCoach) {
-        const workouts = await Workout.find({
-          status: 'active',
-          userId: currentUser._id.toString()
-        }).lean<MongoWorkout[]>();
-        return workouts.map(mapWorkoutToResponse);
+      // If coach profile doesn't exist, create it
+      if (!coach) {
+        try {
+          const newCoach = await ensureCoachExists(currentUser._id.toString());
+          
+          // If we still couldn't create a coach, just return workouts created by this user
+          if (!newCoach) {
+            const workouts = await Workout.find({
+              status: 'active',
+              userId: currentUser._id.toString()
+            }).lean<MongoWorkout[]>();
+            return workouts.map(mapWorkoutToResponse);
+          }
+        } catch (error) {
+          console.error('Error creating coach profile:', error);          // Return just the user's own workouts if coach creation fails
+          const workouts = await Workout.find({
+            status: 'active',
+            userId: currentUser._id.toString()
+          }).lean<MongoWorkout[]>();
+          return workouts.map(mapWorkoutToResponse);
+        }
       }
-      
-      // Use the newly created coach
+
+      // Get coach's customers
+      const coachData = coach as any;
+      const customerIds = Array.isArray(coachData.customers) 
+        ? coachData.customers.map((id: Types.ObjectId) => id.toString())
+        : [];
+        
       const workouts = await Workout.find({
         status: 'active',
-        userId: currentUser._id.toString()
+        userId: { $in: [currentUser._id.toString(), ...customerIds] }
       }).lean<MongoWorkout[]>();
       return workouts.map(mapWorkoutToResponse);
     }
 
-    const coachData = coach as any;
-    const customerIds = coachData.customers.map((id: Types.ObjectId) => id.toString());
-    const workouts = await Workout.find({
-      status: 'active',
-      userId: { $in: [currentUser._id.toString(), ...customerIds] }
+    // Regular users can see their own workouts and workouts assigned to them
+    const workouts = await Workout.find({ 
+      $or: [
+        { userId: currentUser._id.toString() }, // Workouts created by the user
+        { assignedCustomers: currentUser._id.toString() } // Workouts assigned to the user as a customer
+      ],
+      status: 'active'
     }).lean<MongoWorkout[]>();
     return workouts.map(mapWorkoutToResponse);
+  } catch (error) {
+    console.error('Error fetching workouts:', error);
+    // Return empty array instead of throwing error
+    return [];
   }
-
-  const workouts = await Workout.find({ 
-    $or: [
-      { userId: currentUser._id.toString() }, // Workouts creados por el usuario
-      { assignedCustomers: currentUser._id.toString() } // Workouts asignados al usuario como cliente
-    ],
-    status: 'active'
-  }).lean<MongoWorkout[]>();
-  return workouts.map(mapWorkoutToResponse);
 }
 
 export async function getWorkout(id: string, userId?: string) {

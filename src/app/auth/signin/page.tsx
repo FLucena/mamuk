@@ -3,16 +3,42 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import Image from 'next/image';
 import { SignInButtons } from '@/components/auth/SignInButtons';
+import { headers } from 'next/headers';
 
 export default async function SignIn() {
   const session = await getServerSession(authOptions);
+  const headersList = headers();
+  const referer = headersList.get('referer') || '';
+  
+  // Extract callbackUrl from referer if it exists
+  let callbackUrl = '/workout'; // Default
+  try {
+    if (referer && referer.includes('callbackUrl=')) {
+      const url = new URL(referer);
+      const extractedCallbackUrl = url.searchParams.get('callbackUrl');
+      if (extractedCallbackUrl) {
+        callbackUrl = extractedCallbackUrl;
+      }
+    }
+  } catch (error) {
+    console.error('[Server] Error extracting callbackUrl from referer:', error);
+  }
+
+  // Log the server-side redirect for debugging
+  console.log(`[Server] SignIn page - Session:`, session ? 'Authenticated' : 'Unauthenticated');
+  console.log(`[Server] SignIn page - Referer:`, referer);
+  console.log(`[Server] SignIn page - CallbackUrl:`, callbackUrl);
 
   if (session?.user) {
+    // Log the redirect decision
+    console.log(`[Server] SignIn page - Redirecting authenticated user to:`, 
+      session.user.roles.includes('coach') ? '/coach' : '/workout');
+    
     // Redirect based on user roles
     if (session.user.roles.includes('coach')) {
       redirect('/coach');
     } else {
-      // Tanto usuarios normales como administradores van a la página de rutinas por defecto
+      // Both regular users and admins go to the workout page by default
       redirect('/workout');
     }
   }
@@ -37,7 +63,7 @@ export default async function SignIn() {
           </p>
         </div>
 
-        <SignInButtons />
+        <SignInButtons callbackUrl={callbackUrl} />
       </div>
     </main>
   );

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import PageLoading from './PageLoading';
 
 interface LoadingProps {
   className?: string;
   size?: number;
 }
 
+// This component is now a wrapper around PageLoading for backward compatibility
 export function Loading({ className = '', size = 24 }: LoadingProps) {
   const [isClient, setIsClient] = useState(false);
 
@@ -15,6 +16,7 @@ export function Loading({ className = '', size = 24 }: LoadingProps) {
     setIsClient(true);
   }, []);
 
+  // Still handle SSR case
   if (!isClient) {
     return (
       <div className={`flex justify-center items-center animate-spin ${className}`} style={{ width: size, height: size }}>
@@ -23,25 +25,15 @@ export function Loading({ className = '', size = 24 }: LoadingProps) {
     );
   }
 
-  return (
-    <div className={`flex justify-center items-center ${className}`}>
-      <Loader2 size={size} className="animate-spin text-gray-500 dark:text-gray-400" />
-    </div>
-  );
+  return <PageLoading size={size} className={className} />;
 }
 
+// This component is now a wrapper around PageLoading for backward compatibility
 export function LoadingPage() {
-  return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-      <div className="animate-spin rounded-full h-12 w-12 border-2 border-t-transparent border-blue-600 dark:border-blue-400"></div>
-    </div>
-  );
+  return <PageLoading />;
 }
 
+// This component is now a wrapper around PageLoading for backward compatibility
 export function LoadingOverlay() {
-  return (
-    <div className="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent border-blue-600 dark:border-blue-400"></div>
-    </div>
-  );
+  return <PageLoading size={24} />;
 } 

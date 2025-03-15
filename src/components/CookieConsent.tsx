@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
+import { safeStorage } from '@/lib/utils/storage';
 
 interface CookiePreferences {
   necessary: boolean;
@@ -19,7 +20,7 @@ export default function CookieConsent() {
 
   useEffect(() => {
     // Check if user has already made a choice
-    const consent = localStorage.getItem('cookie-consent');
+    const consent = safeStorage.getItem<CookiePreferences>('cookie-consent');
     if (!consent) {
       setIsVisible(true);
     }
@@ -56,7 +57,10 @@ export default function CookieConsent() {
   };
 
   const saveCookiePreferences = (prefs: CookiePreferences) => {
-    localStorage.setItem('cookie-consent', JSON.stringify(prefs));
+    safeStorage.setItem('cookie-consent', prefs, {
+      // Set expiry to 6 months
+      expiry: 180 * 24 * 60 * 60 * 1000
+    });
     // Here you would implement the actual cookie management based on preferences
   };
 

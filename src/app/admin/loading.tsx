@@ -1,12 +1,14 @@
+// This is a special Next.js file that automatically creates a loading UI
+// It will be shown while page data is loading in a route segment
+// See: https://nextjs.org/docs/app/building-your-application/routing/loading-ui-and-streaming
+
 'use client';
 
-export default function AdminLoading() {
-  return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-2 border-t-transparent border-blue-600 dark:border-blue-400"></div>
-      <p className="mt-4 text-gray-600 dark:text-gray-400 animate-pulse">
-        Cargando panel de administración...
-      </p>
-    </div>
-  );
-} 
+import React from 'react';
+import PageLoading from '@/components/ui/PageLoading';
+
+export default function Loading() {
+  // This loading component is automatically picked up by Next.js
+  // and shown during page transitions and data fetching
+  return <PageLoading />;
+}

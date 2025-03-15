@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createIndexes, getQueryHint } from './db/indexes';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -13,6 +14,7 @@ interface GlobalMongoose {
   connectionStartTime?: number;
   lastUsed?: number;
   queryTimes: number[];
+  indexesCreated?: boolean;
 }
 
 declare global {
@@ -25,7 +27,8 @@ if (!global.mongoose) {
     conn: null, 
     promise: null, 
     isConnecting: false,
-    queryTimes: []
+    queryTimes: [],
+    indexesCreated: false
   };
 }
 
@@ -42,6 +45,13 @@ if (!cached.conn) {
       const connectionTime = Date.now() - cached.connectionStartTime;
       if (process.env.NODE_ENV === 'development') {
         console.log(`MongoDB connected in ${connectionTime}ms`);
+      }
+      
+      // Create indexes in development mode
+      if (process.env.NODE_ENV === 'development' && !cached.indexesCreated) {
+        createIndexes().then(() => {
+          cached.indexesCreated = true;
+        });
       }
     }
   });
@@ -90,6 +100,40 @@ function trackQueryPerformance() {
     // Check if query has hints or indexes
     const hasHint = !!(this as any)._hint;
     const filter = this.getFilter();
+    
+    // Try to apply a hint if one is not already set
+    if (!hasHint) {
+      // Determine query type based on filter and operation
+      let queryType = '';
+      
+      if (collection === 'users') {
+        if (filter.email && !filter.sub) {
+          queryType = 'findByEmail';
+        } else if (filter.sub && !filter.email) {
+          queryType = 'findBySub';
+        } else if (filter.$or && filter.$or.some((cond: any) => cond.email || cond.sub)) {
+          queryType = 'findByEmailOrSub';
+        } else if (filter.roles) {
+          queryType = 'findByRoles';
+        }
+      } else if (collection === 'workouts') {
+        if (filter.userId) {
+          queryType = operation === 'find' && (this as any).options?.sort?.createdAt === -1 
+            ? 'findByUserIdSorted' 
+            : 'findByUserId';
+        } else if (filter.name) {
+          queryType = 'findByName';
+        }
+      }
+      
+      // Apply hint if we have one for this query type
+      if (queryType) {
+        const hint = getQueryHint(collection, queryType);
+        if (hint) {
+          this.hint(hint);
+        }
+      }
+    }
     
     return originalExec.apply(this, arguments as any).then((result: any) => {
       const queryTime = Date.now() - startTime;
@@ -214,6 +258,7 @@ export function getDbStats() {
     poolSize,
     avgQueryTime: Math.round(avgQueryTime),
     lastUsed: cached.lastUsed,
-    slowQueries: cached.queryTimes.filter(time => time > 500).length
+    slowQueries: cached.queryTimes.filter(time => time > 500).length,
+    indexesCreated: cached.indexesCreated
   };
 } 

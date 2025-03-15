@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { getWorkouts, createWorkout } from '@/lib/services/workout';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { dbConnect } from '@/lib/db';
+import { Workout } from '@/lib/models/workout';
 
 // Force dynamic rendering for this route since it depends on user session
 export const dynamic = 'force-dynamic';
@@ -44,17 +46,45 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Check if this is a count request
+    const url = new URL(request.url);
+    const isCountRequest = url.searchParams.get('count') === 'user';
+    
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Handle count request
+    if (isCountRequest) {
+      try {
+        await dbConnect();
+        const count = await Workout.countDocuments({ 
+          userId: session.user.id,
+          status: 'active'
+        });
+        return NextResponse.json({ count }, { status: 200 });
+      } catch (error) {
+        console.error('Error counting workouts:', error);
+        return NextResponse.json({ count: 0 }, { status: 200 });
+      }
+    }
+
+    // Regular workouts request
     const workouts = await getWorkouts(session.user.id);
-    return NextResponse.json({ workouts }, { status: 200 });
+    
+    // Add cache control headers to improve performance
+    const headers = new Headers();
+    headers.set('Cache-Control', 'private, max-age=10');
+    
+    return NextResponse.json({ workouts }, { 
+      status: 200,
+      headers
+    });
   } catch (error) {
     console.error('Error fetching workouts:', error);
     return NextResponse.json(
-      { error: 'Error fetching workouts' },
+      { error: 'Error fetching workouts', workouts: [] },
       { status: 500 }
     );
   }

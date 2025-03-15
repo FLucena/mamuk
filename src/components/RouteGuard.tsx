@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { checkRouteAccess } from '@/utils/authNavigation';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import PageLoading from '@/components/ui/PageLoading';
+import { redirectService } from '@/utils/redirectService';
 
 interface RouteGuardProps {
   children: React.ReactNode;
@@ -15,8 +16,14 @@ export default function RouteGuard({ children }: RouteGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
+  const initialCheckDone = useRef<boolean>(false);
 
   useEffect(() => {
+    // Reset authorization when path changes
+    if (pathname && initialCheckDone.current) {
+      setAuthorized(false);
+    }
+    
     // Skip authorization check while session is loading
     if (status === 'loading') return;
 
@@ -28,16 +35,25 @@ export default function RouteGuard({ children }: RouteGuardProps) {
     }
 
     if (!hasAccess && redirectTo) {
-      // Redirect to appropriate page
-      router.push(redirectTo);
+      // Use the centralized redirect service
+      redirectService.performRedirect(router, redirectTo, { 
+        source: 'RouteGuard',
+        // Force the first redirect after login
+        force: !initialCheckDone.current,
+        // Pass the session status
+        sessionStatus: status
+      });
     } else {
       setAuthorized(true);
     }
+    
+    // Mark that we've done the initial check
+    initialCheckDone.current = true;
   }, [pathname, session, status, router]);
 
   // Show loading indicator while checking authentication
   if (status === 'loading' || !authorized) {
-    return <LoadingSpinner data-testid="loading-spinner" />;
+    return <PageLoading label="Verificando acceso..." data-testid="loading-spinner" />;
   }
 
   // Show children only if authorized

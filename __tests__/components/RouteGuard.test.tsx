@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import RouteGuard from '@/components/RouteGuard';
 import { checkRouteAccess } from '@/utils/authNavigation';
+import { redirectService } from '@/utils/redirectService';
 
 // Mock the next-auth/react module
 jest.mock('next-auth/react', () => ({
@@ -21,8 +22,15 @@ jest.mock('@/utils/authNavigation', () => ({
   checkRouteAccess: jest.fn(),
 }));
 
-// Mock the LoadingSpinner component
-jest.mock('@/components/ui/LoadingSpinner', () => ({
+// Mock the redirectService
+jest.mock('@/utils/redirectService', () => ({
+  redirectService: {
+    performRedirect: jest.fn().mockReturnValue(true)
+  }
+}));
+
+// Mock the PageLoading component
+jest.mock('@/components/ui/PageLoading', () => ({
   __esModule: true,
   default: () => <div data-testid="loading-spinner">Loading...</div>,
 }));
@@ -127,7 +135,14 @@ describe('RouteGuard', () => {
     );
     
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/unauthorized');
+      expect(redirectService.performRedirect).toHaveBeenCalledWith(
+        expect.anything(),
+        '/unauthorized',
+        expect.objectContaining({
+          source: 'RouteGuard',
+          sessionStatus: 'authenticated'
+        })
+      );
     });
     
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
@@ -153,7 +168,14 @@ describe('RouteGuard', () => {
     );
     
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/auth/signin');
+      expect(redirectService.performRedirect).toHaveBeenCalledWith(
+        expect.anything(),
+        '/auth/signin',
+        expect.objectContaining({
+          source: 'RouteGuard',
+          sessionStatus: 'unauthenticated'
+        })
+      );
     });
     
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
@@ -179,7 +201,14 @@ describe('RouteGuard', () => {
     );
     
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/workout');
+      expect(redirectService.performRedirect).toHaveBeenCalledWith(
+        expect.anything(),
+        '/workout',
+        expect.objectContaining({
+          source: 'RouteGuard',
+          sessionStatus: 'authenticated'
+        })
+      );
     });
     
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();

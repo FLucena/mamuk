@@ -1,57 +1,97 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuthRedirect } from '@/hooks/useAuthRedirect';
-import WorkoutHeaderWrapper from '@/components/workout/WorkoutHeaderWrapper';
-import WorkoutList from '@/components/workout/WorkoutList';
-import { Suspense } from 'react';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { Loading } from '@/components/ui/loading';
-import { RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, Suspense, memo, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLightSession } from '@/hooks/useOptimizedSession';
 
-// Separate component for the workout content to enable better code splitting
-function WorkoutContent({ 
+// Dynamically import components
+const PageLoading = dynamic(() => import('@/components/ui/PageLoading'), {
+  loading: () => <div className="animate-pulse">Loading...</div>,
+  ssr: false
+});
+
+const WorkoutHeaderWrapper = dynamic(() => import('@/components/workout/WorkoutHeaderWrapper'), {
+  loading: () => <div className="animate-pulse h-10 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+});
+
+const WorkoutList = dynamic(() => import('@/components/workout/WorkoutList'), {
+  loading: () => <div className="animate-pulse space-y-4">
+    {[...Array(3)].map((_, i) => (
+      <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    ))}
+  </div>
+});
+
+// Add interface for Workout type
+interface Workout {
+  _id: string;
+  id: string;
+  name: string;
+  days: any[];  // You might want to define a proper type for days
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Update WorkoutContentProps interface
+interface WorkoutContentProps {
+  workouts: Workout[];
+  isCoach: boolean;
+  isAdmin: boolean;
+  isCustomer: boolean;
+  hasPermissionToCreate: boolean;
+  userWorkoutCount: number;
+  workoutLimitReached: boolean;
+  onRefresh: () => void;
+}
+
+// Separate component for the workout content
+const WorkoutContent = memo(function WorkoutContent({ 
   workouts, 
   isCoach, 
-  hasPermissionToCreate, 
-  isCustomer, 
   isAdmin, 
+  isCustomer,
+  hasPermissionToCreate, 
   userWorkoutCount, 
   workoutLimitReached,
   onRefresh
-}: { 
-  workouts: any[]; 
-  isCoach: boolean; 
-  hasPermissionToCreate: boolean; 
-  isCustomer: boolean; 
-  isAdmin: boolean; 
-  userWorkoutCount: number; 
-  workoutLimitReached: boolean;
-  onRefresh: () => void;
-}) {
+}: WorkoutContentProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await onRefresh();
-    setIsRefreshing(false);
-    toast.success('Lista de rutinas actualizada');
+    try {
+      setIsRefreshing(true);
+      await onRefresh();
+      toast.success('Lista de rutinas actualizada');
+    } catch (error) {
+      toast.error('Error al actualizar las rutinas');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
+
+  // Memoize the header component
+  const headerComponent = useMemo(() => (
+    <WorkoutHeaderWrapper 
+      title="Rutinas" 
+      hasPermission={!workoutLimitReached}
+      workoutCount={isCustomer ? userWorkoutCount : undefined}
+      workoutLimit={isCustomer && !isCoach && !isAdmin ? 3 : undefined}
+    />
+  ), [workoutLimitReached, isCustomer, userWorkoutCount, isCoach, isAdmin]);
 
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <WorkoutHeaderWrapper 
-          title="Rutinas" 
-          hasPermission={!workoutLimitReached}
-          workoutCount={isCustomer ? userWorkoutCount : undefined}
-          workoutLimit={isCustomer && !isCoach && !isAdmin ? 3 : undefined}
-        />
+        {headerComponent}
         <button 
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Refrescar rutinas"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -59,7 +99,13 @@ function WorkoutContent({
         </button>
       </div>
       
-      <WorkoutList workouts={workouts} isCoach={isCoach} />
+      <Suspense fallback={<div className="animate-pulse space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        ))}
+      </div>}>
+        <WorkoutList workouts={workouts} isCoach={isCoach} />
+      </Suspense>
       
       {workoutLimitReached && (
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
@@ -70,16 +116,13 @@ function WorkoutContent({
       )}
     </>
   );
-}
+});
 
 export default function WorkoutPage() {
-  // Use our custom hook to handle authentication
-  const { session, isLoading } = useAuthRedirect({
-    redirectTo: '/auth/signin?callbackUrl=/workout',
-    redirectIfAuthenticated: false
-  });
+  const { data: session } = useLightSession();
+  const router = useRouter();
   
-  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isCoach, setIsCoach] = useState(false);
   const [isCustomer, setIsCustomer] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -87,14 +130,27 @@ export default function WorkoutPage() {
   const [userWorkoutCount, setUserWorkoutCount] = useState(0);
   const [workoutLimitReached, setWorkoutLimitReached] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
-
-  const fetchData = async () => {
+  const [error, setError] = useState<string | null>(null);
+  
+  const fetchData = useCallback(async () => {
     try {
       setIsDataLoading(true);
       
-      // Fetch workouts with cache-busting parameter
-      const timestamp = new Date().getTime();
-      const workoutsRes = await fetch(`/api/workout?t=${timestamp}`);
+      const controller = new AbortController();
+      const signal = controller.signal;
+      
+      const workoutsRes = await fetch('/api/workout', {
+        signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!workoutsRes.ok) {
+        throw new Error(`Error fetching workouts: ${workoutsRes.status} ${workoutsRes.statusText}`);
+      }
+      
       const workoutsData = await workoutsRes.json();
       setWorkouts(workoutsData.workouts || []);
       
@@ -110,62 +166,99 @@ export default function WorkoutPage() {
       
       // For customers, get their workout count to show the limit
       if (isCustomerUser && !isAdminUser && !isCoachUser) {
-        const countRes = await fetch('/api/workout?count=user');
-        const countData = await countRes.json();
-        const count = countData.count || 0;
-        setUserWorkoutCount(count);
-        setWorkoutLimitReached(count >= 3);
-        
-        // Only restrict permission if they've reached the limit
-        setHasPermissionToCreate(count < 3);
+        const countRes = await fetch('/api/workout?count=user', { signal });
+        if (countRes.ok) {
+          const countData = await countRes.json();
+          const count = countData.count || 0;
+          setUserWorkoutCount(count);
+          setWorkoutLimitReached(count >= 3);
+          setHasPermissionToCreate(count < 3);
+        } else {
+          throw new Error(`Error fetching workout count: ${countRes.status} ${countRes.statusText}`);
+        }
       } else {
-        // Admin and coach users always have permission to create workouts
         setHasPermissionToCreate(true);
       }
+      
+      setError(null);
+      
+      controller.abort();
     } catch (error) {
-      console.error('Error fetching workout data:', error);
-      toast.error('Error al cargar las rutinas');
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Failed to load workouts. Please try again later.');
+      }
+      setWorkouts([]);
     } finally {
       setIsDataLoading(false);
     }
-  };
-
-  useEffect(() => {
-    // Only fetch data when we have a session
-    if (!session) return;
-    
-    // Fetch data when component mounts and session is available
-    fetchData();
   }, [session]);
-
-  if (isLoading || isDataLoading) {
-    return (
-      <main className="bg-gray-50 dark:bg-gray-950 min-h-screen py-8">
-        <div className="container mx-auto px-4 flex justify-center items-center min-h-[60vh]">
-          <Loading size={32} className="text-blue-600 dark:text-blue-400" />
-        </div>
-      </main>
-    );
+  
+  useEffect(() => {
+    if (session) {
+      fetchData();
+    }
+  }, [session, fetchData]);
+  
+  // Prefetch workout routes
+  useEffect(() => {
+    if (workouts.length > 0) {
+      workouts.forEach(workout => {
+        router.prefetch(`/workout/${workout.id}`);
+      });
+    }
+  }, [workouts, router]);
+  
+  if (!session) {
+    return <PageLoading label="Checking authentication..." />;
   }
-
+  
   return (
     <main className="bg-gray-50 dark:bg-gray-950 min-h-screen py-8">
       <div className="container mx-auto px-4">
-        <Suspense fallback={
-          <div className="flex justify-center items-center min-h-[60vh]">
-            <Loading size={32} className="text-blue-600 dark:text-blue-400" />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">
+            Rutinas
+          </h1>
+          
+          <div className="flex flex-wrap gap-2">
+            <button 
+              onClick={fetchData}
+              disabled={isDataLoading}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Refrescar rutinas"
+            >
+              <RefreshCw className={`w-4 h-4 ${isDataLoading ? 'animate-spin' : ''}`} />
+              Refrescar
+            </button>
           </div>
-        }>
-          <WorkoutContent 
-            workouts={workouts} 
-            isCoach={isCoach} 
-            hasPermissionToCreate={hasPermissionToCreate} 
-            isCustomer={isCustomer} 
-            isAdmin={isAdmin} 
-            userWorkoutCount={userWorkoutCount} 
-            workoutLimitReached={workoutLimitReached}
-            onRefresh={fetchData}
-          />
+        </div>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              <span>{error}</span>
+            </div>
+          </div>
+        )}
+        
+        <Suspense fallback={<PageLoading label="Cargando rutinas..." />}>
+          {isDataLoading ? (
+            <PageLoading label="Cargando rutinas..." />
+          ) : (
+            <WorkoutContent 
+              workouts={workouts}
+              isCoach={isCoach}
+              isAdmin={isAdmin}
+              isCustomer={isCustomer}
+              hasPermissionToCreate={hasPermissionToCreate}
+              userWorkoutCount={userWorkoutCount}
+              workoutLimitReached={workoutLimitReached}
+              onRefresh={fetchData}
+            />
+          )}
         </Suspense>
       </div>
     </main>

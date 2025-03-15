@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, Transition } from '@headlessui/react';
+import { safeStorage } from '@/lib/utils/storage';
 
 interface CookiePreferencesModalProps {
   isOpen: boolean;
@@ -18,8 +19,8 @@ interface CookiePreferences {
 export default function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesModalProps) {
   const [preferences, setPreferences] = useState<CookiePreferences>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('cookie-consent');
-      return saved ? JSON.parse(saved) : {
+      const saved = safeStorage.getItem<CookiePreferences>('cookie-consent');
+      return saved || {
         necessary: true,
         analytics: false,
         marketing: false,
@@ -33,7 +34,10 @@ export default function CookiePreferencesModal({ isOpen, onClose }: CookiePrefer
   });
 
   const handleSave = () => {
-    localStorage.setItem('cookie-consent', JSON.stringify(preferences));
+    safeStorage.setItem('cookie-consent', preferences, {
+      // Set expiry to 6 months
+      expiry: 180 * 24 * 60 * 60 * 1000
+    });
     onClose();
   };
 
@@ -44,7 +48,10 @@ export default function CookiePreferencesModal({ isOpen, onClose }: CookiePrefer
       marketing: true,
     };
     setPreferences(allAccepted);
-    localStorage.setItem('cookie-consent', JSON.stringify(allAccepted));
+    safeStorage.setItem('cookie-consent', allAccepted, {
+      // Set expiry to 6 months
+      expiry: 180 * 24 * 60 * 60 * 1000
+    });
     onClose();
   };
 

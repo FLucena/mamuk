@@ -159,3 +159,54 @@ node scripts/migrate-user-roles.js
 ```
 
 This script will ensure all users have a `roles` array based on their existing `role` property.
+
+## Performance Optimizations
+
+We've implemented several performance optimizations to improve the application's speed and user experience:
+
+### Session Optimization
+
+The application now uses a multi-layered approach to optimize authentication session handling:
+
+- **Client-Side Caching**: Implements in-memory caching of session data
+- **Request Deduplication**: Prevents multiple simultaneous requests to `/api/auth/session`
+- **Throttling**: Limits session refresh frequency to reduce server load
+- **Optimized Hooks**: Custom hooks that provide efficient session access
+
+For more details, see the [Session Optimization Guide](docs/SESSION_OPTIMIZATION.md).
+
+### Redirect Optimization
+
+The application now uses a centralized redirect service to manage all redirects efficiently:
+
+- **Debouncing**: Prevents multiple redirects from occurring in rapid succession
+- **Loop Detection**: Prevents redirect loops that could cause the application to hang
+- **Path Checking**: Avoids unnecessary redirects to the current page
+- **Logging**: Tracks redirect attempts for debugging purposes
+
+For more details, see the [Redirect Optimization Documentation](docs/REDIRECT_OPTIMIZATION.md).
+
+### MongoDB Query Optimization
+
+We've optimized MongoDB queries to improve database performance:
+
+- Added indexes for commonly queried fields
+- Implemented query hints for complex queries
+- Optimized connection pooling
+
+For more details, see the [Performance Optimization Guide](docs/PERFORMANCE_OPTIMIZATION.md).
+
+### Debug Tools
+
+The application includes several debug tools to help identify and fix performance issues:
+
+- **Redirect Debug Page**: Available at `/debug/redirects` - Shows statistics about redirects
+- **Performance Monitoring**: Tracks slow queries and component render times
+
+## Test Documentation
+
+We've documented the testing process and recent fixes in the [Test Fixes Documentation](docs/TEST_FIXES.md). This includes:
+
+- How to fix common test failures
+- Best practices for testing with the redirect service
+- Guidelines for writing robust tests

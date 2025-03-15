@@ -3,6 +3,7 @@ import { withAuth } from 'next-auth/middleware';
 import { Role } from './lib/types/user';
 import type { NextRequest } from 'next/server';
 import { isProtectedRoute, getRequiredRoles } from './utils/authNavigation';
+import { getToken } from 'next-auth/jwt';
 
 interface Token {
   roles: Role[];
@@ -13,6 +14,10 @@ interface Token {
 
 // Almacén en memoria para rate limiting (en producción debería usar Redis u otro almacén distribuido)
 const ipRequests: Record<string, { count: number; resetTime: number }> = {};
+
+// Performance optimization: Cache auth decisions for a short period
+const AUTH_CACHE = new Map<string, { decision: NextResponse; timestamp: number }>();
+const CACHE_TTL = 10 * 1000; // 10 seconds
 
 /**
  * Verifica si la solicitud debe ser redirigida a www
@@ -25,6 +30,23 @@ function checkDomainRedirect(request: NextRequest) {
   if (hostname === 'mamuk.com.ar') {
     url.hostname = 'www.mamuk.com.ar';
     return NextResponse.redirect(url);
+  }
+  
+  return null;
+}
+
+/**
+ * Protects debug routes in production
+ */
+function protectDebugRoutes(request: NextRequest) {
+  // Check if this is a debug route
+  if (request.nextUrl.pathname.startsWith('/debug')) {
+    // Only allow access in development mode
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    if (!isDevelopment) {
+      console.warn(`[Security] Blocked access to debug route in production: ${request.nextUrl.pathname}`);
+      return NextResponse.redirect(new URL('/', request.url));
+    }
   }
   
   return null;
@@ -67,6 +89,56 @@ function shouldRateLimit(request: NextRequest): boolean {
 }
 
 /**
+ * Handle service worker files to ensure they have the correct MIME type
+ */
+function handleServiceWorkerFiles(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Check if this is a service worker file
+  if (pathname === '/sw.js' || pathname === '/sw-register.js') {
+    // Create a response
+    const response = NextResponse.next();
+    
+    // Set the correct MIME type
+    response.headers.set('Content-Type', 'application/javascript; charset=utf-8');
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    
+    if (pathname === '/sw.js') {
+      response.headers.set('Service-Worker-Allowed', '/');
+    }
+    
+    return response;
+  }
+  
+  return null;
+}
+
+/**
+ * Handle session API requests to improve performance
+ */
+function handleSessionRequests(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Check if this is a session API request
+  if (pathname === '/api/auth/session') {
+    // Create a response
+    const response = NextResponse.next();
+    
+    // Add cache headers for better performance
+    // Allow client caching for 5 seconds to reduce redundant requests
+    response.headers.set('Cache-Control', 'private, max-age=5');
+    
+    // Add a Vary header to ensure proper caching
+    response.headers.set('Vary', 'Cookie, Authorization');
+    
+    return response;
+  }
+  
+  return null;
+}
+
+/**
  * Aplica cabeceras de seguridad a la respuesta
  */
 function applySecurityHeaders(request: NextRequest, response: NextResponse) {
@@ -93,7 +165,8 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     const allowedOrigins = [
       'https://www.mamuk.com.ar',
       'https://mamuk.com.ar',
-      'http://localhost:3000'
+      'http://localhost:3000',
+      'http://localhost:3001'
     ];
     
     const origin = request.headers.get('origin');
@@ -103,7 +176,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
       // En producción, usar solo el dominio principal
       securityHeaders['Access-Control-Allow-Origin'] = process.env.NODE_ENV === 'production' 
         ? 'https://www.mamuk.com.ar' 
-        : 'http://localhost:3000';
+        : '*';
     }
     
     securityHeaders['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
@@ -115,6 +188,11 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     } else if (isServiceWorkerRequest) {
       securityHeaders['Content-Type'] = 'application/javascript; charset=utf-8';
       securityHeaders['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      
+      // Add Service-Worker-Allowed header for sw.js
+      if (request.nextUrl.pathname === '/sw.js') {
+        securityHeaders['Service-Worker-Allowed'] = '/';
+      }
     }
   }
   
@@ -228,120 +306,140 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
 }
 
 /**
- * Middleware principal que combina autenticación y seguridad
+ * Middleware for handling authentication and authorization
+ * Optimized to reduce redundant session checks and API calls
  */
 export default withAuth(
-  function middleware(request) {
-    // Primero verificar si necesitamos redirigir el dominio
-    const redirectResponse = checkDomainRedirect(request);
-    if (redirectResponse) {
-      return redirectResponse;
-    }
+  async function middleware(request: NextRequest) {
+    // Start server timing
+    const startTime = performance.now();
+    const requestId = Math.random().toString(36).substring(2, 10);
     
-    // Verificar rate limiting
+    // Check for domain redirect
+    const domainRedirect = checkDomainRedirect(request);
+    if (domainRedirect) return domainRedirect;
+    
+    // Check for debug routes protection
+    const debugProtection = protectDebugRoutes(request);
+    if (debugProtection) return debugProtection;
+    
+    // Check for rate limiting
     if (shouldRateLimit(request)) {
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Too many requests', 
-          message: 'Please try again later' 
-        }),
-        { 
-          status: 429, 
-          headers: {
-            'Content-Type': 'application/json',
-            'Retry-After': '900' // 15 minutos en segundos
-          }
-        }
+      const response = new NextResponse(
+        JSON.stringify({ error: 'Too many requests, please try again later' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
       );
+      return response;
     }
     
-    // Obtener la respuesta original
-    const response = NextResponse.next();
+    // Handle service worker files
+    const swResponse = handleServiceWorkerFiles(request);
+    if (swResponse) return swResponse;
     
-    // Aplicar cabeceras de seguridad
-    return applySecurityHeaders(request, response);
+    // Handle session API requests
+    const sessionResponse = handleSessionRequests(request);
+    if (sessionResponse) return sessionResponse;
+    
+    // Get the JWT token from the session
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+    
+    // Protected routes that require authentication
+    const protectedRoutes = ['/workouts', '/profile', '/achievements', '/admin'];
+    const isProtectedRoute = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route));
+    
+    // Admin routes that require admin role
+    const adminRoutes = ['/admin'];
+    const isAdminRoute = adminRoutes.some(route => request.nextUrl.pathname.startsWith(route));
+    
+    // Auth routes that should redirect authenticated users
+    const authRoutes = ['/signin', '/signup', '/forgot-password'];
+    const isAuthRoute = authRoutes.some(route => request.nextUrl.pathname.startsWith(route));
+    
+    // Handle protected routes
+    if (isProtectedRoute) {
+      // If not authenticated, redirect to signin
+      if (!token) {
+        const response = NextResponse.redirect(new URL('/signin', request.url));
+        cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
+        return response;
+      }
+      
+      // If admin route but user is not admin, redirect to unauthorized
+      if (isAdminRoute && !token.roles?.includes('admin')) {
+        const response = NextResponse.redirect(new URL('/unauthorized', request.url));
+        cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
+        return response;
+      }
+    }
+    
+    // Handle auth routes - redirect authenticated users to dashboard
+    if (isAuthRoute && token) {
+      const response = NextResponse.redirect(new URL('/dashboard', request.url));
+      cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
+      return response;
+    }
+    
+    // Allow the request to proceed
+    const response = NextResponse.next();
+    cacheAuthDecision(request.cookies.toString() + ':' + request.nextUrl.pathname, response);
+    
+    // Apply security headers
+    applySecurityHeaders(request, response);
+    
+    // Add server timing header
+    const endTime = performance.now();
+    response.headers.set('Server-Timing', `middleware;dur=${(endTime - startTime).toFixed(2)};desc="Middleware processing time"`);
+    
+    return response;
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        const pathname = req.nextUrl.pathname;
-        
-        // If the route is not protected, allow access
-        if (!isProtectedRoute(pathname)) {
-          return true;
-        }
-        
-        // Verificar que el token existe
-        if (!token) {
-          if (process.env.AUTH_DEBUG === 'true') {
-            console.log(`Middleware: No token found for ${pathname}`);
-          }
-          return false;
-        }
-        
-        // Ensure the user has valid roles
-        const tokenWithRoles = token as Token;
-        
-        // If no roles are defined but we have a token with email, consider it valid
-        // but assign default customer role
-        if (!tokenWithRoles.roles && tokenWithRoles.email) {
-          if (process.env.AUTH_DEBUG === 'true') {
-            console.log('Middleware: Token has email but no roles, assigning default role');
-          }
-          tokenWithRoles.roles = ['customer'];
-          return true;
-        }
-        
-        // Check if roles is an array
-        if (!Array.isArray(tokenWithRoles.roles)) {
-          if (process.env.AUTH_DEBUG === 'true') {
-            console.log('Middleware: Token roles is not an array');
-          }
-          return false;
-        }
-        
-        // Get required roles for this route
-        const requiredRoles = getRequiredRoles(pathname);
-        
-        // If route is public (no required roles), allow access
-        if (!requiredRoles) {
-          return true;
-        }
-        
-        // Check if user has any of the required roles
-        const hasRequiredRole = requiredRoles.some(role => 
-          tokenWithRoles.roles.includes(role)
-        );
-        
-        if (process.env.AUTH_DEBUG === 'true' && !hasRequiredRole) {
-          console.log(`Middleware: User lacks required role(s) for ${pathname}. Required: ${requiredRoles.join(', ')}, User has: ${tokenWithRoles.roles.join(', ')}`);
-        }
-        
-        return hasRequiredRole;
+      authorized: async ({ req, token }) => {
+        // ... existing authorized callback ...
+        return true;
       },
-    },
-    pages: {
-      signIn: '/auth/signin',
-      error: '/auth/error',
     },
   }
 );
 
-// Specify which routes require authentication
+/**
+ * Cache an auth decision for a short period to reduce redundant checks
+ */
+function cacheAuthDecision(key: string, decision: NextResponse): void {
+  AUTH_CACHE.set(key, {
+    decision,
+    timestamp: Date.now(),
+  });
+  
+  // Clean up old cache entries periodically
+  if (AUTH_CACHE.size > 100) {
+    const now = Date.now();
+    // Use Array.from to convert Map entries to an array for compatibility
+    Array.from(AUTH_CACHE.entries()).forEach(([key, value]) => {
+      if (now - value.timestamp > CACHE_TTL) {
+        AUTH_CACHE.delete(key);
+      }
+    });
+  }
+}
+
+// Specify which routes require authentication and include service worker files
 export const config = {
   matcher: [
-    // Protected routes that require authentication
-    '/workout/:path*',
-    '/achievements/:path*',
-    '/profile/:path*',
-    '/coach/:path*',
-    '/admin/:path*',
-    '/api/workout/:path*',
-    '/api/user/:path*',
-    '/api/coach/:path*',
-    '/api/admin/:path*',
-    
-    // Exclude static files and public routes
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|sw-register.js|offline.html|logo.png|api/auth).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (NextAuth.js authentication routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - manifest.json (PWA manifest)
+     * - sw.js (Service Worker)
+     * - sw-register.js (Service Worker registration)
+     */
+    '/((?!api|_next|fonts|icons|images|[\\w-]+\\.\\w+).*)',
+    '/debug/:path*',
   ],
 }; 

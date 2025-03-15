@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+import 'whatwg-fetch'
 import { TextEncoder, TextDecoder } from 'util'
 
 // Set up TextEncoder/TextDecoder for Next.js compatibility
@@ -219,13 +220,17 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock ResizeObserver
-class ResizeObserver {
+class MockResizeObserver {
   observe = jest.fn();
-  unobserve = jest.fn();
   disconnect = jest.fn();
+  unobserve = jest.fn();
 }
 
-window.ResizeObserver = ResizeObserver;
+Object.defineProperty(window, 'ResizeObserver', {
+  writable: true,
+  configurable: true,
+  value: MockResizeObserver,
+});
 
 // Mock IntersectionObserver
 class MockIntersectionObserver {
@@ -365,4 +370,19 @@ if (!global.Headers) {
       this._headers.set(name.toLowerCase(), value);
     }
   };
-} 
+}
+
+// Mock scrollTo
+window.scrollTo = jest.fn();
+
+// Suppress console errors during tests
+const originalError = console.error;
+console.error = (...args) => {
+  if (
+    typeof args[0] === 'string' &&
+    args[0].includes('Warning: ReactDOM.render is no longer supported')
+  ) {
+    return;
+  }
+  originalError.call(console, ...args);
+}; 

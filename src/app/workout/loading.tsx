@@ -5,10 +5,10 @@
 'use client';
 
 import React from 'react';
-import { LoadingPage } from '@/components/ui/loading';
+import PageLoading from '@/components/ui/PageLoading';
 
 export default function WorkoutLoading() {
   // This loading component is automatically picked up by Next.js
   // and shown during page transitions and data fetching
-  return <LoadingPage />;
+  return <PageLoading />;
 } 

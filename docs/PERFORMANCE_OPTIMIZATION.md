@@ -1,226 +1,116 @@
 # Performance Optimization Guide
 
-This document outlines strategies and best practices for optimizing the performance of the Mamuk application.
+This document outlines the performance optimizations implemented in the Mamuk application to improve user experience and reduce server load.
 
 ## Table of Contents
 
-1. [Database Optimization](#database-optimization)
-2. [React Component Optimization](#react-component-optimization)
-3. [Next.js Specific Optimizations](#nextjs-specific-optimizations)
-4. [Analytics and Monitoring](#analytics-and-monitoring)
-5. [Bundle Size Optimization](#bundle-size-optimization)
+1. [Reducing Multiple Redirects](#reducing-multiple-redirects)
+2. [MongoDB Query Optimization](#mongodb-query-optimization)
+3. [Additional Performance Tips](#additional-performance-tips)
 
-## Database Optimization
+## Reducing Multiple Redirects
 
-### MongoDB Query Performance
+Multiple redirects can significantly slow down your application and create a poor user experience. We've implemented several strategies to reduce redirects:
 
-- **Indexing**: Create appropriate indexes for frequently queried fields.
-  ```javascript
-  // Example: Creating an index on the 'email' field
-  db.users.createIndex({ email: 1 });
-  ```
+### Redirect Tracking
 
-- **Query Optimization**: Use projection to limit returned fields.
-  ```javascript
-  // Instead of fetching the entire document
-  const user = await User.findById(id);
-  
-  // Only fetch the fields you need
-  const user = await User.findById(id).select('name email roles');
-  ```
+The `authNavigation.ts` file now includes a redirect tracking mechanism that:
 
-- **Compound Indexes**: For queries that filter on multiple fields.
-  ```javascript
-  // For queries that filter by both status and customerId
-  db.workouts.createIndex({ status: 1, customerId: 1 });
-  ```
+- Prevents redirect loops by detecting patterns like A→B→A→B
+- Limits the number of redirects that can occur in a short time period
+- Avoids redirecting to the same page
 
-- **Aggregation Pipeline Optimization**:
-  - Use `$match` early in the pipeline to reduce documents processed
-  - Use `$project` to limit fields
-  - Consider using `$limit` and `$skip` with caution
+### Debounced Redirects in RouteGuard
 
-### Connection Pooling
+The `RouteGuard` component now implements debounced redirects:
 
-- The application uses connection pooling with the following settings:
-  ```javascript
-  maxPoolSize: 30,
-  minPoolSize: 10
-  ```
-  
-- Monitor connection usage and adjust these values based on your application's needs.
+- Uses a 1-second debounce time to prevent rapid consecutive redirects
+- Tracks the last redirect time to avoid unnecessary redirects
+- Resets authorization state when the path changes
 
-## React Component Optimization
+### Optimized useAuthRedirect Hook
 
-### Memoization
+The `useAuthRedirect` hook has been updated to:
 
-- Use `React.memo()` for components that render often but with the same props.
-- Use `useMemo()` for expensive calculations.
-- Use `useCallback()` for functions passed as props to child components.
+- Check if we're already on the target page before redirecting
+- Implement debouncing to prevent multiple redirects
+- Use a more efficient redirect mechanism
 
-```javascript
-// Example of proper memoization
-const MemoizedComponent = React.memo(function MyComponent(props) {
-  // Component logic
-});
+## MongoDB Query Optimization
 
-// Custom comparison function if needed
-const areEqual = (prevProps, nextProps) => {
-  // Custom comparison logic
-  return prevProps.id === nextProps.id;
-};
+Slow MongoDB queries can significantly impact application performance. We've implemented several optimizations:
 
-const MemoizedWithCustomComparison = React.memo(MyComponent, areEqual);
-```
+### MongoDB Indexes
 
-### Reducing Re-renders
+We've added indexes for commonly queried fields:
 
-- Avoid creating new objects or functions in render.
-- Use the React DevTools Profiler to identify unnecessary re-renders.
-- Consider using state management solutions like Context API efficiently.
+- **Users Collection**:
+  - `email` (unique)
+  - `sub` (unique)
+  - `email` and `sub` (compound index)
+  - `roles`
 
-### Code Splitting
+- **Workouts Collection**:
+  - `userId`
+  - `name`
+  - `userId` and `createdAt` (compound index for sorting)
 
-- Use dynamic imports for components not needed on initial load.
-```javascript
-const DynamicComponent = dynamic(() => import('../components/HeavyComponent'), {
-  loading: () => <LoadingSpinner />
-});
-```
+### Query Hints
 
-## Next.js Specific Optimizations
+The database connection now automatically applies query hints based on the query pattern:
 
-### Image Optimization
+- Detects common query patterns (e.g., finding users by email)
+- Applies the appropriate index hint to improve query performance
+- Logs slow queries with suggestions for optimization
 
-- Use Next.js `Image` component for automatic image optimization.
-```jsx
-import Image from 'next/image';
+### Index Creation
 
-// Optimized image
-<Image
-  src="/profile.jpg"
-  width={500}
-  height={300}
-  alt="Profile"
-  priority={isAboveFold}
-/>
-```
+Indexes are created automatically in development mode and can be manually created in production:
 
-### Font Optimization
+- Run `npm run db:create-indexes` to create indexes manually
+- Indexes are created once per server start in development mode
+- The application tracks whether indexes have been created
 
-- Use `next/font` to optimize font loading and reduce layout shifts.
-```jsx
-import { Inter } from 'next/font/google';
+## Additional Performance Tips
 
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-});
+### 1. Monitor Slow Queries
 
-export default function Layout({ children }) {
-  return (
-    <html lang="es" className={inter.className}>
-      {children}
-    </html>
-  );
-}
-```
+The application logs slow MongoDB queries with details about:
 
-### Route Optimization
+- The operation type (find, findOne, aggregate, etc.)
+- The collection being queried
+- The filter being used
+- Whether a hint was applied
+- Suggestions for optimization
 
-- Use the App Router's built-in features:
-  - Parallel Routes
-  - Intercepting Routes
-  - Server Components where appropriate
+Look for these logs in your server output and address any consistently slow queries.
 
-### Server Components vs. Client Components
+### 2. Optimize React Components
 
-- Use Server Components for:
-  - Fetching data
-  - Accessing backend resources
-  - Keeping sensitive information on the server
-  
-- Use Client Components for:
-  - Interactivity and event listeners
-  - Using hooks
-  - Browser-only APIs
+- Use React.memo for components that don't need to re-render often
+- Implement useCallback and useMemo for expensive computations
+- Use React.lazy and Suspense for code splitting
 
-## Analytics and Monitoring
+### 3. Database Connection Management
 
-### Performance Monitoring
+- The application maintains a connection pool to reduce connection overhead
+- Connection stats are logged in development mode
+- The connection is reused across requests
 
-- Use the built-in performance monitoring tools:
-  - Core Web Vitals tracking
-  - Custom performance marks
-  
-- Implement sampling for production analytics to reduce overhead:
-```javascript
-// Only track 10% of users in production
-if (process.env.NODE_ENV === 'production' && Math.random() > 0.1) {
-  return;
-}
-```
+### 4. Implement Caching
 
-### Slow Query Detection
+For frequently accessed data that doesn't change often, consider implementing:
 
-- The application automatically logs slow MongoDB queries (>500ms).
-- Review these logs regularly and optimize problematic queries.
+- Client-side caching using React Query or SWR
+- Server-side caching using Redis or an in-memory cache
+- HTTP caching with appropriate cache headers
 
-## Bundle Size Optimization
+## Monitoring Performance
 
-### Code Splitting
+The application includes several tools for monitoring performance:
 
-- Use dynamic imports for large libraries or components.
-```javascript
-// Instead of importing directly
-import LargeLibrary from 'large-library';
+- Database stats are available through the `getDbStats` function
+- Slow queries are logged with detailed information
+- Connection pool stats are logged in development mode
 
-// Use dynamic import
-const LargeLibrary = dynamic(() => import('large-library'), {
-  ssr: false // If not needed for SSR
-});
-```
-
-### Tree Shaking
-
-- Import only what you need from libraries.
-```javascript
-// Instead of
-import lodash from 'lodash';
-
-// Use specific imports
-import { debounce, throttle } from 'lodash';
-```
-
-### Analyzing Bundle Size
-
-- Use tools like `@next/bundle-analyzer` to identify large dependencies.
-```bash
-# Install the package
-npm install --save-dev @next/bundle-analyzer
-
-# Configure in next.config.js
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
-
-module.exports = withBundleAnalyzer({
-  // Your Next.js config
-});
-
-# Run analysis
-ANALYZE=true npm run build
-```
-
-## Best Practices Checklist
-
-- [ ] Create appropriate MongoDB indexes
-- [ ] Memoize expensive components
-- [ ] Implement code splitting for large components
-- [ ] Optimize images using Next.js Image component
-- [ ] Monitor and fix slow database queries
-- [ ] Implement proper error boundaries
-- [ ] Use Server Components where appropriate
-- [ ] Optimize third-party script loading
-- [ ] Implement performance monitoring with sampling
-- [ ] Regularly analyze bundle size 
+Regularly review these metrics to identify and address performance issues. 

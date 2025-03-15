@@ -1,14 +1,14 @@
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+// This is a special Next.js file that automatically creates a loading UI
+// It will be shown while page data is loading in a route segment
+// See: https://nextjs.org/docs/app/building-your-application/routing/loading-ui-and-streaming
+
+'use client';
+
+import React from 'react';
+import PageLoading from '@/components/ui/PageLoading';
 
 export default function Loading() {
-  return (
-    <div className="flex justify-center items-center min-h-screen">
-      <div className="text-center">
-        <LoadingSpinner size="lg" />
-        <p className="mt-4 text-gray-600 dark:text-gray-400">
-          Cargando formulario de creación de rutina...
-        </p>
-      </div>
-    </div>
-  );
-} 
+  // This loading component is automatically picked up by Next.js
+  // and shown during page transitions and data fetching
+  return <PageLoading />;
+}

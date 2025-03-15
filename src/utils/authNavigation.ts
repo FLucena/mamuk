@@ -41,6 +41,58 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/admin', requiredRoles: ['admin'], redirectUnauthenticated: '/unauthorized' },
 ];
 
+// Add a redirect history tracker to prevent redirect loops and multiple redirects
+const redirectHistory: string[] = [];
+const MAX_REDIRECT_HISTORY = 5;
+
+/**
+ * Tracks redirects to prevent loops and multiple consecutive redirects
+ * @param from Source path
+ * @param to Destination path
+ * @returns Whether the redirect should proceed
+ */
+export function trackRedirect(from: string, to: string): boolean {
+  // Don't redirect to the same page
+  if (from === to) return false;
+  
+  // Add to history
+  redirectHistory.push(`${from} -> ${to}`);
+  
+  // Trim history if it gets too long
+  if (redirectHistory.length > MAX_REDIRECT_HISTORY) {
+    redirectHistory.shift();
+  }
+  
+  // Check for redirect loops
+  const lastRedirects = redirectHistory.slice(-3);
+  if (lastRedirects.length >= 3) {
+    // Check if we're in a loop (A->B->A->B pattern)
+    const pattern = `${from} -> ${to}`;
+    const occurrences = lastRedirects.filter(r => r === pattern).length;
+    
+    if (occurrences >= 2) {
+      console.warn('Redirect loop detected:', lastRedirects);
+      return false;
+    }
+  }
+  
+  // Check if we've had too many redirects in a short time
+  if (redirectHistory.length >= 3) {
+    const timeWindow = 2000; // 2 seconds
+    const now = Date.now();
+    
+    // If we've had 3+ redirects in the last 2 seconds, prevent further redirects
+    if (redirectHistory.length >= 3 && (now - (redirectHistory as any).lastRedirectTime < timeWindow)) {
+      console.warn('Too many redirects in a short time:', redirectHistory);
+      return false;
+    }
+    
+    (redirectHistory as any).lastRedirectTime = now;
+  }
+  
+  return true;
+}
+
 /**
  * Check if a user has access to a specific route
  * @param path The route path to check

@@ -45,85 +45,61 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
   
   const startTime = performance.now();
   
-  // Verificar primero si el service worker está disponible
-  return fetch('/api/sw', { method: 'HEAD' })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`Service worker file not available: ${response.status} ${response.statusText}`);
-      }
+  // Register the service worker directly without checking the file first
+  return navigator.serviceWorker.register('/sw.js', { 
+    scope: '/',
+    type: 'classic' // Explicitly set the type
+  })
+  .then((registration) => {
+    const registrationTime = performance.now() - startTime;
+    console.info(`[ServiceWorker] Registered successfully in ${registrationTime.toFixed(2)}ms`);
+    
+    if (window.trackPerformance) {
+      window.trackPerformance.endMark('sw-registration');
+    }
+    
+    // Handle updates
+    registration.onupdatefound = () => {
+      const installingWorker = registration.installing;
+      if (!installingWorker) return;
       
-      // Verificar el tipo MIME
-      const contentType = response.headers.get('content-type');
-      if (contentType && !contentType.includes('javascript')) {
-        console.warn(`[ServiceWorker] Unexpected MIME type: ${contentType}. Expected application/javascript.`);
-      }
-      
-      // Proceder con el registro
-      return navigator.serviceWorker.register('/api/sw', { 
-        scope: '/',
-        type: 'classic' // Explicitly set the type
-      })
-      .catch(error => {
-        // If there's a scope error, try registering with the default scope
-        if (error.name === 'SecurityError' && error.message.includes('scope')) {
-          console.warn('[ServiceWorker] Scope error, trying with default scope');
-          return navigator.serviceWorker.register('/api/sw', { 
-            type: 'classic'
-          });
-        }
-        throw error; // Re-throw if it's not a scope error
-      });
-    })
-    .then((registration) => {
-      const registrationTime = performance.now() - startTime;
-      console.info(`[ServiceWorker] Registered successfully in ${registrationTime.toFixed(2)}ms`);
-      
-      if (window.trackPerformance) {
-        window.trackPerformance.endMark('sw-registration');
-      }
-      
-      // Handle updates
-      registration.onupdatefound = () => {
-        const installingWorker = registration.installing;
-        if (!installingWorker) return;
-        
-        installingWorker.onstatechange = () => {
-          if (installingWorker.state === 'installed') {
-            if (navigator.serviceWorker.controller) {
-              // New content is available, show notification to user
-              console.info('[ServiceWorker] New content is available, please refresh');
-              
-              // You could dispatch an event or call a function to show a notification
-              const event = new CustomEvent('serviceWorkerUpdated');
-              window.dispatchEvent(event);
-            } else {
-              // Content is cached for offline use
-              console.info('[ServiceWorker] Content is cached for offline use');
-            }
+      installingWorker.onstatechange = () => {
+        if (installingWorker.state === 'installed') {
+          if (navigator.serviceWorker.controller) {
+            // New content is available, show notification to user
+            console.info('[ServiceWorker] New content is available, please refresh');
+            
+            // You could dispatch an event or call a function to show a notification
+            const event = new CustomEvent('serviceWorkerUpdated');
+            window.dispatchEvent(event);
+          } else {
+            // Content is cached for offline use
+            console.info('[ServiceWorker] Content is cached for offline use');
           }
-        };
+        }
       };
-      
-      return registration;
-    })
-    .catch((error) => {
-      // Handle specific errors
-      if (error.name === 'SecurityError') {
-        console.warn('[ServiceWorker] Registration failed due to security restrictions. This is normal in some environments.');
-      } else if (error.name === 'TypeError' && error.message.includes('MIME type')) {
-        console.warn('[ServiceWorker] Registration failed due to MIME type issues. This is common in development.');
-      } else {
-        console.error('[ServiceWorker] Registration failed:', error);
-      }
-      
-      // End performance tracking
-      if (window.trackPerformance) {
-        window.trackPerformance.endMark('sw-registration');
-      }
-      
-      // Don't throw the error, just return null
-      return null;
-    });
+    };
+    
+    return registration;
+  })
+  .catch((error) => {
+    // Handle specific errors
+    if (error.name === 'SecurityError') {
+      console.warn('[ServiceWorker] Registration failed due to security restrictions. This is normal in some environments.');
+    } else if (error.name === 'TypeError' && error.message.includes('MIME type')) {
+      console.warn('[ServiceWorker] Registration failed due to MIME type issues. This is common in development.');
+    } else {
+      console.error('[ServiceWorker] Registration failed:', error);
+    }
+    
+    // End performance tracking
+    if (window.trackPerformance) {
+      window.trackPerformance.endMark('sw-registration');
+    }
+    
+    // Don't throw the error, just return null
+    return null;
+  });
 }
 
 /**

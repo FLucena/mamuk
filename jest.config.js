@@ -8,7 +8,7 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -26,7 +26,8 @@ const customJestConfig = {
     '<rootDir>/e2e/',
   ],
   transformIgnorePatterns: [
-    '/node_modules/(?!(@panva|next|next-auth|@next|jose|openid-client|uuid|nanoid))'
+    '/node_modules/(?!(@panva|next|next-auth|@next|jose|openid-client|uuid|nanoid|@headlessui|@heroicons|lucide-react))',
+    '^.+\\.module\\.(css|sass|scss)$'
   ],
   moduleDirectories: ['node_modules', '<rootDir>/'],
   testMatch: [
@@ -53,13 +54,6 @@ const customJestConfig = {
       statements: 70,
     },
   },
-  transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
-  },
-  transformIgnorePatterns: [
-    '/node_modules/',
-    '^.+\\.module\\.(css|sass|scss)$',
-  ],
   modulePathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',

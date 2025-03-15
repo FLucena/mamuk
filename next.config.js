@@ -1,6 +1,13 @@
+/**
+ * Optimized Next.js configuration file
+ */
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Disable source maps in production to reduce build size
+  productionBrowserSourceMaps: false,
+  // Enhanced image configuration
   images: {
     remotePatterns: [
       {
@@ -25,58 +32,36 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       },
     ],
-    formats: ['image/avif', 'image/webp'],
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60,
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    domains: [], // Add any external domains you need to load images from
-    minimumCacheTTL: 60,
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-  },
-  env: {
-    // Asegurarse de que el modo de depuración esté desactivado en producción
-    NEXTAUTH_DEBUG: process.env.NODE_ENV === 'development' ? 'true' : 'false',
-    // Asegurarse de que NEXTAUTH_URL esté configurado correctamente
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'https://www.mamuk.com.ar',
   },
   // Enable output standalone for Docker deployment
   output: 'standalone',
-  // Optimize for HTTP/2
+  // Enhanced compression and optimization
   compress: true,
   poweredByHeader: false,
-  // Enable font optimization
-  optimizeFonts: true,
-  // Experimental features
+  // Performance optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   experimental: {
-    // Proper handling of external packages
-    serverComponentsExternalPackages: ['punycode'],
-    // Enable HTTP/2 server push capabilities
-    optimizeCss: true,
-    // Disable tracing to avoid permission issues
-    disableOptimizedLoading: true,
+    optimizeCss: true, // Enable CSS optimization
+    optimizePackageImports: ['@heroicons/react', 'date-fns', 'lodash'],
+    turbo: {
+      loaders: {
+        // Add loaders for better performance
+        '.svg': ['@svgr/webpack'],
+      },
+    },
   },
-  // Force all API routes to be dynamic
-  serverRuntimeConfig: {
-    dynamicRoutes: ['/api/**/*'],
-  },
-  // Disable telemetry using environment variable instead of config
-  // telemetry: { 
-  //   disabled: true 
-  // },
+  // Headers configuration with CORS and caching
   async headers() {
     return [
       {
-        // Aplicar a todas las rutas
         source: '/(.*)',
         headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
@@ -85,93 +70,48 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
           },
-          // Add a default CSP for all routes
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com https://*.firebasestorage.googleapis.com https://*.amazonaws.com https://*.cloudfront.net https://*.cloudinary.com; manifest-src 'self' https://mamuk.com.ar; object-src 'none'; base-uri 'self';",
-          },
-          // Remove the preload header for the font and let Next.js handle it
-        ],
-      },
-      {
-        // Configuración específica para manifest.json
-        source: '/manifest.json',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type',
-          },
-          {
-            key: 'Content-Type',
-            value: 'application/manifest+json',
-          },
+          // Add caching headers for static assets
           {
             key: 'Cache-Control',
-            value: 'public, max-age=3600',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
       {
-        // Configuración específica para sw.js
-        source: '/sw.js',
+        source: '/api/:path*',
         headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
-          {
-            key: 'Content-Type',
-            value: 'application/javascript; charset=utf-8',
-          },
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
+          // Add caching headers for API responses
+          { key: 'Cache-Control', value: 'private, no-cache, no-store, must-revalidate' },
         ],
       },
       {
-        // Configuración específica para rutas de autenticación
         source: '/api/auth/:path*',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-store, max-age=0',
-          },
-        ],
-      },
-      {
-        // Add Content-Type header only for HTML pages
-        source: '/((?!_next/|api/).*)',
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'text/html; charset=utf-8',
-          },
-        ],
-      },
-      {
-        // Aplicar a rutas específicas que necesitan iframes
-        source: '/(workout|coach)/(.*)',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com https://*.firebasestorage.googleapis.com https://*.amazonaws.com https://*.cloudfront.net https://*.cloudinary.com; manifest-src 'self' https://mamuk.com.ar; object-src 'none'; base-uri 'self';",
-          },
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
         ],
       },
     ];
   },
-}
+  // Let Next.js handle webpack optimization
+  webpack: (config, { dev, isServer }) => {
+    // Add any custom webpack configurations here if needed
+    return config;
+  },
+};
 
-// Disable telemetry using environment variable
+// Disable telemetry
 process.env.NEXT_TELEMETRY_DISABLED = '1';
 
-module.exports = nextConfig
+module.exports = nextConfig;
+
+// Instructions:
+// To use this minimal config, run:
+// cp scripts/minimal-next-config.js next.config.js
+// npm run build:simple 
