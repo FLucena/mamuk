@@ -1,6 +1,10 @@
 const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001';
+import { headers } from 'next/headers';
 
 export default function JsonLd() {
+  // Get the nonce from headers
+  const nonce = headers().get('x-csp-nonce') || '';
+  
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -28,6 +32,7 @@ export default function JsonLd() {
   return (
     <script
       type="application/ld+json"
+      nonce={nonce}
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );

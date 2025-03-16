@@ -31,25 +31,52 @@ export interface MongoBlock extends Block, MongoDoc {
   exercises: MongoExercise[];
 }
 
+/**
+ * Types related to workout data
+ */
+
 export interface WorkoutDay {
-  id?: string;
+  id: string;
   name: string;
-  blocks: Block[];
+  exercises: WorkoutExercise[];
+  notes?: string;
 }
 
-export interface MongoWorkoutDay extends WorkoutDay, MongoDoc {
-  blocks: MongoBlock[];
+export interface WorkoutExercise {
+  id: string;
+  name: string;
+  sets: WorkoutSet[];
+  notes?: string;
+  restTime?: number; // in seconds
+}
+
+export interface WorkoutSet {
+  id: string;
+  reps?: number;
+  weight?: number;
+  time?: number; // in seconds
+  distance?: number; // in meters
+  isCompleted?: boolean;
 }
 
 export interface Workout {
-  id?: string;
-  userId: string;
+  id: string;
   name: string;
   description?: string;
   days: WorkoutDay[];
-  status: WorkoutStatus;
-  createdAt: Date;
-  updatedAt: Date;
+  userId: string;
+  coachId?: string;
+  isShared?: boolean;
+  isArchived?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // For server-side usage (not sent to client)
+  _id?: string;
+}
+
+// Define MongoDB version of WorkoutDay 
+export interface MongoWorkoutDay extends Omit<WorkoutDay, 'id'>, MongoDoc {
+  exercises: MongoExercise[];
 }
 
 export interface MongoWorkout extends MongoDoc {
