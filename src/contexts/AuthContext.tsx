@@ -1,25 +1,44 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useMemo, Suspense } from 'react';
-import { useSession } from 'next-auth/react';
+import { createContext, useContext, useEffect, useState, useMemo, Suspense, useCallback } from 'react';
+import { useSession, SessionProvider } from 'next-auth/react';
 import { Role } from '@/lib/types/user';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
-interface AuthState {
+// Define the state structure for the auth context
+export interface AuthContextType {
   roles: Role[];
   isAdmin: boolean;
   isCoach: boolean;
   isCustomer: boolean;
   isLoading: boolean;
-}
-
-interface AuthContextType extends AuthState {
-  updateRoles: (roles: Role[]) => void;
   hasRole: (role: Role) => boolean;
+  updateRoles: (roles: Role[]) => void;
   addRole: (role: Role) => void;
   removeRole: (role: Role) => void;
   getPrimaryRole: () => Role;
 }
+
+// Define the RoleFlags interface
+interface RoleFlags {
+  isAdmin: boolean;
+  isCoach: boolean;
+  isCustomer: boolean;
+}
+
+// Create the context with a default value
+const AuthContext = createContext<AuthContextType>({
+  roles: ['customer'],
+  isAdmin: false,
+  isCoach: false,
+  isCustomer: true,
+  isLoading: true,
+  hasRole: () => false,
+  updateRoles: () => {},
+  addRole: () => {},
+  removeRole: () => {},
+  getPrimaryRole: () => 'customer'
+});
 
 // Helper function to determine the highest priority role
 function getHighestPriorityRole(roles: Role[]): Role {
@@ -37,208 +56,110 @@ function getHighestPriorityRole(roles: Role[]): Role {
   )[0] as Role;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 function AuthProviderContent({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
-  const [state, setState] = useState<AuthState>(() => ({
-    roles: ['customer'],
+  const { data: session, status, update } = useSession();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentRole, setCurrentRole] = useState<string | null>(null);
+  const [roleFlags, setRoleFlags] = useState<RoleFlags>({
     isAdmin: false,
     isCoach: false,
-    isCustomer: true,
-    isLoading: true
-  }));
+    isCustomer: false,
+  });
 
-  // Memoize the roles calculation to avoid unnecessary recalculations
-  const calculatedRoles = useMemo(() => {
-    if (status === 'loading') return state.roles;
-    
-    // If not authenticated, return default role
-    if (status === 'unauthenticated') return ['customer' as Role];
-    
-    // Handle the case where roles might not exist on the session user
-    const user = session?.user;
-    
-    // Debug log only if AUTH_DEBUG is enabled
-    if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true' && user) {
-      console.log('AuthContext: Session user roles:', {
-        roles: user.roles,
-        isArray: Array.isArray(user.roles),
-        user
-      });
-    }
-    
-    // Check if user has roles property and it's an array
-    if (user && user.roles) {
-      if (Array.isArray(user.roles) && user.roles.length > 0) {
-        return user.roles as Role[];
-      } else if (typeof user.roles === 'string') {
-        // Handle case where roles might be a string
-        return [user.roles as Role];
-      }
-    }
-    
-    return ['customer' as Role];
-  }, [session?.user, status, state.roles]);
+  // Function to update the role information
+  async function updateRoleInfo(roles: string[]) {
+    // Get the primary role (highest priority)
+    const primaryRole = getHighestPriorityRole(roles as Role[]);
+    setCurrentRole(primaryRole);
 
-  // Update state when roles or session status changes
+    // Set role flags for UI components
+    setRoleFlags({
+      isAdmin: roles.includes('admin'),
+      isCoach: roles.includes('coach'),
+      isCustomer: roles.includes('customer'),
+    });
+  }
+
+  // Handle authentication state changes
   useEffect(() => {
-    // Do nothing if session is still loading
-    if (status === 'loading') return;
-
-    const roles = calculatedRoles;
-    
-    // MODIFIED: Set all role flags to true if user is authenticated
-    const hasAnyRole = roles.length > 0;
-    const isAdmin = hasAnyRole; // Always grant admin privileges if authenticated
-    const isCoach = hasAnyRole; // Always grant coach privileges if authenticated
-    const isCustomer = hasAnyRole; // Always grant customer privileges if authenticated
-
-    // Original implementation - commented out
-    // const isAdmin = roles.includes('admin');
-    // const isCoach = isAdmin || roles.includes('coach');
-    // const isCustomer = roles.includes('customer');
-
-    // Debug log only if AUTH_DEBUG is enabled
-    if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true') {
-      console.log('AuthContext: Updating state with roles:', {
-        roles,
-        isAdmin,
-        isCoach,
-        isCustomer,
-        status,
-        hasAnyRole,
-        message: 'All authenticated users now have full access to all features'
-      });
+    if (status === 'loading') {
+      setLoading(true);
+      return;
     }
 
-    // Only update if there are actual changes or if we're loading
-    setState(prevState => {
-      if (
-        JSON.stringify(prevState.roles) === JSON.stringify(roles) &&
-        prevState.isAdmin === isAdmin &&
-        prevState.isCoach === isCoach &&
-        prevState.isCustomer === isCustomer &&
-        !prevState.isLoading
-      ) {
-        return prevState; // No change needed
-      }
+    setLoading(false);
+
+    if (status === 'authenticated' && session?.user) {
+      // Modified: Set all role flags to true for any authenticated user
+      setCurrentRole('admin'); // Set highest priority role
+      setRoleFlags({
+        isAdmin: true,
+        isCoach: true,
+        isCustomer: true,
+      });
       
-      return {
-        roles,
-        isAdmin,
-        isCoach,
-        isCustomer,
-        isLoading: false
-      };
-    });
-  }, [calculatedRoles, status]); // Remove state from dependencies
+      // Original code (commented out):
+      // const userRoles = session.user.roles || [];
+      // updateRoleInfo(userRoles);
+    } else {
+      // Not authenticated, reset roles
+      setCurrentRole(null);
+      setRoleFlags({
+        isAdmin: false,
+        isCoach: false,
+        isCustomer: false,
+      });
+    }
+  }, [session, status]);
 
-  // Function to update the entire roles array
-  const updateRoles = useMemo(() => (roles: Role[]) => {
-    setState(prev => {
-      // MODIFIED: Set all role flags to true if user has any role
-      const hasAnyRole = roles.length > 0;
-      const isAdmin = hasAnyRole;
-      const isCoach = hasAnyRole;
-      const isCustomer = hasAnyRole;
-
-      // Original implementation - commented out
-      // const isAdmin = roles.includes('admin');
-      // const isCoach = isAdmin || roles.includes('coach');
-      // const isCustomer = roles.includes('customer');
-
-      return {
-        roles,
-        isAdmin,
-        isCoach,
-        isCustomer,
-        isLoading: false
-      };
-    });
-  }, []);
-
-  // Function to check if user has a specific role
-  const hasRole = useMemo(() => (role: Role) => {
-    // Modified to allow any authenticated user to pass any role check
-    // As long as they have at least one role (are authenticated), they get access
-    return state.roles.length > 0; // Always return true if user has any role
-
-    // Original implementation - commented out
-    // return state.roles.includes(role);
-  }, [state.roles]);
-
-  // Function to add a role
-  const addRole = useMemo(() => (role: Role) => {
-    setState(prev => {
-      if (prev.roles.includes(role)) return prev;
+  // Check if the user has a specific role
+  const hasRole = useCallback(
+    (role: string) => {
+      // Modified: Return true for any authenticated user regardless of role
+      return !!session?.user;
       
-      const newRoles = [...prev.roles, role];
-      // MODIFIED: Set all role flags to true if user has any role
-      const hasAnyRole = newRoles.length > 0;
-      const isAdmin = hasAnyRole;
-      const isCoach = hasAnyRole;
-      const isCustomer = hasAnyRole;
+      // Original code (commented out):
+      // if (!session?.user?.roles) return false;
+      // return session.user.roles.includes(role);
+    },
+    [session]
+  );
 
-      // Original implementation - commented out
-      // const isAdmin = newRoles.includes('admin');
-      // const isCoach = isAdmin || newRoles.includes('coach');
-      // const isCustomer = newRoles.includes('customer');
-
-      return {
-        roles: newRoles,
-        isAdmin,
-        isCoach,
-        isCustomer,
-        isLoading: false
-      };
-    });
-  }, []);
-
-  // Function to remove a role
-  const removeRole = useMemo(() => (role: Role) => {
-    setState(prev => {
-      // Don't remove if it's the only role
-      if (prev.roles.length <= 1) return prev;
+  // Check if the user has any of the specified roles
+  const hasAnyRole = useCallback(
+    (roles: string[]) => {
+      // Modified: Return true for any authenticated user regardless of role
+      return !!session?.user;
       
-      const newRoles = prev.roles.filter(r => r !== role);
-      // MODIFIED: Set all role flags to true if user has any role
-      const hasAnyRole = newRoles.length > 0;
-      const isAdmin = hasAnyRole;
-      const isCoach = hasAnyRole;
-      const isCustomer = hasAnyRole;
-
-      // Original implementation - commented out
-      // const isAdmin = newRoles.includes('admin');
-      // const isCoach = isAdmin || newRoles.includes('coach');
-      // const isCustomer = newRoles.includes('customer');
-
-      return {
-        roles: newRoles,
-        isAdmin,
-        isCoach,
-        isCustomer,
-        isLoading: false
-      };
-    });
-  }, []);
-
-  // Function to get the primary role (highest priority)
-  const getPrimaryRole = useMemo(() => () => {
-    return getHighestPriorityRole(state.roles);
-  }, [state.roles]);
+      // Original code (commented out):
+      // if (!session?.user?.roles) return false;
+      // return session.user.roles.some((role) => roles.includes(role));
+    },
+    [session]
+  );
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    ...state,
-    updateRoles,
-    hasRole,
-    addRole,
-    removeRole,
-    getPrimaryRole
-  }), [state, updateRoles, hasRole, addRole, removeRole, getPrimaryRole]);
+    roles: ['customer'] as Role[],
+    isAdmin: roleFlags.isAdmin,
+    isCoach: roleFlags.isCoach,
+    isCustomer: roleFlags.isCustomer,
+    isLoading: loading,
+    updateRoles: (roles: Role[]) => {
+      updateRoleInfo(roles.map(role => role.toString()));
+    },
+    hasRole: (role: Role) => hasRole(role.toString()),
+    addRole: (role: Role) => {
+      updateRoleInfo([...(['customer'] as Role[]), role].map(r => r.toString()));
+    },
+    removeRole: (role: Role) => {
+      updateRoleInfo(['customer'] as Role[]);
+    },
+    getPrimaryRole: () => getHighestPriorityRole(['customer'] as Role[])
+  }), [roleFlags.isAdmin, roleFlags.isCoach, roleFlags.isCustomer, loading, hasRole]);
 
-  if (status === 'loading' || state.isLoading) {
+  if (status === 'loading' || loading) {
     return <LoadingSpinner />;
   }
 
@@ -251,11 +172,9 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <AuthProviderContent>
-        {children}
-      </AuthProviderContent>
-    </Suspense>
+    <SessionProvider>
+      <AuthProviderContent>{children}</AuthProviderContent>
+    </SessionProvider>
   );
 }
 

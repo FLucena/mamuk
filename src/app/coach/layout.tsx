@@ -25,10 +25,7 @@ export default async function CoachLayout({
     redirect('/auth/signin');
   }
 
-  // Verificar que el usuario es coach o admin
-  if (!session.user.roles.some(role => ['coach', 'admin'].includes(role))) {
-    redirect('/');
-  }
+  // Removed role check - any authenticated user can access coach pages now
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">

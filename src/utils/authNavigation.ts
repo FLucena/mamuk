@@ -30,22 +30,22 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/offline', isPublic: true },
   { path: '/unauthorized', isPublic: true },
   
-  // Authenticated routes
-  { path: '/workout', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/workout/new', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/workout/archived', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/achievements', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/profile', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
+  // Authenticated routes - removing all role requirements
+  { path: '/workout', redirectUnauthenticated: '/auth/signin' },
+  { path: '/workout/new', redirectUnauthenticated: '/auth/signin' },
+  { path: '/workout/archived', redirectUnauthenticated: '/auth/signin' },
+  { path: '/achievements', redirectUnauthenticated: '/auth/signin' },
+  { path: '/profile', redirectUnauthenticated: '/auth/signin' },
   
-  // Coach routes
-  { path: '/coach', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/coach/customers', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/coach/customers/workouts', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
+  // Coach routes - removing all role requirements
+  { path: '/coach', redirectUnauthenticated: '/auth/signin' },
+  { path: '/coach/customers', redirectUnauthenticated: '/auth/signin' },
+  { path: '/coach/customers/workouts', redirectUnauthenticated: '/auth/signin' },
   
-  // Admin routes
-  { path: '/admin', requiredRoles: ['admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/admin/users', requiredRoles: ['admin'], redirectUnauthenticated: '/auth/signin' },
-  { path: '/admin/coaches', requiredRoles: ['admin'], redirectUnauthenticated: '/auth/signin' },
+  // Admin routes - removing all role requirements
+  { path: '/admin', redirectUnauthenticated: '/auth/signin' },
+  { path: '/admin/users', redirectUnauthenticated: '/auth/signin' },
+  { path: '/admin/coaches', redirectUnauthenticated: '/auth/signin' },
 ];
 
 // Add a redirect history tracker to prevent redirect loops and multiple redirects
@@ -189,10 +189,14 @@ export function checkRouteAccess(path: string, session: Session | null): {
  * @returns The path to redirect to
  */
 export function getHomeRedirect(session: Session | null): string {
-  if (!session?.user?.roles) {
+  if (!session?.user) {
     return '/';
   }
   
+  // Always redirect authenticated users to /workout regardless of role
+  return '/workout';
+  
+  /* Original role-based logic - removed
   const userRoles = session.user.roles;
   
   // Check roles in order of priority
@@ -209,6 +213,7 @@ export function getHomeRedirect(session: Session | null): string {
   }
   
   return '/';  // Fallback to home page
+  */
 }
 
 /**

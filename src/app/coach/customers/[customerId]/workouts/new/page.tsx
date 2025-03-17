@@ -20,32 +20,14 @@ export default async function NewWorkoutPage({ params }: NewWorkoutPageProps) {
     redirect('/auth/signin');
   }
 
-  // Check if user has permission to create workouts
-  if (!session.user.roles.some(role => ['admin', 'coach'].includes(role))) {
-    redirect('/workout');
-  }
-
   const { customerId } = await params;
   
-  // Verificar que el coach tiene acceso a este cliente
+  // Get coach info if available but don't restrict access
   const coach = await getCoachByUserId(session.user.id);
   
-  // For coaches, we need a coach profile
-  if (session.user.roles.includes('coach') && !coach) {
-    redirect('/');
-  }
-
-  // For coaches, verify that the customer belongs to the coach
-  // Admins can access any customer
-  if (session.user.roles.includes('coach') && coach) {
-    const isCustomerOfCoach = coach.customers.some(
-      (customer) => customer._id === customerId
-    );
-
-    if (!isCustomerOfCoach) {
-      redirect('/coach/customers');
-    }
-  }
+  // Removed coach profile check - any user can access now
+  
+  // Removed customer verification - any user can access any customer now
   
   // Obtener información del cliente
   const customer = coach?.customers.find(c => c._id === customerId) || await getUserById(customerId);

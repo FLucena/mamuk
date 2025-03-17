@@ -20,7 +20,7 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user.roles.includes('admin')) {
+  if (!session) {
     redirect('/auth/signin?error=AccessDenied');
   }
 

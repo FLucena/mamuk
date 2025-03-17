@@ -6,7 +6,7 @@ import AdminDashboard from '@/components/admin/AdminDashboard';
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || !session.user.roles.includes('admin')) {
+  if (!session?.user) {
     redirect('/auth/signin?error=AccessDenied');
   }
 

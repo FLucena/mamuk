@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 export default async function CoachesPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || !session.user.roles.includes('admin')) {
+  if (!session?.user) {
     redirect('/auth/signin');
   }
 
