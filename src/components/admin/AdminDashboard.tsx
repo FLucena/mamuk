@@ -120,7 +120,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   // Obtener rutinas archivadas
   const fetchArchivedRoutines = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/archived-routines');
+      const response = await fetch('/api/admin/routines/archived');
       
       if (!response.ok) {
         throw new Error('Failed to fetch archived routines');

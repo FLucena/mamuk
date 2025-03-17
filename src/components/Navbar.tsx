@@ -15,7 +15,6 @@ import { INSIGNIAS } from './user/UserBadges';
 import SignOutButton from '@/components/auth/SignOutButton';
 import { Session } from 'next-auth';
 import { Role } from '@/lib/types/user';
-import { useViewTransitionRouter } from '@/hooks/useViewTransitionRouter';
 import RenderTracker from './RenderTracker';
 
 // Define a type for the user object
@@ -39,17 +38,9 @@ interface NavLink {
 
 // Create the NavLink components outside of the main component to avoid hook issues
 const NavLinkComponent = memo(({ href, label, icon: Icon, show, isActive }: NavLink & { isActive: boolean }) => {
-  const router = useViewTransitionRouter();
-  
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    router.navigate(href);
-  };
-
   return (
-    <a
+    <Link
       href={href}
-      onClick={handleClick}
       className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
         isActive
           ? 'bg-blue-600 text-white'
@@ -59,24 +50,16 @@ const NavLinkComponent = memo(({ href, label, icon: Icon, show, isActive }: NavL
     >
       <Icon className="w-5 h-5 mr-2" />
       {label}
-    </a>
+    </Link>
   );
 });
 
 // Create the MobileNavLink component outside of the main component
 const MobileNavLinkComponent = memo(({ href, label, icon: Icon, show, isActive, onClose }: NavLink & { isActive: boolean, onClose: () => void }) => {
-  const router = useViewTransitionRouter();
-  
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onClose();
-    router.navigate(href);
-  };
-
   return (
-    <a
+    <Link
       href={href}
-      onClick={handleClick}
+      onClick={onClose}
       className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors duration-300 ${
         isActive
           ? 'bg-blue-600 text-white'
@@ -86,7 +69,7 @@ const MobileNavLinkComponent = memo(({ href, label, icon: Icon, show, isActive, 
     >
       <Icon className="w-5 h-5 mr-2" />
       {label}
-    </a>
+    </Link>
   );
 });
 
@@ -95,7 +78,6 @@ const NavbarContent = memo(function NavbarContent() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const router = useViewTransitionRouter();
   
   // State for mobile menu and profile menu
   const [isOpen, setIsOpen] = useState(false);
@@ -165,24 +147,6 @@ const NavbarContent = memo(function NavbarContent() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  // Create a profile navigation handler
-  const handleProfileNavigation = useCallback((path: string) => {
-    return (e: React.MouseEvent) => {
-      e.preventDefault();
-      router.navigate(path);
-      setProfileMenuOpen(false);
-    };
-  }, [router]);
-
-  // Create a handler for mobile navigation
-  const handleMobileNavigation = useCallback((path: string) => {
-    return (e: React.MouseEvent) => {
-      e.preventDefault();
-      router.navigate(path);
-      setIsOpen(false);
-    };
-  }, [router, setIsOpen]);
 
   return (
     <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
@@ -268,22 +232,20 @@ const NavbarContent = memo(function NavbarContent() {
                       </div>
                       
                       <div className="py-1">
-                        <a
+                        <Link
                           href="/profile"
-                          onClick={handleProfileNavigation('/profile')}
                           className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           <User className="w-4 h-4 mr-2" />
                           Perfil
-                        </a>
-                        <a
+                        </Link>
+                        <Link
                           href="/achievements"
-                          onClick={handleProfileNavigation('/achievements')}
                           className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           <Trophy className="w-4 h-4 mr-2" />
                           Logros
-                        </a>
+                        </Link>
                       </div>
                       
                       <div className="py-1 border-t border-gray-200 dark:border-gray-700">
@@ -299,16 +261,12 @@ const NavbarContent = memo(function NavbarContent() {
               )}
               
               {!sessionData.isAuthenticated && (
-                <a
+                <Link
                   href="/api/auth/signin"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    router.navigate('/api/auth/signin');
-                  }}
                   className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Iniciar sesión
-                </a>
+                </Link>
               )}
             </div>
           </div>
@@ -382,20 +340,24 @@ const NavbarContent = memo(function NavbarContent() {
                 </div>
               </div>
               <div className="mt-3 px-2 space-y-1">
-                <a
+                <Link
                   href="/profile"
-                  onClick={handleMobileNavigation('/profile')}
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  Perfil
-                </a>
-                <a
+                  <div className="flex items-center">
+                    <User className="w-5 h-5 mr-2" />
+                    Perfil
+                  </div>
+                </Link>
+                <Link
                   href="/achievements"
-                  onClick={handleMobileNavigation('/achievements')}
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  Logros
-                </a>
+                  <div className="flex items-center">
+                    <Trophy className="w-5 h-5 mr-2" />
+                    Logros
+                  </div>
+                </Link>
                 <SignOutButton
                   variant="text"
                   className="block w-full text-left px-3 py-2 rounded-md text-base font-medium"
@@ -409,13 +371,12 @@ const NavbarContent = memo(function NavbarContent() {
           {!sessionData.isAuthenticated && (
             <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
               <div className="px-2 space-y-1">
-                <a
+                <Link
                   href="/api/auth/signin"
-                  onClick={handleMobileNavigation('/api/auth/signin')}
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   Iniciar sesión
-                </a>
+                </Link>
               </div>
             </div>
           )}

@@ -196,12 +196,6 @@ export default memo(function UserList({
     <>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-xl font-semibold">Usuarios</h2>
-        <button
-          onClick={() => router.push('/admin/users/new')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Nuevo Usuario
-        </button>
       </div>
 
       {/* Display users in a table */}
