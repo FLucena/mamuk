@@ -51,7 +51,9 @@ export function useAuthRedirect(options: {
       return;
     }
     
-    // Handle role-based access
+    // DISABLED: Handle role-based access
+    // Now any authenticated user has access to any page
+    /*
     if (session && requiredRoles.length > 0) {
       const userRoles = session.user.roles || [];
       const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
@@ -68,6 +70,7 @@ export function useAuthRedirect(options: {
         return;
       }
     }
+    */
     
     // Mark that we've done the initial check
     initialCheckDone.current = true;

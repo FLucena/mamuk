@@ -87,9 +87,17 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
     if (status === 'loading') return;
 
     const roles = calculatedRoles;
-    const isAdmin = roles.includes('admin');
-    const isCoach = isAdmin || roles.includes('coach');
-    const isCustomer = roles.includes('customer');
+    
+    // MODIFIED: Set all role flags to true if user is authenticated
+    const hasAnyRole = roles.length > 0;
+    const isAdmin = hasAnyRole; // Always grant admin privileges if authenticated
+    const isCoach = hasAnyRole; // Always grant coach privileges if authenticated
+    const isCustomer = hasAnyRole; // Always grant customer privileges if authenticated
+
+    // Original implementation - commented out
+    // const isAdmin = roles.includes('admin');
+    // const isCoach = isAdmin || roles.includes('coach');
+    // const isCustomer = roles.includes('customer');
 
     // Debug log only if AUTH_DEBUG is enabled
     if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true') {
@@ -98,7 +106,9 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
         isAdmin,
         isCoach,
         isCustomer,
-        status
+        status,
+        hasAnyRole,
+        message: 'All authenticated users now have full access to all features'
       });
     }
 
@@ -127,9 +137,16 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
   // Function to update the entire roles array
   const updateRoles = useMemo(() => (roles: Role[]) => {
     setState(prev => {
-      const isAdmin = roles.includes('admin');
-      const isCoach = isAdmin || roles.includes('coach');
-      const isCustomer = roles.includes('customer');
+      // MODIFIED: Set all role flags to true if user has any role
+      const hasAnyRole = roles.length > 0;
+      const isAdmin = hasAnyRole;
+      const isCoach = hasAnyRole;
+      const isCustomer = hasAnyRole;
+
+      // Original implementation - commented out
+      // const isAdmin = roles.includes('admin');
+      // const isCoach = isAdmin || roles.includes('coach');
+      // const isCustomer = roles.includes('customer');
 
       return {
         roles,
@@ -143,7 +160,12 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
 
   // Function to check if user has a specific role
   const hasRole = useMemo(() => (role: Role) => {
-    return state.roles.includes(role);
+    // Modified to allow any authenticated user to pass any role check
+    // As long as they have at least one role (are authenticated), they get access
+    return state.roles.length > 0; // Always return true if user has any role
+
+    // Original implementation - commented out
+    // return state.roles.includes(role);
   }, [state.roles]);
 
   // Function to add a role
@@ -152,9 +174,16 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
       if (prev.roles.includes(role)) return prev;
       
       const newRoles = [...prev.roles, role];
-      const isAdmin = newRoles.includes('admin');
-      const isCoach = isAdmin || newRoles.includes('coach');
-      const isCustomer = newRoles.includes('customer');
+      // MODIFIED: Set all role flags to true if user has any role
+      const hasAnyRole = newRoles.length > 0;
+      const isAdmin = hasAnyRole;
+      const isCoach = hasAnyRole;
+      const isCustomer = hasAnyRole;
+
+      // Original implementation - commented out
+      // const isAdmin = newRoles.includes('admin');
+      // const isCoach = isAdmin || newRoles.includes('coach');
+      // const isCustomer = newRoles.includes('customer');
 
       return {
         roles: newRoles,
@@ -173,9 +202,16 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
       if (prev.roles.length <= 1) return prev;
       
       const newRoles = prev.roles.filter(r => r !== role);
-      const isAdmin = newRoles.includes('admin');
-      const isCoach = isAdmin || newRoles.includes('coach');
-      const isCustomer = newRoles.includes('customer');
+      // MODIFIED: Set all role flags to true if user has any role
+      const hasAnyRole = newRoles.length > 0;
+      const isAdmin = hasAnyRole;
+      const isCoach = hasAnyRole;
+      const isCustomer = hasAnyRole;
+
+      // Original implementation - commented out
+      // const isAdmin = newRoles.includes('admin');
+      // const isCoach = isAdmin || newRoles.includes('coach');
+      // const isCustomer = newRoles.includes('customer');
 
       return {
         roles: newRoles,

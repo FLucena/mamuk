@@ -227,29 +227,39 @@ export function isProtectedRoute(path: string): boolean {
 }
 
 /**
- * Get required roles for a route
- * @param path The route path to check
- * @returns Array of required roles or null if public
+ * Get the required roles for a given path
+ * @param path The path to check
+ * @returns Array of required roles or null if no roles are required
  */
 export function getRequiredRoles(path: string): Role[] | null {
+  // Check if the path matches any of our defined routes
   const route = ROUTE_ACCESS.find(r => {
+    // Direct match
     if (r.path === path) return true;
-    if (path.startsWith(`${r.path}/`)) return true;
+    
+    // Check for dynamic segments
+    if (r.path.includes('[') && r.path.includes(']')) {
+      const routePattern = r.path.replace(/\[([^\]]+)\]/g, '([^/]+)');
+      const regex = new RegExp(`^${routePattern}$`);
+      return regex.test(path);
+    }
+    
     return false;
   });
   
-  // If route is public, return null (no auth required)
-  if (route?.isPublic) return null;
+  // If no matching route was found, return null (public)
+  if (!route) return null;
   
-  // MODIFIED: For all non-public routes, return null (no specific roles required)
-  // This effectively gives all authenticated users access to all routes
+  // If the route is marked as public, return null (no roles required)
+  if (route.isPublic) return null;
+  
+  // For all other routes (non-public), also return null
+  // This means no specific roles are required - any authenticated user can access
   return null;
   
-  /* ORIGINAL LOGIC - REMOVED
-  if (!route) return ['customer', 'coach', 'admin']; // Default to requiring any authenticated role
-  if (route.isPublic) return null;
-  return route.requiredRoles || ['customer', 'coach', 'admin'];
-  */
+  // Original implementation - commented out
+  // Return the required roles for the route, or a default list
+  // return route.requiredRoles || ['customer', 'coach', 'admin'];
 }
 
 /**

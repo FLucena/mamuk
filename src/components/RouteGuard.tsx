@@ -30,10 +30,20 @@ export default function RouteGuard({ children }: RouteGuardProps) {
     // Check if route requires authentication
     const { hasAccess, redirectTo, reason } = checkRouteAccess(pathname || '', session);
 
+    // Log access checks during development
     if (process.env.NODE_ENV === 'development') {
       console.log(`RouteGuard: ${pathname} - ${hasAccess ? 'Access granted' : 'Access denied'} - ${reason}`);
     }
 
+    // If we have a session, we're always authorized regardless of roles
+    if (session) {
+      setAuthorized(true);
+      // Mark that we've done the initial check
+      initialCheckDone.current = true;
+      return;
+    }
+
+    // For unauthenticated users, follow the normal redirect flow
     if (!hasAccess && redirectTo) {
       // Use the centralized redirect service
       redirectService.performRedirect(router, redirectTo, { 
@@ -44,7 +54,8 @@ export default function RouteGuard({ children }: RouteGuardProps) {
         sessionStatus: status
       });
     } else {
-      setAuthorized(true);
+      // Respect the checkRouteAccess result for unauthenticated users
+      setAuthorized(hasAccess);
     }
     
     // Mark that we've done the initial check
