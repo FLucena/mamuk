@@ -294,6 +294,7 @@ export const authOptions: NextAuthOptions = {
           });
         }
         
+        // Allow the sign-in to proceed
         return true;
       } catch (error) {
         console.error('Error in signIn callback:', error);

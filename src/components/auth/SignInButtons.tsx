@@ -1,7 +1,7 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface SignInButtonsProps {
@@ -14,7 +14,24 @@ export function SignInButtons({ callbackUrl: propCallbackUrl }: SignInButtonsPro
   const searchParams = useSearchParams();
   
   // Get callbackUrl from props, search params, or use /workout as default
-  const callbackUrl = propCallbackUrl || searchParams?.get('callbackUrl') || '/workout';
+  let callbackUrl = propCallbackUrl || searchParams?.get('callbackUrl') || '/workout';
+  
+  // Ensure callbackUrl is properly decoded
+  try {
+    // If it's already a URL-encoded string, decode it
+    if (callbackUrl.includes('%2F')) {
+      callbackUrl = decodeURIComponent(callbackUrl);
+    }
+  } catch (e) {
+    console.error('Error decoding callbackUrl:', e);
+    // Fallback to a safe default
+    callbackUrl = '/workout';
+  }
+  
+  // Log for debugging
+  useEffect(() => {
+    console.log('SignInButtons component - callbackUrl:', callbackUrl);
+  }, [callbackUrl]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -89,6 +106,13 @@ export function SignInButtons({ callbackUrl: propCallbackUrl }: SignInButtonsPro
         )}
         {isLoading ? 'Iniciando sesión...' : 'Continuar con Google'}
       </button>
+      
+      {/* Display the callbackUrl for debugging */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-4 text-xs text-gray-500">
+          Redirect to: {callbackUrl}
+        </div>
+      )}
     </div>
   );
 } 

@@ -540,8 +540,18 @@ export default withAuth(
       expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
     } : null;
     
+    // Log authentication status in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Auth] Route: ${path}, Authenticated: ${!!token}, Token ID: ${token?.id || 'none'}`);
+    }
+    
     // Check if the path requires authentication
     if (isProtectedRoute(path)) {
+      // Skip authentication check for the signin page itself to prevent loops
+      if (path === '/auth/signin') {
+        return NextResponse.next();
+      }
+      
       // Check cached auth decision to improve performance
       const cachedDecision = getCachedAuthDecision(path, session);
       
@@ -643,13 +653,14 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api/auth (Auth API routes)
+     * - auth (Auth pages)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!api/auth|auth|_next/static|_next/image|favicon.ico).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

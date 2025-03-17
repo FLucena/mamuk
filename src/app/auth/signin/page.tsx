@@ -10,29 +10,29 @@ export default async function SignIn() {
   const headersList = headers();
   const referer = headersList.get('referer') || '';
   
-  // Extract callbackUrl from referer if it exists
-  let callbackUrl = '/workout'; // Default
+  // Get the callbackUrl from the searchParams
+  const searchParams = new URL(headers().get('x-url') || 'http://localhost').searchParams;
+  let callbackUrl = searchParams.get('callbackUrl') || '/workout';
+  
+  // Try to decode if it's an encoded URL
   try {
-    if (referer && referer.includes('callbackUrl=')) {
-      const url = new URL(referer);
-      const extractedCallbackUrl = url.searchParams.get('callbackUrl');
-      if (extractedCallbackUrl) {
-        callbackUrl = extractedCallbackUrl;
-      }
+    if (callbackUrl && callbackUrl.includes('%')) {
+      callbackUrl = decodeURIComponent(callbackUrl);
     }
   } catch (error) {
-    console.error('[Server] Error extracting callbackUrl from referer:', error);
+    console.error('[Server] Error decoding callbackUrl:', error);
+    callbackUrl = '/workout';
   }
-
+  
   // Log the server-side redirect for debugging
   console.log(`[Server] SignIn page - Session:`, session ? 'Authenticated' : 'Unauthenticated');
   console.log(`[Server] SignIn page - Referer:`, referer);
   console.log(`[Server] SignIn page - CallbackUrl:`, callbackUrl);
 
-  // If user is already authenticated, redirect to the workout page
+  // If user is already authenticated, redirect to the callbackUrl or workout page
   if (session?.user) {
-    console.log(`[Server] SignIn page - Redirecting authenticated user to /workout`);
-    redirect('/workout');
+    console.log(`[Server] SignIn page - Redirecting authenticated user to ${callbackUrl}`);
+    redirect(callbackUrl);
   }
 
   return (
