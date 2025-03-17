@@ -1,5 +1,6 @@
 import { Role } from '@/lib/types/user';
 import { Session } from 'next-auth';
+import { JWT } from 'next-auth/jwt';
 
 // Define route access requirements
 export interface RouteAccess {
@@ -237,4 +238,46 @@ export function getRequiredRoles(path: string): Role[] | null {
   if (!route) return ['customer', 'coach', 'admin']; // Default to requiring any authenticated role
   if (route.isPublic) return null;
   return route.requiredRoles || ['customer', 'coach', 'admin'];
+}
+
+/**
+ * Creates a properly typed session object from a JWT token
+ * @param token The JWT token
+ * @returns A session object or null
+ */
+export function createSessionFromToken(token: JWT | null): Session | null {
+  if (!token) return null;
+  
+  // Ensure roles is an array of Role type
+  let roles: Role[] = ['customer'];
+  
+  if (token.roles) {
+    if (Array.isArray(token.roles) && token.roles.length > 0) {
+      // Validate that each role is a valid Role type
+      roles = token.roles.filter(role => 
+        role === 'admin' || role === 'coach' || role === 'customer'
+      ) as Role[];
+      
+      // If no valid roles, default to customer
+      if (roles.length === 0) {
+        roles = ['customer'];
+      }
+    } else if (typeof token.roles === 'string') {
+      // Handle case where roles might be a string
+      const role = token.roles as string;
+      if (role === 'admin' || role === 'coach' || role === 'customer') {
+        roles = [role as Role];
+      }
+    }
+  }
+  
+  return {
+    user: {
+      id: token.id || '',
+      roles,
+      email: token.email,
+      name: token.name
+    },
+    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+  };
 } 

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { metadata } from '../src/app/layout';
 import { viewport } from '../src/app/layout';
 import JsonLd from '../src/app/components/JsonLd';
@@ -63,8 +63,19 @@ describe('SEO Configuration', () => {
   });
 
   describe('JsonLd Component', () => {
-    it('should render proper JSON-LD schema', () => {
+    it('should render proper JSON-LD schema', async () => {
+      // Mock the getNonce function
+      jest.mock('@/lib/csp', () => ({
+        getNonce: jest.fn().mockReturnValue('test-nonce-123')
+      }));
+      
       const { container } = render(<JsonLd />);
+      
+      // Since JsonLd is now a client component with useEffect, we need to trigger effects
+      act(() => {
+        // Simulate mounting
+      });
+      
       const script = container.querySelector('script[type="application/ld+json"]');
       
       expect(script).toBeTruthy();

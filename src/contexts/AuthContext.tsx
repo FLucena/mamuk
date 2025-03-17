@@ -69,8 +69,13 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
     }
     
     // Check if user has roles property and it's an array
-    if (user && user.roles && Array.isArray(user.roles)) {
-      return user.roles as Role[];
+    if (user && user.roles) {
+      if (Array.isArray(user.roles) && user.roles.length > 0) {
+        return user.roles as Role[];
+      } else if (typeof user.roles === 'string') {
+        // Handle case where roles might be a string
+        return [user.roles as Role];
+      }
     }
     
     return ['customer' as Role];

@@ -39,7 +39,8 @@ export default function SignOutButton({
 
     if (variant === 'text') {
       return (
-        <Link href={signoutUrl} className={`text-gray-700 dark:text-gray-200 hover:underline ${className}`}>
+        <Link href={signoutUrl} className={`flex items-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${className}`}>
+          <LogOut className="w-4 h-4 mr-2" />
           {label}
         </Link>
       );
@@ -68,15 +69,18 @@ export default function SignOutButton({
 
       // Use the standard NextAuth signOut with redirect: false first to ensure proper cleanup
       await signOut({
-        redirect: false
+        redirect: false,
+        callbackUrl: callbackUrl
       });
 
       // Then manually redirect to ensure the UI has time to update
       toast.success('Sesión cerrada correctamente');
       
-      // Short delay to allow state updates to propagate
+      // Force a refresh of the page to ensure all components update
+      // This ensures the navbar and other components reflect the logged out state
       setTimeout(() => {
-        router.replace('/auth/signin');
+        router.refresh(); // Refresh the current route data
+        router.replace(callbackUrl);
       }, 100);
 
     } catch (err) {
@@ -84,7 +88,7 @@ export default function SignOutButton({
       toast.error('Error al cerrar sesión');
       
       // Use Next.js router instead of window.location
-      router.replace('/auth/signin');
+      router.replace(callbackUrl);
     } finally {
       setLoading(false);
     }
@@ -108,8 +112,9 @@ export default function SignOutButton({
       <button
         onClick={handleSignOut}
         disabled={loading}
-        className={`text-gray-700 dark:text-gray-200 hover:underline ${className}`}
+        className={`flex items-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${className}`}
       >
+        <LogOut className="w-4 h-4 mr-2" />
         {loading ? 'Cerrando sesión...' : label}
       </button>
     );

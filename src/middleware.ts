@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
 import { Role } from './lib/types/user';
 import type { NextRequest } from 'next/server';
-import { isProtectedRoute, getRequiredRoles, checkRouteAccess, trackRedirect } from './utils/authNavigation';
+import { isProtectedRoute, getRequiredRoles, checkRouteAccess, trackRedirect, createSessionFromToken } from './utils/authNavigation';
 import { getToken } from 'next-auth/jwt';
 
 interface Token {
@@ -13,11 +13,14 @@ interface Token {
 }
 
 // Almacén en memoria para rate limiting (en producción debería usar Redis u otro almacén distribuido)
-const ipRequests: Record<string, { count: number; resetTime: number }> = {};
+const ipRequests: Record<string, { count: number; resetTime: number; blockedUntil?: number }> = {};
 
 // Performance optimization: Cache auth decisions for a short period
-const AUTH_CACHE = new Map<string, { decision: NextResponse; timestamp: number }>();
+const AUTH_CACHE = new Map<string, { decision: { hasAccess: boolean; redirectTo: string | null; reason: string }; timestamp: number }>();
 const CACHE_TTL = 10 * 1000; // 10 seconds
+
+// Suspicious IP tracking
+const suspiciousIPs: Record<string, { count: number; lastAttempt: number; blocked: boolean }> = {};
 
 /**
  * Verifica si la solicitud debe ser redirigida a www
@@ -56,16 +59,17 @@ function protectDebugRoutes(request: NextRequest) {
  * Implementa rate limiting basado en IP
  * @returns true si la solicitud debe ser bloqueada, false en caso contrario
  */
-function shouldRateLimit(request: NextRequest): boolean {
+function shouldRateLimit(request: NextRequest): { blocked: boolean; reason?: string; remainingAttempts?: number } {
   // Solo aplicar rate limiting a endpoints críticos
   const isCriticalEndpoint = 
     (request.nextUrl.pathname === '/api/auth/login' || 
      request.nextUrl.pathname === '/api/auth/register' ||
-     request.nextUrl.pathname === '/api/auth/reset-password') &&
+     request.nextUrl.pathname === '/api/auth/reset-password' ||
+     request.nextUrl.pathname === '/auth/signin') &&
     request.method === 'POST';
   
   if (!isCriticalEndpoint) {
-    return false;
+    return { blocked: false };
   }
   
   const ip = request.headers.get('x-forwarded-for') || 
@@ -75,6 +79,16 @@ function shouldRateLimit(request: NextRequest): boolean {
   const now = Date.now();
   const windowMs = 15 * 60 * 1000; // 15 minutos
   const maxRequests = 10; // Máximo 10 intentos en 15 minutos
+  const blockDuration = 30 * 60 * 1000; // 30 minutos de bloqueo
+  
+  // Check if IP is currently blocked
+  if (ipRequests[ip]?.blockedUntil && ipRequests[ip].blockedUntil > now) {
+    const timeRemaining = Math.ceil((ipRequests[ip].blockedUntil! - now) / 1000);
+    return { 
+      blocked: true, 
+      reason: `Too many authentication attempts. Please try again in ${timeRemaining} seconds.` 
+    };
+  }
   
   // Inicializar o limpiar entradas antiguas
   if (!ipRequests[ip] || ipRequests[ip].resetTime < now) {
@@ -85,7 +99,21 @@ function shouldRateLimit(request: NextRequest): boolean {
   ipRequests[ip].count += 1;
   
   // Verificar si excede el límite
-  return ipRequests[ip].count > maxRequests;
+  if (ipRequests[ip].count > maxRequests) {
+    // Block the IP for the block duration
+    ipRequests[ip].blockedUntil = now + blockDuration;
+    
+    return { 
+      blocked: true, 
+      reason: `Too many authentication attempts. Please try again in ${blockDuration / 60000} minutes.` 
+    };
+  }
+  
+  // Not blocked, return remaining attempts
+  return { 
+    blocked: false,
+    remainingAttempts: maxRequests - ipRequests[ip].count
+  };
 }
 
 /**
@@ -288,6 +316,51 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
 }
 
 /**
+ * Checks if an IP is suspicious based on patterns of behavior
+ */
+function checkSuspiciousIP(request: NextRequest): boolean {
+  const ip = request.headers.get('x-forwarded-for') || 
+             request.headers.get('x-real-ip') || 
+             'unknown';
+             
+  const now = Date.now();
+  
+  // Initialize tracking for this IP if not exists
+  if (!suspiciousIPs[ip]) {
+    suspiciousIPs[ip] = { count: 0, lastAttempt: now, blocked: false };
+  }
+  
+  // If already blocked, return true
+  if (suspiciousIPs[ip].blocked) {
+    return true;
+  }
+  
+  // Check for rapid successive requests (potential bot/script)
+  const timeSinceLastAttempt = now - suspiciousIPs[ip].lastAttempt;
+  suspiciousIPs[ip].lastAttempt = now;
+  
+  // If requests are coming too fast (less than 500ms apart)
+  if (timeSinceLastAttempt < 500) {
+    suspiciousIPs[ip].count += 1;
+    
+    // If we've seen 5 or more rapid requests, block the IP
+    if (suspiciousIPs[ip].count >= 5) {
+      suspiciousIPs[ip].blocked = true;
+      
+      // Log the blocked IP
+      console.warn(`[Security] Blocked suspicious IP: ${ip} - Too many rapid requests`);
+      
+      return true;
+    }
+  } else {
+    // Reset counter if requests are not rapid
+    suspiciousIPs[ip].count = Math.max(0, suspiciousIPs[ip].count - 1);
+  }
+  
+  return false;
+}
+
+/**
  * Middleware for handling authentication and authorization
  * Optimized to reduce redundant session checks and API calls
  */
@@ -324,10 +397,32 @@ export default withAuth(
     if (debugResponse) return debugResponse;
     
     // Check rate limiting for critical endpoints
-    if (shouldRateLimit(request)) {
+    const rateLimitResult = shouldRateLimit(request);
+    if (rateLimitResult.blocked) {
       return new NextResponse(
-        JSON.stringify({ error: 'Too many requests' }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Too many requests', 
+          message: rateLimitResult.reason,
+          retryAfter: ipRequests[request.headers.get('x-forwarded-for') || 'unknown']?.blockedUntil
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': Math.ceil((ipRequests[request.headers.get('x-forwarded-for') || 'unknown']?.blockedUntil || 0 - Date.now()) / 1000).toString()
+          } 
+        }
+      );
+    }
+    
+    // Check for suspicious IP activity
+    if (checkSuspiciousIP(request)) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Access denied', 
+          message: 'Suspicious activity detected'
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
     
@@ -335,19 +430,20 @@ export default withAuth(
       // Get the token from the request
       const token = await getToken({ req: request });
       
-      // Create a session-like object from the token
-      const session = token ? {
-        user: {
-          id: token.id || '',
-          roles: token.roles || ['customer'],
-          email: token.email,
-          name: token.name
-        },
-        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-      } : null;
+      // Create a properly typed session object from the token
+      const session = createSessionFromToken(token);
       
-      // Check route access
-      const { hasAccess, redirectTo, reason } = checkRouteAccess(path, session);
+      // Check for cached decision first
+      let authDecision = getCachedAuthDecision(path, session);
+      
+      // If no cached decision, check route access
+      if (!authDecision) {
+        authDecision = checkRouteAccess(path, session);
+        // Cache the decision for future requests
+        cacheAuthDecision(path, session, authDecision);
+      }
+      
+      const { hasAccess, redirectTo, reason } = authDecision;
       
       // If redirect is needed and it's safe to do so
       if (!hasAccess && redirectTo && trackRedirect(path, redirectTo)) {
@@ -364,7 +460,10 @@ export default withAuth(
           console.log(`[Auth] Redirecting from ${path} to ${redirectUrl.pathname} - Reason: ${reason}`);
         }
         
-        return NextResponse.redirect(redirectUrl);
+        // Add detailed information to the redirect response
+        const response = NextResponse.redirect(redirectUrl);
+        response.headers.set('X-Auth-Redirect-Reason', encodeURIComponent(reason));
+        return response;
       }
       
       // Continue with the request
@@ -375,7 +474,22 @@ export default withAuth(
       
       return response;
     } catch (error) {
-      console.error('Middleware error:', error);
+      // Improved error handling with more context
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      console.error('[Auth Middleware Error]', {
+        path,
+        error: errorMessage,
+        timestamp: new Date().toISOString()
+      });
+      
+      // In development, add error details to the response
+      if (process.env.NODE_ENV === 'development') {
+        const response = NextResponse.next();
+        response.headers.set('X-Auth-Error', encodeURIComponent(errorMessage));
+        return response;
+      }
+      
       return NextResponse.next();
     }
   },
@@ -393,8 +507,12 @@ export default withAuth(
 /**
  * Cache an auth decision for a short period to reduce redundant checks
  */
-function cacheAuthDecision(key: string, decision: NextResponse): void {
-  AUTH_CACHE.set(key, {
+function cacheAuthDecision(path: string, session: any, decision: { hasAccess: boolean; redirectTo: string | null; reason: string }): void {
+  // Create a cache key based on path and user roles
+  const roles = session?.user?.roles || [];
+  const cacheKey = `${path}:${roles.join(',')}`;
+  
+  AUTH_CACHE.set(cacheKey, {
     decision,
     timestamp: Date.now(),
   });
@@ -409,6 +527,22 @@ function cacheAuthDecision(key: string, decision: NextResponse): void {
       }
     });
   }
+}
+
+/**
+ * Get a cached auth decision if available
+ */
+function getCachedAuthDecision(path: string, session: any): { hasAccess: boolean; redirectTo: string | null; reason: string } | null {
+  // Create a cache key based on path and user roles
+  const roles = session?.user?.roles || [];
+  const cacheKey = `${path}:${roles.join(',')}`;
+  
+  const cached = AUTH_CACHE.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    return cached.decision;
+  }
+  
+  return null;
 }
 
 // Specify which routes require authentication and include service worker files

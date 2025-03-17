@@ -74,9 +74,17 @@ export interface Workout {
   _id?: string;
 }
 
-// Define MongoDB version of WorkoutDay 
-export interface MongoWorkoutDay extends Omit<WorkoutDay, 'id'>, MongoDoc {
+// Add a new interface for MongoDB workout exercises
+export interface MongoWorkoutExercise extends Omit<WorkoutExercise, 'id'>, MongoDoc {
+  id?: string; // Make id optional in MongoDB version
+  sets: WorkoutSet[];
+}
+
+// Define MongoDB version of WorkoutDay without extending WorkoutDay
+export interface MongoWorkoutDay extends MongoDoc {
+  name: string;
   exercises: MongoExercise[];
+  notes?: string;
 }
 
 export interface MongoWorkout extends MongoDoc {

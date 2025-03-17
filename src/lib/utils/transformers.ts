@@ -23,7 +23,11 @@ export function transformWorkoutDay(dia: WorkoutDay): WorkoutDay {
   return {
     ...dia,
     name: sanitizeHtml(dia.name),
-    blocks: dia.blocks.map(transformBlock),
+    exercises: dia.exercises.map(exercise => ({
+      ...exercise,
+      name: sanitizeHtml(exercise.name),
+      notes: exercise.notes ? sanitizeHtml(exercise.notes) : undefined
+    })),
   };
 }
 
@@ -51,7 +55,13 @@ export function transformMongoWorkoutDay(dia: MongoWorkoutDay): WorkoutDay {
   return {
     id: dia._id?.toString() || dia.id || '',
     name: dia.name || '',
-    blocks: Array.isArray(dia.blocks) ? dia.blocks.map(transformMongoBlock) : [],
+    exercises: Array.isArray(dia.exercises) ? dia.exercises.map(ex => ({
+      id: ex._id?.toString() || ex.id || '',
+      name: ex.name || '',
+      sets: [],
+      notes: ex.notes
+    })) : [],
+    notes: dia.notes
   };
 }
 

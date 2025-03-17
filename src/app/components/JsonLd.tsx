@@ -1,9 +1,21 @@
-const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001';
-import { headers } from 'next/headers';
+'use client';
+
+const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+import { useEffect, useState } from 'react';
+import { getNonce } from '@/lib/csp';
 
 export default function JsonLd() {
-  // Get the nonce from headers
-  const nonce = headers().get('x-csp-nonce') || '';
+  const [mounted, setMounted] = useState(false);
+  const [nonce, setNonce] = useState('');
+  
+  useEffect(() => {
+    setMounted(true);
+    // Get the nonce on the client side
+    setNonce(getNonce());
+  }, []);
+  
+  // Don't render anything on the server
+  if (!mounted) return null;
   
   const schema = {
     '@context': 'https://schema.org',

@@ -135,26 +135,52 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (user) {
-        token.roles = user.roles || ['customer'];
+        // Handle user roles from the user object
+        if (user.roles) {
+          if (Array.isArray(user.roles) && user.roles.length > 0) {
+            token.roles = user.roles;
+          } else if (typeof user.roles === 'string') {
+            token.roles = [user.roles];
+          } else {
+            token.roles = ['customer'];
+          }
+        } else {
+          token.roles = ['customer'];
+        }
+        
         token.id = user.id;
       }
 
       try {
         await dbConnect();
-        const dbUser = await User.findOne({ 
-          $or: [
-            { email: token.email },
-            { sub: token.sub }
-          ]
-        })
-        .select('_id roles email name image sub provider emailVerified')
-        .lean<LeanDbUser>();
+        
+        // First try to find by email with the named index
+        let dbUser = null;
+        
+        if (token.email) {
+          dbUser = await User.findOne({ email: token.email })
+            .select('_id roles email name image sub provider emailVerified')
+            .lean<LeanDbUser>();
+        }
+        
+        // If not found, try by sub
+        if (!dbUser && token.sub) {
+          dbUser = await User.findOne({ sub: token.sub })
+            .select('_id roles email name image sub provider emailVerified')
+            .lean<LeanDbUser>();
+        }
 
         if (dbUser) {
           // Ensure user has roles
-          const userRoles = Array.isArray(dbUser.roles) && dbUser.roles.length > 0 
-            ? dbUser.roles 
-            : ['customer'];
+          let userRoles = ['customer'];
+          
+          if (dbUser.roles) {
+            if (Array.isArray(dbUser.roles) && dbUser.roles.length > 0) {
+              userRoles = dbUser.roles;
+            } else if (typeof dbUser.roles === 'string') {
+              userRoles = [dbUser.roles];
+            }
+          }
           
           return {
             ...token,
@@ -203,7 +229,19 @@ export const authOptions: NextAuthOptions = {
         };
       } else {
         session.user.id = token?.id || session.user.id || '';
-        session.user.roles = token?.roles || ['customer'];
+        
+        // Handle token roles
+        if (token?.roles) {
+          if (Array.isArray(token.roles) && token.roles.length > 0) {
+            session.user.roles = token.roles;
+          } else if (typeof token.roles === 'string') {
+            session.user.roles = [token.roles];
+          } else {
+            session.user.roles = ['customer'];
+          }
+        } else {
+          session.user.roles = ['customer'];
+        }
         
         // Always ensure the user has roles
         if (!session.user.roles || !Array.isArray(session.user.roles) || session.user.roles.length === 0) {

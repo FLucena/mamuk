@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import JsonLd from '@/app/components/JsonLd';
@@ -25,13 +25,16 @@ describe('Content Security Policy Tests', () => {
     });
 
     test('JsonLd component should include nonce attribute', () => {
-      // Mock the headers function to return a nonce
-      (headers as jest.Mock).mockReturnValue({
-        get: jest.fn().mockReturnValue('test-nonce-123')
-      });
+      // Mock the getNonce function to return a nonce
+      (getNonce as jest.Mock).mockReturnValue('test-nonce-123');
 
       // Render the component
       const { container } = render(React.createElement(JsonLd));
+      
+      // Since JsonLd is now a client component with useEffect, we need to trigger effects
+      act(() => {
+        // Simulate mounting
+      });
       
       // Find the script element
       const scriptElement = container.querySelector('script');
@@ -56,12 +59,16 @@ describe('Content Security Policy Tests', () => {
       // Render the component
       const { container } = render(React.createElement(SchemaOrg, { schema: mockSchema }));
       
-      // SchemaOrg uses useEffect, so we need to check after the component has mounted
-      // The component initially returns null until mounted
-      expect(container.innerHTML).toBe('');
+      // Simulate the component mounting
+      act(() => {
+        // This triggers the useEffect
+      });
       
-      // We need to test the actual behavior in a more comprehensive integration test
-      // that can handle the useEffect and state changes
+      // Now check for the script element after the component has mounted
+      const scriptElement = container.querySelector('script');
+      expect(scriptElement).not.toBeNull();
+      expect(scriptElement).toHaveAttribute('type', 'application/ld+json');
+      expect(scriptElement).toHaveAttribute('nonce', 'client-nonce-456');
     });
   });
 

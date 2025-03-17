@@ -39,7 +39,9 @@ export async function getUserWithRole(userId: string): Promise<UserWithRole> {
   
   // If not found, try by email
   if (!user) {
-    user = await User.findOne({ email: userId }).select('_id roles').lean();
+    user = await User.findOne({ email: userId })
+      .select('_id roles')
+      .lean();
   }
   
   // If still not found, try by sub (for OAuth)
@@ -100,7 +102,8 @@ export async function getCurrentUserRole(userId: string): Promise<string | null>
     
     // Si no se encuentra, intentar buscar por email
     if (!user) {
-      user = await User.findOne({ email: userId }).select('roles');
+      user = await User.findOne({ email: userId })
+        .select('roles');
     }
     
     // Si aún no se encuentra, intentar buscar por sub (para OAuth)
@@ -158,7 +161,8 @@ export async function getCurrentUserRoles(userId: string): Promise<string[]> {
     
     // Si no se encuentra, intentar buscar por email
     if (!user) {
-      user = await User.findOne({ email: userId }).select('roles');
+      user = await User.findOne({ email: userId })
+        .select('roles');
     }
     
     // Si aún no se encuentra, intentar buscar por sub (para OAuth)
@@ -202,7 +206,8 @@ export async function getUserRoles(userId: string): Promise<string[]> {
     
     // Si no se encuentra, intentar buscar por email
     if (!user) {
-      user = await User.findOne({ email: userId }).select('roles');
+      user = await User.findOne({ email: userId })
+        .select('roles');
     }
     
     // Si aún no se encuentra, intentar buscar por sub (para OAuth)

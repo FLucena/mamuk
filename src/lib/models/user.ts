@@ -57,9 +57,18 @@ const userSchema = new mongoose.Schema<IUser>({
   timestamps: true
 });
 
-// Add index for roles and email
+// Add index for roles
 userSchema.index({ roles: 1 });
-userSchema.index({ email: 1 }, { unique: true });
+
+// Add a single named index for email with sparse option
+// This replaces the previous duplicate indexes
+userSchema.index({ email: 1 }, { 
+  unique: true, 
+  name: 'email_unique_index',
+  background: true,
+  sparse: true // Allow null/undefined values
+});
+
 userSchema.index({ sub: 1 }, { sparse: true });
 
 // Add compound indexes for common queries
