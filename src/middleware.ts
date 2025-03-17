@@ -252,7 +252,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     'default-src': ["'self'"],
     'script-src': isDevelopment 
       ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"] 
-      : ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net"],
+      : ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net", "'unsafe-inline'"],
     'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Next.js requires unsafe-inline for styles
     'img-src': [imgSrc],
     'font-src': ["'self'", "https://fonts.gstatic.com"],
