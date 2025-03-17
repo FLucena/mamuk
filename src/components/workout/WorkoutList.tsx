@@ -150,7 +150,8 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
       // Pass additional fields needed by WorkoutItem
       isShared: false, // Update this based on your data model
       _id: workout._id,
-      description: workout.description
+      description: workout.description,
+      userId: workout.userId // Add userId to match the Workout type
     }));
   }, [workouts, getValidWorkoutId]);
 
@@ -293,6 +294,48 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
           workouts={formattedWorkouts}
           isCoach={isCoach}
           onWorkoutClick={handleWorkoutClick}
+          onEditClick={(e, workoutItem) => {
+            // Convert WorkoutListItem back to Workout
+            const workout: Workout = {
+              _id: workoutItem._id || workoutItem.id,
+              id: workoutItem.id,
+              name: workoutItem.name,
+              days: workoutItem.days || [],
+              userId: workoutItem.userId,
+              createdAt: workoutItem.createdAt,
+              updatedAt: workoutItem.updatedAt,
+              description: workoutItem.description
+            };
+            handleRenameClick(workout);
+          }}
+          onDuplicateClick={(workoutItem) => {
+            // Convert WorkoutListItem back to Workout
+            const workout: Workout = {
+              _id: workoutItem._id || workoutItem.id,
+              id: workoutItem.id,
+              name: workoutItem.name,
+              days: workoutItem.days || [],
+              userId: workoutItem.userId,
+              createdAt: workoutItem.createdAt,
+              updatedAt: workoutItem.updatedAt,
+              description: workoutItem.description
+            };
+            handleDuplicateClick(workout);
+          }}
+          onDeleteClick={(workoutItem) => {
+            // Convert WorkoutListItem back to Workout
+            const workout: Workout = {
+              _id: workoutItem._id || workoutItem.id,
+              id: workoutItem.id,
+              name: workoutItem.name,
+              days: workoutItem.days || [],
+              userId: workoutItem.userId,
+              createdAt: workoutItem.createdAt,
+              updatedAt: workoutItem.updatedAt,
+              description: workoutItem.description
+            };
+            handleDeleteClick(workout);
+          }}
         />
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -333,9 +376,13 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
                     )}
                     
                     <button
-                      onClick={() => handleRenameClick(workout)}
-                      className="inline-flex items-center justify-center p-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRenameClick(workout);
+                      }}
+                      className="inline-flex items-center justify-center p-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                       aria-label={`Editar rutina ${workout.name}`}
+                      data-testid="edit-workout-button"
                     >
                       <Edit className="w-5 h-5" />
                     </button>

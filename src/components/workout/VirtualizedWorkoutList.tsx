@@ -13,18 +13,27 @@ interface WorkoutListItem {
   updatedAt: string;
   coachId?: string;
   isShared?: boolean;
+  _id?: string;
+  description?: string;
+  userId: string;
 }
 
 interface VirtualizedWorkoutListProps {
   workouts: WorkoutListItem[];
   isCoach?: boolean;
   onWorkoutClick?: (id: string) => void;
+  onEditClick?: (e: React.MouseEvent, workout: WorkoutListItem) => void;
+  onDuplicateClick?: (workout: WorkoutListItem) => void;
+  onDeleteClick?: (workout: WorkoutListItem) => void;
 }
 
 const VirtualizedWorkoutList = memo(function VirtualizedWorkoutList({
   workouts,
   isCoach = false,
-  onWorkoutClick
+  onWorkoutClick,
+  onEditClick,
+  onDuplicateClick,
+  onDeleteClick
 }: VirtualizedWorkoutListProps) {
   // Create a reference to the scrollable parent container
   const parentRef = useRef<HTMLDivElement>(null);
@@ -103,6 +112,9 @@ const VirtualizedWorkoutList = memo(function VirtualizedWorkoutList({
                 workout={workout}
                 isCoach={isCoach}
                 onClick={() => onWorkoutClick?.(workout.id)}
+                onEditClick={onEditClick}
+                onDuplicateClick={onDuplicateClick}
+                onDeleteClick={onDeleteClick}
               />
             </div>
           );

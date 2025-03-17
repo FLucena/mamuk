@@ -76,19 +76,15 @@ export default function SignOutButton({
       // Then manually redirect to ensure the UI has time to update
       toast.success('Sesión cerrada correctamente');
       
-      // Force a refresh of the page to ensure all components update
-      // This ensures the navbar and other components reflect the logged out state
-      setTimeout(() => {
-        router.refresh(); // Refresh the current route data
-        router.replace(callbackUrl);
-      }, 100);
-
+      // Force a complete page refresh to ensure all components update
+      // Use location.replace instead of href to prevent back button from returning to authenticated state
+      window.location.replace(callbackUrl);
     } catch (err) {
       console.error('Error during sign out:', err);
       toast.error('Error al cerrar sesión');
       
-      // Use Next.js router instead of window.location
-      router.replace(callbackUrl);
+      // Force a complete page refresh even on error
+      window.location.replace(callbackUrl);
     } finally {
       setLoading(false);
     }

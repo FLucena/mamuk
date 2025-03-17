@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
-import { RoutineModel } from '@/models/Routine';
+import { Workout } from '@/lib/models/workout';
 import { z } from 'zod';
 
 // Schema for routine creation
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Get routines for the customer
-    const routines = await RoutineModel.find({
+    const routines = await Workout.find({
       customerId,
       isArchived: false,
     }).populate('exercises.exercise');
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     // Check if the customer has reached the limit of 3 routines
     // Only apply limit for regular customers creating their own routines
     if (!isAdmin && !isCoach) {
-      const routineCount = await RoutineModel.countDocuments({
+      const routineCount = await Workout.countDocuments({
         customerId,
         isArchived: false,
       });
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Create the routine
-    const routine = new RoutineModel({
+    const routine = new Workout({
       ...data,
       customerId,
       coachId: (isAdmin || isCoach) ? session.user.id : undefined,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
-import { Calendar, ChevronRight, Users } from 'lucide-react';
+import { Calendar, ChevronRight, Users, Eye, Edit, Copy, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -16,18 +16,25 @@ interface WorkoutListItem {
   isShared?: boolean;
   _id?: string;
   description?: string;
+  userId: string;
 }
 
 interface WorkoutItemProps {
   workout: WorkoutListItem;
   isCoach?: boolean;
   onClick?: () => void;
+  onEditClick?: (e: React.MouseEvent, workout: WorkoutListItem) => void;
+  onDuplicateClick?: (workout: WorkoutListItem) => void;
+  onDeleteClick?: (workout: WorkoutListItem) => void;
 }
 
 const WorkoutItem = memo(function WorkoutItem({ 
   workout, 
   isCoach = false,
-  onClick 
+  onClick,
+  onEditClick,
+  onDuplicateClick,
+  onDeleteClick
 }: WorkoutItemProps) {
   // Only convert if string, handle case where it might already be a Date
   const updatedAt = typeof workout.updatedAt === 'string' 
@@ -41,6 +48,30 @@ const WorkoutItem = memo(function WorkoutItem({
 
   // Count days
   const daysCount = workout.days?.length || 0;
+  
+  // Handle edit button click
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEditClick) {
+      onEditClick(e, workout);
+    }
+  };
+
+  // Handle duplicate button click
+  const handleDuplicateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDuplicateClick) {
+      onDuplicateClick(workout);
+    }
+  };
+
+  // Handle delete button click
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDeleteClick) {
+      onDeleteClick(workout);
+    }
+  };
   
   return (
     <div 
@@ -77,21 +108,48 @@ const WorkoutItem = memo(function WorkoutItem({
           </div>
         </div>
         
-        {/* Coach indicator */}
-        {workout.isShared && (
-          <div className="flex items-center mr-4 text-sm text-indigo-600 dark:text-indigo-400">
-            <Users className="w-4 h-4 mr-1" />
-            <span>Compartido</span>
-          </div>
-        )}
-        
-        {/* Navigation chevron */}
-        <div className="text-gray-400">
-          <ChevronRight className="w-5 h-5" />
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          {/* Edit button */}
+          {onEditClick && (
+            <button
+              onClick={handleEditClick}
+              className="inline-flex items-center justify-center p-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              aria-label={`Editar rutina ${workout.name}`}
+              data-testid="edit-workout-button"
+            >
+              <Edit className="w-5 h-5" />
+            </button>
+          )}
+          
+          {/* Duplicate button */}
+          {onDuplicateClick && (
+            <button
+              onClick={handleDuplicateClick}
+              className="inline-flex items-center justify-center p-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              aria-label={`Duplicar rutina ${workout.name}`}
+            >
+              <Copy className="w-5 h-5" />
+            </button>
+          )}
+          
+          {/* Delete button */}
+          {onDeleteClick && (
+            <button
+              onClick={handleDeleteClick}
+              className="inline-flex items-center justify-center p-2 bg-red-100 text-red-700 text-sm font-medium rounded-md hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              aria-label={`Eliminar rutina ${workout.name}`}
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
+          
+          {/* Navigation chevron */}
+          <ChevronRight className="w-5 h-5 text-gray-400" />
         </div>
       </div>
     </div>
   );
 });
 
-export default WorkoutItem; 
+export default WorkoutItem;
