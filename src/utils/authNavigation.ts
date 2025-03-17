@@ -158,6 +158,15 @@ export function checkRouteAccess(path: string, session: Session | null): {
     };
   }
   
+  // MODIFIED: Allow any authenticated user to access any page regardless of role
+  // This bypasses the role check completely
+  return {
+    hasAccess: true,
+    redirectTo: null,
+    reason: 'User is authenticated (all authenticated users have full access)'
+  };
+
+  /* ORIGINAL ROLE CHECK - REMOVED
   // If route requires specific roles, check if user has any of them
   if (route.requiredRoles && route.requiredRoles.length > 0) {
     const userRoles = session.user?.roles || [];
@@ -171,13 +180,7 @@ export function checkRouteAccess(path: string, session: Session | null): {
       };
     }
   }
-  
-  // User has access
-  return {
-    hasAccess: true,
-    redirectTo: null,
-    reason: 'User has access'
-  };
+  */
 }
 
 /**
@@ -235,9 +238,18 @@ export function getRequiredRoles(path: string): Role[] | null {
     return false;
   });
   
+  // If route is public, return null (no auth required)
+  if (route?.isPublic) return null;
+  
+  // MODIFIED: For all non-public routes, return null (no specific roles required)
+  // This effectively gives all authenticated users access to all routes
+  return null;
+  
+  /* ORIGINAL LOGIC - REMOVED
   if (!route) return ['customer', 'coach', 'admin']; // Default to requiring any authenticated role
   if (route.isPublic) return null;
   return route.requiredRoles || ['customer', 'coach', 'admin'];
+  */
 }
 
 /**

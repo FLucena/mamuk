@@ -32,13 +32,13 @@ export async function GET(request: Request) {
       );
     }
 
-    // Comprobar si el usuario tiene el rol de administrador
-    if (!session.user.roles?.includes('admin')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Permisos insuficientes. Se requiere rol de administrador.' }),
-        { status: 403 }
-      );
-    }
+    // Admin role check removed - any authenticated user can access
+    // if (!session.user.roles?.includes('admin')) {
+    //   return new NextResponse(
+    //     JSON.stringify({ error: 'Permisos insuficientes. Se requiere rol de administrador.' }),
+    //     { status: 403 }
+    //   );
+    // }
 
     await dbConnect();
     

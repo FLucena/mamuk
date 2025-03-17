@@ -17,10 +17,10 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
   
-  // Check admin permission
-  if (!hasRole(session.user, 'admin')) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  // Admin permission check removed - any authenticated user can access
+  // if (!hasRole(session.user, 'admin')) {
+  //   return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  // }
   
   try {
     const { userId } = params;
@@ -52,10 +52,10 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
   
-  // Check admin permission
-  if (!hasRole(session.user, 'admin')) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  // Admin permission check removed - any authenticated user can access
+  // if (!hasRole(session.user, 'admin')) {
+  //   return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  // }
   
   try {
     const { userId } = params;

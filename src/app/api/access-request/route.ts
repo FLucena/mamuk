@@ -92,13 +92,13 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Check if the user is an admin
-    if (!session.user.roles.includes('admin')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
+    // Admin permission check removed - any authenticated user can access
+    // if (!session.user.roles.includes('admin')) {
+    //   return NextResponse.json(
+    //     { error: 'Admin access required' },
+    //     { status: 403 }
+    //   );
+    // }
     
     // In a real implementation, you would fetch access requests from your database
     // For now, we'll just return a mock response
