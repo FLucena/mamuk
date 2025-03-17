@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import Image from 'next/image';
 import { SignInButtons } from '@/components/auth/SignInButtons';
 import { headers } from 'next/headers';
+import RobustImage from '@/components/ui/RobustImage';
 
 export default async function SignIn() {
   const session = await getServerSession(authOptions);
@@ -39,13 +40,14 @@ export default async function SignIn() {
     <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950">
       <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg">
         <div className="text-center">
-          <Image
+          <RobustImage
             src="/logo.png"
             alt="Mamuk Training Logo"
             width={100}
             height={100}
             className="mx-auto"
             priority
+            fallbackSrc="/icon.png"
           />
           <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
             Iniciar Sesión

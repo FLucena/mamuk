@@ -1,6 +1,7 @@
 import { Search, User as UserIcon } from 'lucide-react';
 import Image from 'next/image';
 import { User } from '@/lib/types/user';
+import RobustImage from '@/components/ui/RobustImage';
 
 interface CustomerListProps {
   customers: User[];
@@ -64,12 +65,13 @@ export default function CustomerList({
                 <div className="ml-3 flex items-center flex-1">
                   <div className="h-8 w-8 flex-shrink-0">
                     {customer.image ? (
-                      <Image
+                      <RobustImage
                         className="h-8 w-8 rounded-full"
                         src={customer.image}
                         alt={customer.name || ''}
                         width={32}
                         height={32}
+                        fallbackSrc="/user-placeholder.png"
                       />
                     ) : (
                       <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">

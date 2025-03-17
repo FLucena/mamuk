@@ -16,6 +16,7 @@ import SignOutButton from '@/components/auth/SignOutButton';
 import { Session } from 'next-auth';
 import { Role } from '@/lib/types/user';
 import RenderTracker from './RenderTracker';
+import RobustImage from './ui/RobustImage';
 
 // Define a type for the user object
 type UserType = {
@@ -156,13 +157,14 @@ const NavbarContent = memo(function NavbarContent() {
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="flex items-center">
-                <Image
+                <RobustImage
                   src="/logo.png"
                   alt="Logo"
                   width={32}
                   height={32}
                   className="block h-8 w-auto"
                   priority
+                  fallbackSrc="/icon.png"
                 />
                 <span className="ml-2 text-xl font-bold dark:text-white">Mamuk</span>
               </Link>
@@ -203,13 +205,14 @@ const NavbarContent = memo(function NavbarContent() {
                   >
                     <span className="sr-only">Open user menu</span>
                     {sessionData.user?.image ? (
-                      <Image
+                      <RobustImage
                         src={sessionData.user.image}
                         alt={sessionData.user.name || 'User'}
                         width={32}
                         height={32}
                         className="rounded-full"
                         priority
+                        fallbackSrc="/user-placeholder.png"
                       />
                     ) : (
                       <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
@@ -320,13 +323,14 @@ const NavbarContent = memo(function NavbarContent() {
               <div className="flex items-center px-5">
                 <div className="flex-shrink-0">
                   {sessionData.user?.image ? (
-                    <Image
+                    <RobustImage
                       src={sessionData.user.image}
                       alt={sessionData.user.name || 'User'}
                       width={40}
                       height={40}
                       className="rounded-full"
                       priority
+                      fallbackSrc="/user-placeholder.png"
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">

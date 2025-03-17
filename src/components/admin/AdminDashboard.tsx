@@ -71,11 +71,18 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       }
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError('Error al cargar los datos. Por favor, inténtalo de nuevo.');
+      // Use toast instead of setting error state to prevent UI from being blocked
+      toast.error('Error al cargar los datos. Intente nuevamente.');
+      // Only set the error state if we have no data to display
+      if ((currentView === 'users' || currentView === 'assignments') && users.length === 0) {
+        setError('Error al cargar los datos. Por favor, inténtalo de nuevo.');
+      } else if (currentView === 'archived' && archivedRoutines.length === 0) {
+        setError('Error al cargar los datos. Por favor, inténtalo de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [currentView, page, pageSize]);
+  }, [currentView, page, pageSize, users.length, archivedRoutines.length]);
 
   // Obtener usuarios con paginación
   const fetchUsers = useCallback(async () => {
@@ -123,14 +130,24 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       const response = await fetch('/api/admin/routines/archived');
       
       if (!response.ok) {
-        throw new Error('Failed to fetch archived routines');
+        // Check for specific status codes to provide better error messages
+        if (response.status === 404) {
+          console.error('API endpoint not found: /api/admin/routines/archived');
+          toast.error('La ruta para obtener rutinas archivadas no está disponible');
+        } else {
+          console.error(`Failed to fetch archived routines: ${response.status} ${response.statusText}`);
+          toast.error('Error al cargar las rutinas archivadas');
+        }
+        // Don't throw error, just return so we don't crash the UI
+        return;
       }
       
       const data = await response.json();
       setArchivedRoutines(data);
     } catch (error) {
       console.error('Error fetching archived routines:', error);
-      throw error;
+      toast.error('Error al cargar las rutinas archivadas');
+      // Don't throw the error further
     }
   }, []);
 
@@ -146,17 +163,33 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
     
     // Fetch assigned customers for this coach
     try {
+      // Ensure we're using the correct API endpoint structure
       const response = await fetch(`/api/admin/coaches/${coach._id}/customers`);
       if (response.ok) {
         const data = await response.json();
         setAssignedCustomers(data.customers || []);
       } else {
+        // If the endpoint fails, try a fallback approach
         console.error('Error fetching assigned customers');
-        setAssignedCustomers([]);
+        try {
+          // Try alternative endpoint format if available
+          const fallbackResponse = await fetch(`/api/coach/${coach._id}`);
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            setAssignedCustomers(fallbackData.customers || []);
+          } else {
+            setAssignedCustomers([]);
+            toast.error('No se pudieron cargar los clientes asignados al coach');
+          }
+        } catch (fallbackError) {
+          setAssignedCustomers([]);
+          toast.error('No se pudieron cargar los clientes asignados al coach');
+        }
       }
     } catch (error) {
       console.error('Error fetching assigned customers:', error);
       setAssignedCustomers([]);
+      toast.error('No se pudieron cargar los clientes asignados al coach');
     }
   }, []);
 

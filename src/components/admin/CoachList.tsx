@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import AssignCustomerModal from './AssignCustomerModal';
+import RobustImage from '@/components/ui/RobustImage';
 
 interface Coach extends User {
   specialties?: string[];
@@ -191,12 +192,13 @@ export default memo(function CoachList({ users = [], isLoading = false }: CoachL
                   <div className="flex items-center">
                     <div className="h-10 w-10 flex-shrink-0">
                       {coach.image ? (
-                        <Image
+                        <RobustImage
                           className="h-10 w-10 rounded-full"
                           src={coach.image}
                           alt={coach.name || ''}
                           width={40}
                           height={40}
+                          fallbackSrc="/user-placeholder.png"
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">

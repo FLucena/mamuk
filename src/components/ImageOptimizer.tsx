@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import RobustImage from '@/components/ui/RobustImage';
 
 // Extend Window interface to include our custom trackPerformance property
 declare global {
@@ -25,6 +25,7 @@ interface ImageOptimizerProps {
   fill?: boolean;
   style?: React.CSSProperties;
   onLoad?: () => void;
+  fallbackSrc?: string;
 }
 
 export default function ImageOptimizer({
@@ -39,6 +40,7 @@ export default function ImageOptimizer({
   fill = false,
   style,
   onLoad,
+  fallbackSrc = '/icon.png',
 }: ImageOptimizerProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadStartTime, setLoadStartTime] = useState(0);
@@ -63,7 +65,7 @@ export default function ImageOptimizer({
 
   return (
     <div className={`relative ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300 ${className}`}>
-      <Image
+      <RobustImage
         src={src}
         alt={alt}
         width={width}
@@ -73,7 +75,7 @@ export default function ImageOptimizer({
         quality={quality}
         fill={fill}
         style={style}
-        loading={priority ? 'eager' : 'lazy'}
+        fallbackSrc={fallbackSrc}
         onLoad={handleLoad}
         className={`${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
       />

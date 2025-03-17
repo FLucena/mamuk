@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import RobustImage from './RobustImage';
 
 interface ResponsiveImageProps {
   src: string;
@@ -16,6 +16,7 @@ interface ResponsiveImageProps {
   objectFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
   objectPosition?: string;
   centered?: boolean;
+  fallbackSrc?: string;
 }
 
 export default function ResponsiveImage({
@@ -31,6 +32,7 @@ export default function ResponsiveImage({
   objectFit = 'cover',
   objectPosition = 'center',
   centered = false,
+  fallbackSrc = '/icon.png',
 }: ResponsiveImageProps) {
   const imageStyle = {
     objectFit,
@@ -46,7 +48,7 @@ export default function ResponsiveImage({
   return (
     <div className={containerClassName}>
       {fill ? (
-        <Image
+        <RobustImage
           src={src}
           alt={alt}
           fill={true}
@@ -55,9 +57,10 @@ export default function ResponsiveImage({
           quality={quality}
           style={imageStyle}
           className="img-fluid"
+          fallbackSrc={fallbackSrc}
         />
       ) : (
-        <Image
+        <RobustImage
           src={src}
           alt={alt}
           width={width || 0}
@@ -67,6 +70,7 @@ export default function ResponsiveImage({
           quality={quality}
           style={imageStyle}
           className={cn("img-fluid", centered && "mx-auto")}
+          fallbackSrc={fallbackSrc}
         />
       )}
     </div>
