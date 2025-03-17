@@ -466,9 +466,9 @@ function enableBfCache(request: NextRequest, response: NextResponse) {
  * - Performance optimizations
  */
 export default withAuth(
-  async function middleware(request: NextRequest) {
+  async function middleware(req) {
     // Get the pathname of the request
-    const path = request.nextUrl.pathname;
+    const path = req.nextUrl.pathname;
     
     // Skip middleware for static files and API routes
     if (
@@ -482,22 +482,22 @@ export default withAuth(
     }
 
     // Handle various non-auth middleware functions
-    const domainRedirect = checkDomainRedirect(request);
+    const domainRedirect = checkDomainRedirect(req);
     if (domainRedirect) return domainRedirect;
     
-    const debugProtection = protectDebugRoutes(request);
+    const debugProtection = protectDebugRoutes(req);
     if (debugProtection) return debugProtection;
     
-    const swResponse = handleServiceWorkerFiles(request);
+    const swResponse = handleServiceWorkerFiles(req);
     if (swResponse) return swResponse;
     
-    const sessionResponse = handleSessionRequests(request);
+    const sessionResponse = handleSessionRequests(req);
     if (sessionResponse) return sessionResponse;
     
     // Check rate limiting for critical endpoints
-    const rateLimitResult = shouldRateLimit(request);
+    const rateLimitResult = shouldRateLimit(req);
     if (rateLimitResult.blocked) {
-      console.warn(`[Security] Rate limiting request to ${path} from ${request.headers.get('x-forwarded-for') || 'unknown'}`);
+      console.warn(`[Security] Rate limiting request to ${path} from ${req.headers.get('x-forwarded-for') || 'unknown'}`);
       
       // If this is an API endpoint, return a JSON response
       if (path.startsWith('/api/')) {
@@ -517,7 +517,7 @@ export default withAuth(
       }
       
       // For non-API endpoints, redirect to error page
-      const url = new URL('/auth/error', request.url);
+      const url = new URL('/auth/error', req.url);
       url.searchParams.set('error', 'RateLimitExceeded');
       if (rateLimitResult.reason) {
         url.searchParams.set('message', rateLimitResult.reason);
@@ -527,7 +527,7 @@ export default withAuth(
     }
     
     // Get the JWT token
-    const token = await getToken({ req: request });
+    const token = await getToken({ req });
     
     // Create session object with required fields
     const session = token ? { 
@@ -566,10 +566,10 @@ export default withAuth(
         
         // If redirecting to signin, add the callback URL
         if (finalRedirectTo === '/auth/signin') {
-          const url = new URL(finalRedirectTo, request.url);
+          const url = new URL(finalRedirectTo, req.url);
           
           // Generate a callback URL that's the current URL
-          const callbackUrl = encodeURIComponent(request.url);
+          const callbackUrl = encodeURIComponent(req.url);
           url.searchParams.set('callbackUrl', callbackUrl);
           
           if (process.env.NODE_ENV === 'development') {
@@ -580,7 +580,7 @@ export default withAuth(
         }
         
         // Redirect to the final URL
-        return NextResponse.redirect(new URL(finalRedirectTo, request.url));
+        return NextResponse.redirect(new URL(finalRedirectTo, req.url));
       }
     }
     
@@ -588,10 +588,10 @@ export default withAuth(
     const response = NextResponse.next();
     
     // Apply security headers
-    applySecurityHeaders(request, response);
+    applySecurityHeaders(req, response);
     
     // Apply browser caching optimizations
-    enableBfCache(request, response);
+    enableBfCache(req, response);
     
     return response;
   },
@@ -601,17 +601,7 @@ export default withAuth(
     },
     pages: {
       signIn: '/auth/signin',
-    },
-    // Add a matcher to specify which paths this middleware should run on
-    matcher: [
-      /*
-       * Match all request paths except for:
-       * - Static files (/_next/static/, /_next/image/, /favicon.ico, etc.)
-       * - API routes that don't require authentication
-       * - Public pages
-       */
-      '/((?!_next/static|_next/image|favicon.ico|logo.png|images|icons|robots.txt|sitemap.xml|manifest.json).*)',
-    ]
+    }
   }
 );
 
