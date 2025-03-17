@@ -1,53 +1,22 @@
-import { DefaultSession, NextAuthOptions, Session, User as NextAuthUser, Account } from 'next-auth';
-import { MongoDBAdapter } from '@auth/mongodb-adapter';
+import { DefaultSession, NextAuthOptions, Session, User as NextAuthUser } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import { dbConnect } from './db';
 import User from './models/user';
-import clientPromise from './mongodb';
 import { JWT } from 'next-auth/jwt';
 import { Role } from './types/user';
-import { Document } from 'mongoose';
 
-interface GoogleUser extends NextAuthUser {
-  emailVerified?: Date | null;
-}
-
-interface DbUser extends Document {
-  _id: any;
-  roles: Role[];
-  email: string;
-  name?: string;
-  image?: string;
-  sub?: string;
-  provider?: string;
-  emailVerified?: Date | null;
-}
-
-interface LeanDbUser {
-  _id: any;
-  roles: Role[];
-  email: string;
-  name?: string;
-  image?: string;
-  sub?: string;
-  provider?: string;
-  emailVerified?: Date | null;
-}
-
+// Type definitions
 declare module 'next-auth' {
   interface Session {
     user: {
       id: string;
       roles: Role[];
-      coachId?: string;
-      emailVerified?: Date | null;
     } & DefaultSession['user']
   }
 
   interface User {
     id: string;
     roles: Role[];
-    emailVerified?: Date | null;
   }
 }
 
@@ -72,204 +41,47 @@ export const authOptions: NextAuthOptions = {
       }
     }),
   ],
-  logger: {
-    error(code: string, metadata: any) {
-      console.error('AUTH ERROR:', { code, metadata });
-    },
-    warn(code: string) {
-      console.warn('AUTH WARNING:', code);
-    },
-    debug(code: string, metadata: any) {
-      if (process.env.AUTH_DEBUG === 'true') {
-        console.log('AUTH DEBUG:', { code, metadata });
-      }
-    },
-  },
   pages: {
     signIn: '/auth/signin',
     signOut: '/auth/signin',
     error: '/auth/error',
-    verifyRequest: '/auth/verify-request',
   },
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-        domain: process.env.NODE_ENV === 'production' ? '.mamuk.com.ar' : undefined,
-      },
-    },
-    callbackUrl: {
-      name: `next-auth.callback-url`,
-      options: {
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-        domain: process.env.NODE_ENV === 'production' ? '.mamuk.com.ar' : undefined,
-      },
-    },
-    csrfToken: {
-      name: 'next-auth.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-        domain: process.env.NODE_ENV === 'production' ? '.mamuk.com.ar' : undefined,
-      },
-    },
-  },
-  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      // Ensure token has roles property
+    // Handle JWT token creation
+    async jwt({ token, user }) {
       if (!token.roles) {
         token.roles = ['customer'];
       }
 
       if (user) {
-        // Handle user roles from the user object
-        if (user.roles) {
-          if (Array.isArray(user.roles) && user.roles.length > 0) {
-            token.roles = user.roles;
-          } else if (typeof user.roles === 'string') {
-            token.roles = [user.roles];
-          } else {
-            token.roles = ['customer'];
-          }
-        } else {
-          token.roles = ['customer'];
-        }
-        
         token.id = user.id;
+        token.roles = (user.roles as Role[]) || ['customer'];
       }
 
-      try {
-        await dbConnect();
-        
-        // First try to find by email with the named index
-        let dbUser = null;
-        
-        if (token.email) {
-          dbUser = await User.findOne({ email: token.email })
-            .select('_id roles email name image sub provider emailVerified')
-            .lean<LeanDbUser>();
-        }
-        
-        // If not found, try by sub
-        if (!dbUser && token.sub) {
-          dbUser = await User.findOne({ sub: token.sub })
-            .select('_id roles email name image sub provider emailVerified')
-            .lean<LeanDbUser>();
-        }
-
-        if (dbUser) {
-          // Ensure user has roles
-          let userRoles = ['customer'];
-          
-          if (dbUser.roles) {
-            if (Array.isArray(dbUser.roles) && dbUser.roles.length > 0) {
-              userRoles = dbUser.roles;
-            } else if (typeof dbUser.roles === 'string') {
-              userRoles = [dbUser.roles];
-            }
-          }
-          
-          return {
-            ...token,
-            id: dbUser._id.toString(),
-            roles: userRoles,
-            name: dbUser.name || token.name,
-            email: dbUser.email || token.email,
-            picture: dbUser.image || token.picture,
-          };
-        } else if (trigger === 'signIn') {
-          const newUser = await User.create({
-            name: token.name,
-            email: token.email,
-            image: token.picture,
-            sub: token.sub,
-            roles: ['customer'],
-          });
-
-          return {
-            ...token,
-            id: newUser._id.toString(),
-            roles: newUser.roles,
-          };
-        } else {
-          return {
-            ...token,
-            roles: token.roles || ['customer'],
-          };
-        }
-      } catch (error) {
-        console.error('Error in jwt callback:', error);
-        return {
-          ...token,
-          roles: token.roles || ['customer']
-        };
-      }
+      return token;
     },
+    // Add user information to session
     async session({ session, token }) {
-      if (!session.user) {
-        session.user = {
-          id: token?.id || '',
-          roles: token?.roles || ['customer'],
-          name: token?.name,
-          email: token?.email,
-          image: token?.picture
-        };
-      } else {
-        session.user.id = token?.id || session.user.id || '';
-        
-        // Handle token roles
-        if (token?.roles) {
-          if (Array.isArray(token.roles) && token.roles.length > 0) {
-            session.user.roles = token.roles;
-          } else if (typeof token.roles === 'string') {
-            session.user.roles = [token.roles];
-          } else {
-            session.user.roles = ['customer'];
-          }
-        } else {
-          session.user.roles = ['customer'];
-        }
-        
-        // Always ensure the user has roles
-        if (!session.user.roles || !Array.isArray(session.user.roles) || session.user.roles.length === 0) {
-          session.user.roles = ['customer'];
-        }
+      if (session.user) {
+        session.user.id = token.id as string || '';
+        session.user.roles = token.roles || ['customer'];
       }
-
-      // Debug log only if AUTH_DEBUG is enabled
-      if (process.env.NODE_ENV === 'development' && process.env.AUTH_DEBUG === 'true') {
-        console.log('Session after processing:', {
-          id: session.user.id,
-          email: session.user.email,
-          roles: session.user.roles
-        });
-      }
-
       return session;
     },
-    async signIn(params) {
-      const { user, account } = params;
-      
+    // Basic signIn callback
+    async signIn({ user, account }) {
       if (!account) {
-        console.error('No account provided in signIn callback');
         return false;
       }
 
       try {
         await dbConnect();
+        
+        // Find or create user in database
         const dbUser = await User.findOne({ 
           $or: [
             { email: user.email },
@@ -282,19 +94,12 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             name: user.name || '',
             image: user.image,
-            emailVerified: user.emailVerified,
             roles: ['customer'],
-            sub: account.providerAccountId,
-            provider: account.provider
-          });
-        } else if (!dbUser.sub) {
-          await User.findByIdAndUpdate(dbUser._id, {
             sub: account.providerAccountId,
             provider: account.provider
           });
         }
         
-        // Allow the sign-in to proceed
         return true;
       } catch (error) {
         console.error('Error in signIn callback:', error);
@@ -302,15 +107,6 @@ export const authOptions: NextAuthOptions = {
       }
     },
   },
-  events: {
-    async signIn({ user, account, isNewUser }) {
-      if (isNewUser) {
-        // Removed console.log
-      }
-    },
-    async signOut({ token }) {
-      // Removed console.log
-    }
-  },
+  secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
 }; 

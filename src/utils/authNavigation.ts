@@ -4,15 +4,14 @@ import { Session } from 'next-auth';
 export interface RouteAccess {
   path: string;
   isPublic?: boolean;
-  redirectUnauthenticated?: string;
-  redirectAuthenticated?: string;
 }
 
 // Define all application routes with their access requirements
+// All routes are now set to public to disable any route protection
 export const ROUTE_ACCESS: RouteAccess[] = [
-  // Public routes
-  { path: '/', isPublic: true, redirectAuthenticated: '/workout' },
-  { path: '/auth/signin', isPublic: true, redirectAuthenticated: '/workout' },
+  // All routes are public by default
+  { path: '/', isPublic: true },
+  { path: '/auth/signin', isPublic: true },
   { path: '/auth/error', isPublic: true },
   { path: '/about', isPublic: true },
   { path: '/features', isPublic: true },
@@ -26,23 +25,21 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/support', isPublic: true },
   { path: '/offline', isPublic: true },
   { path: '/unauthorized', isPublic: true },
-  
-  // Authenticated routes
-  { path: '/workout', redirectUnauthenticated: '/auth/signin' },
-  { path: '/workout/new', redirectUnauthenticated: '/auth/signin' },
-  { path: '/workout/archived', redirectUnauthenticated: '/auth/signin' },
-  { path: '/achievements', redirectUnauthenticated: '/auth/signin' },
-  { path: '/profile', redirectUnauthenticated: '/auth/signin' },
-  { path: '/coach', redirectUnauthenticated: '/auth/signin' },
-  { path: '/coach/customers', redirectUnauthenticated: '/auth/signin' },
-  { path: '/coach/customers/workouts', redirectUnauthenticated: '/auth/signin' },
-  { path: '/admin', redirectUnauthenticated: '/auth/signin' },
-  { path: '/admin/users', redirectUnauthenticated: '/auth/signin' },
-  { path: '/admin/coaches', redirectUnauthenticated: '/auth/signin' },
+  { path: '/workout', isPublic: true },
+  { path: '/workout/new', isPublic: true },
+  { path: '/workout/archived', isPublic: true },
+  { path: '/achievements', isPublic: true },
+  { path: '/profile', isPublic: true },
+  { path: '/coach', isPublic: true },
+  { path: '/coach/customers', isPublic: true },
+  { path: '/coach/customers/workouts', isPublic: true },
+  { path: '/admin', isPublic: true },
+  { path: '/admin/users', isPublic: true },
+  { path: '/admin/coaches', isPublic: true },
 ];
 
 /**
- * Check if a user has access to a specific route
+ * Simplified function that always allows access
  * @param path The route path to check
  * @param session The user's session
  * @returns An object with access information
@@ -52,58 +49,11 @@ export function checkRouteAccess(path: string, session: Session | null): {
   redirectTo: string | null;
   reason: string;
 } {
-  // Find the route configuration
-  const route = ROUTE_ACCESS.find(r => {
-    // Exact match
-    if (r.path === path) return true;
-    
-    // Check if path starts with route path (for nested routes)
-    if (path.startsWith(`${r.path}/`)) return true;
-    
-    return false;
-  });
-  
-  // If no route configuration is found, default to requiring authentication
-  if (!route) {
-    return {
-      hasAccess: !!session,
-      redirectTo: session ? null : '/auth/signin',
-      reason: 'Route not configured, defaulting to requiring authentication'
-    };
-  }
-  
-  // Public routes are accessible to everyone
-  if (route.isPublic) {
-    // If authenticated and route has redirectAuthenticated, redirect
-    if (session && route.redirectAuthenticated) {
-      return {
-        hasAccess: false,
-        redirectTo: route.redirectAuthenticated,
-        reason: 'User is authenticated but route is public with redirect'
-      };
-    }
-    
-    return {
-      hasAccess: true,
-      redirectTo: null,
-      reason: 'Route is public'
-    };
-  }
-  
-  // If not authenticated, redirect to signin
-  if (!session) {
-    return {
-      hasAccess: false,
-      redirectTo: route.redirectUnauthenticated || '/auth/signin',
-      reason: 'User is not authenticated'
-    };
-  }
-  
-  // Allow any authenticated user to access any page
+  // Always grant access in the simplified version
   return {
     hasAccess: true,
     redirectTo: null,
-    reason: 'User is authenticated'
+    reason: 'Route protection disabled - all routes are public'
   };
 }
 
@@ -113,25 +63,15 @@ export function checkRouteAccess(path: string, session: Session | null): {
  * @returns The path to redirect to
  */
 export function getHomeRedirect(session: Session | null): string {
-  if (!session?.user) {
-    return '/';
-  }
-  
-  // Always redirect authenticated users to /workout
-  return '/workout';
+  // Always return home page in simplified version
+  return '/';
 }
 
 /**
- * Check if a path is a protected route
+ * Simplified function that always returns false
  * @param path The route path to check
- * @returns Whether the route is protected
+ * @returns Always false - no routes are protected
  */
 export function isProtectedRoute(path: string): boolean {
-  const route = ROUTE_ACCESS.find(r => {
-    if (r.path === path) return true;
-    if (path.startsWith(`${r.path}/`)) return true;
-    return false;
-  });
-  
-  return route ? !route.isPublic : true; // Default to protected if not found
+  return false; // No routes are protected in simplified version
 } 
