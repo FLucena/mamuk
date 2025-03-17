@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { dbConnect } from '@/lib/db';
 import { Workout } from '@/lib/models/workout';
+import { optimizeResponse } from '@/lib/utils/compression';
 
 // Force dynamic rendering for this route since it depends on user session
 export const dynamic = 'force-dynamic';
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Handle count request
+    // Handle count request - very lightweight response
     if (isCountRequest) {
       try {
         await dbConnect();
@@ -73,14 +74,36 @@ export async function GET(request: NextRequest) {
     // Regular workouts request
     const workouts = await getWorkouts(session.user.id);
     
-    // Add cache control headers to improve performance
+    // Use no-cache headers to ensure fresh data
     const headers = new Headers();
-    headers.set('Cache-Control', 'private, max-age=10');
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Expires', '0');
+    headers.set('Surrogate-Control', 'no-store');
+    headers.set('Content-Type', 'application/json');
     
-    return NextResponse.json({ workouts }, { 
-      status: 200,
-      headers
-    });
+    // Create optimized workout objects with just the data we need
+    const optimizedWorkouts = workouts.map(workout => ({
+      id: workout.id,
+      _id: workout.id,
+      name: workout.name,
+      userId: workout.userId,
+      days: Array.isArray(workout.days) ? workout.days.map(day => ({
+        id: day.id,
+        name: day.name,
+        blocks: []
+      })) : [],
+      description: workout.description || '',
+      createdAt: workout.createdAt,
+      updatedAt: workout.updatedAt
+    }));
+    
+    // Return optimized response
+    return optimizeResponse(
+      { workouts: optimizedWorkouts },
+      headers,
+      200
+    );
   } catch (error) {
     console.error('Error fetching workouts:', error);
     return NextResponse.json(

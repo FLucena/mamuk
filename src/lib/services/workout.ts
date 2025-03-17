@@ -150,22 +150,38 @@ export function mapWorkoutToResponse(doc: MongoWorkout): WorkoutType {
 export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   await dbConnect();
   
+  console.time('getWorkouts'); // Start the timer once at the beginning
+  
   try {
     // Handle different possible userId formats
     let currentUser = null;
+    let userQuery;
     
-    // Try to find by email first
-    currentUser = await User.findOne({ email: userId });
-    
-    // If not found and it's a valid ObjectId, try by _id
-    if (!currentUser && Types.ObjectId.isValid(userId)) {
-      currentUser = await User.findOne({ _id: new Types.ObjectId(userId) });
+    // Check if it looks like an email
+    if (userId.includes('@')) {
+      userQuery = { email: userId };
+    } 
+    // Check if it's a valid ObjectId
+    else if (Types.ObjectId.isValid(userId)) {
+      userQuery = { _id: new Types.ObjectId(userId) };
+    } 
+    // Otherwise try by sub (for OAuth users)
+    else {
+      userQuery = { sub: userId };
     }
     
-    // If still not found, try by sub (for OAuth users)
-    if (!currentUser) {
-      currentUser = await User.findOne({ 'sub': userId });
+    // Define a proper type for the user returned from lean()
+    interface LeanUserDocument {
+      _id: Types.ObjectId;
+      roles: string[];
+      [key: string]: any;
     }
+    
+    // Use a more efficient query with projection and proper typing
+    currentUser = await User.findOne(userQuery)
+      .select('_id roles')
+      .lean()
+      .exec() as LeanUserDocument | null;
     
     // If user is still not found, return empty array instead of throwing error
     if (!currentUser) {
@@ -174,15 +190,19 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
     }
 
     // Admin users can see all active workouts
-    if (currentUser.roles.includes('admin')) {
+    if (Array.isArray(currentUser.roles) && currentUser.roles.includes('admin')) {
       const workouts = await Workout.find({ 
         status: { $ne: 'archived' }
-      }).sort({ createdAt: -1 }).lean<MongoWorkout[]>();
+      })
+      .sort({ createdAt: -1 })
+      .limit(100) // Add a reasonable limit
+      .lean<MongoWorkout[]>();
+      
       return workouts.map(mapWorkoutToResponse);
     }
 
     // Coach users can see their own workouts and their customers' workouts
-    if (currentUser.roles.includes('coach')) {
+    if (Array.isArray(currentUser.roles) && currentUser.roles.includes('coach')) {
       const coach = await Coach.findOne({ userId: currentUser._id });
       
       // If coach profile doesn't exist, create it
@@ -199,7 +219,8 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
             return workouts.map(mapWorkoutToResponse);
           }
         } catch (error) {
-          console.error('Error creating coach profile:', error);          // Return just the user's own workouts if coach creation fails
+          console.error('Error creating coach profile:', error);
+          // Return just the user's own workouts if coach creation fails
           const workouts = await Workout.find({
             status: 'active',
             userId: currentUser._id.toString()
@@ -234,6 +255,9 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
     console.error('Error fetching workouts:', error);
     // Return empty array instead of throwing error
     return [];
+  } finally {
+    // Always end the timer exactly once, regardless of the code path
+    console.timeEnd('getWorkouts');
   }
 }
 

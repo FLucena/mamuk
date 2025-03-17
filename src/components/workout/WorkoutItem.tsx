@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
-import { Calendar, ChevronRight, Users, Eye, Edit, Copy, Trash2 } from 'lucide-react';
+import { Calendar, ChevronRight, Edit, Copy, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -110,11 +110,11 @@ const WorkoutItem = memo(function WorkoutItem({
         
         {/* Action buttons */}
         <div className="flex items-center gap-2">
-          {/* Edit button */}
+          {/* Edit button - Always show if onEditClick is provided */}
           {onEditClick && (
             <button
               onClick={handleEditClick}
-              className="inline-flex items-center justify-center p-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              className="inline-flex items-center justify-center p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               aria-label={`Editar rutina ${workout.name}`}
               data-testid="edit-workout-button"
             >

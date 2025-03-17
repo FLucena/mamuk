@@ -7,6 +7,16 @@ import { getCurrentUserRole } from '@/lib/utils/permissions';
 import { dbConnect } from '@/lib/db';
 import User from '@/lib/models/user';
 import { Role } from '@/lib/types/user';
+import { createHash } from 'crypto';
+
+// In-memory cache for user roles with TTL
+interface CacheEntry {
+  roles: Role[];
+  timestamp: number;
+}
+const userRolesCache = new Map<string, CacheEntry>();
+const ROLES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds (up from 1 minute)
+const SESSION_CACHE_TIME = 30; // 30 seconds (up from 10)
 
 // Define runtime environment
 export const runtime = 'nodejs'; // 'nodejs' (default) | 'edge'
@@ -14,70 +24,160 @@ export const runtime = 'nodejs'; // 'nodejs' (default) | 'edge'
 // Configure dynamic behavior
 export const dynamic = 'force-dynamic'; // 'auto' | 'force-static' | 'force-dynamic' | 'error'
 
+/**
+ * Generate ETag for a session object
+ */
+function generateETag(session: any): string {
+  const hash = createHash('md5')
+    .update(JSON.stringify(session))
+    .digest('hex');
+  return `W/"${hash}"`;
+}
+
+/**
+ * Get cached user roles or fetch from database
+ */
+async function getUserRoles(email: string): Promise<Role[]> {
+  // Check if we have a valid cache entry
+  const cacheEntry = userRolesCache.get(email);
+  const now = Date.now();
+  
+  if (cacheEntry && (now - cacheEntry.timestamp) < ROLES_CACHE_TTL) {
+    const cacheAge = Math.round((now - cacheEntry.timestamp) / 1000);
+    console.log(`[Session] Cache HIT: Roles for ${email} from cache (age: ${cacheAge}s)`);
+    return cacheEntry.roles;
+  }
+  
+  console.log(`[Session] Cache MISS: Fetching roles for ${email} from database`);
+  
+  // Fetch from database if not in cache or expired
+  try {
+    await dbConnect();
+    const startTime = performance.now();
+    
+    // Use an optimized query with lean(), hint() for index usage, and proper type casting
+    const dbUser = await User.findOne({ email })
+      .select('roles')
+      .hint({ email: 1 }) // Explicitly use the email index
+      .lean()
+      .exec() as { roles: Role[] } | null;
+    
+    const queryTime = performance.now() - startTime;
+    console.log(`[Session] Database query for ${email} took ${queryTime.toFixed(2)}ms`);
+    
+    if (dbUser && dbUser.roles) {
+      // Update cache
+      userRolesCache.set(email, {
+        roles: dbUser.roles,
+        timestamp: now
+      });
+      console.log(`[Session] Cache updated for ${email} with roles: ${dbUser.roles.join(', ')}`);
+      return dbUser.roles;
+    }
+  } catch (error) {
+    console.error('Error fetching user roles:', error);
+  }
+  
+  // Return default role if we couldn't get roles from DB
+  console.log(`[Session] Returning default role for ${email}`);
+  return ['customer'];
+}
+
 // GET /api/auth/session - Get current session
 export async function GET(request: NextRequest) {
+  const requestStart = performance.now();
+  
   try {
-    // Get the session
-    const session = await getServerSession(authOptions);
-    
-    // Get request headers
-    const headersList = await headers();
+    // Check for If-None-Match header for conditional requests
+    const headersList = headers();
+    const ifNoneMatch = headersList.get('if-none-match');
     const userAgent = headersList.get('user-agent');
+    
+    // Get the session (this is already optimized by Next-Auth)
+    const session = await getServerSession(authOptions);
     
     // If no session, return empty session with 200 status code
     // This prevents NextAuth client errors in the browser console
     if (!session) {
-      return createPrivateCachedResponse(
+      const response = createPrivateCachedResponse(
         { 
           authenticated: false,
           user: null,
           expires: null
         },
-        10 // Cache for 10 seconds
+        SESSION_CACHE_TIME
       );
+      
+      // Add ETag
+      response.headers.set('ETag', generateETag({ authenticated: false }));
+      
+      const requestTime = performance.now() - requestStart;
+      console.log(`[Session] No session response in ${requestTime.toFixed(2)}ms`);
+      
+      return response;
     }
     
-    // Get the most up-to-date roles from the database
+    // Get the most up-to-date roles from cache or database
     let roles: Role[] = session.user.roles;
     
-    try {
-      if (session.user.email) {
-        await dbConnect();
-        const dbUser = await User.findOne({ email: session.user.email })
-          .select('roles')
-          .lean<{ roles: Role[] }>();
-        
-        if (dbUser && dbUser.roles) {
-          roles = dbUser.roles as Role[];
-        }
+    if (session.user.email) {
+      roles = await getUserRoles(session.user.email);
+    }
+    
+    // Create the session response object
+    const sessionResponse = {
+      authenticated: true,
+      user: {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+        roles: roles
+      },
+      expires: session.expires,
+      // Include request metadata
+      meta: {
+        userAgent,
+        timestamp: new Date().toISOString()
       }
-    } catch (error) {
-      console.error('Error fetching updated roles:', error);
-      // Continue with the session roles if there's an error
+    };
+    
+    // Generate ETag for the response
+    const etag = generateETag(sessionResponse);
+    
+    // If ETag matches, return 304 Not Modified
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      const notModifiedResponse = new NextResponse(null, {
+        status: 304,
+        headers: {
+          'Cache-Control': `private, max-age=${SESSION_CACHE_TIME}, stale-while-revalidate=${SESSION_CACHE_TIME * 2}`,
+          'ETag': etag
+        }
+      });
+      
+      const requestTime = performance.now() - requestStart;
+      console.log(`[Session] 304 Not Modified in ${requestTime.toFixed(2)}ms`);
+      
+      return notModifiedResponse;
     }
     
     // Return session data with short-lived cache
-    return createPrivateCachedResponse(
-      {
-        authenticated: true,
-        user: {
-          id: session.user.id,
-          name: session.user.name,
-          email: session.user.email,
-          image: session.user.image,
-          roles: roles
-        },
-        expires: session.expires,
-        // Include request metadata
-        meta: {
-          userAgent,
-          timestamp: new Date().toISOString()
-        }
-      },
-      10 // Cache for 10 seconds
+    const response = createPrivateCachedResponse(
+      sessionResponse,
+      SESSION_CACHE_TIME
     );
+    
+    // Add ETag
+    response.headers.set('ETag', etag);
+    
+    const requestTime = performance.now() - requestStart;
+    console.log(`[Session] Response in ${requestTime.toFixed(2)}ms`);
+    
+    return response;
   } catch (error) {
     console.error('Error fetching session:', error);
+    const requestTime = performance.now() - requestStart;
+    console.error(`[Session] Error after ${requestTime.toFixed(2)}ms:`, error);
     return createErrorResponse('Error fetching session', 500);
   }
 }
@@ -91,13 +191,18 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('No active session to refresh', 401);
     }
     
+    // Clear cache entry for this user if exists
+    if (session.user.email) {
+      userRolesCache.delete(session.user.email);
+    }
+    
     // In a real implementation, you would refresh the session token here
     
     return createPrivateCachedResponse({
       success: true,
       message: 'Session refreshed',
       expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
-    }, 10);
+    }, SESSION_CACHE_TIME);
   } catch (error) {
     console.error('Error refreshing session:', error);
     return createErrorResponse('Error refreshing session', 500);
@@ -107,6 +212,13 @@ export async function POST(request: NextRequest) {
 // DELETE /api/auth/session - Sign out
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    // Clear cache entry for this user if exists
+    if (session?.user?.email) {
+      userRolesCache.delete(session.user.email);
+    }
+    
     // In a real implementation, you would invalidate the session here
     
     return createPrivateCachedResponse({

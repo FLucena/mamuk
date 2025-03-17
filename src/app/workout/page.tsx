@@ -1,29 +1,32 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, memo, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, memo, useCallback, useMemo, lazy } from 'react';
 import dynamic from 'next/dynamic';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLightSession } from '@/hooks/useOptimizedSession';
 
-// Dynamically import components
+// Import only the specific icons we need instead of the whole library
+import { RefreshCw, AlertCircle } from 'lucide-react';
+
+// Dynamically import components with reduced loading states
 const PageLoading = dynamic(() => import('@/components/ui/PageLoading'), {
-  loading: () => <div className="animate-pulse">Loading...</div>,
+  loading: () => <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>,
   ssr: false
 });
 
 const WorkoutHeaderWrapper = dynamic(() => import('@/components/workout/WorkoutHeaderWrapper'), {
-  loading: () => <div className="animate-pulse h-10 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+  loading: () => <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
 });
 
+// Use more aggressive code splitting for the WorkoutList component
 const WorkoutList = dynamic(() => import('@/components/workout/WorkoutList'), {
-  loading: () => <div className="animate-pulse space-y-4">
-    {[...Array(3)].map((_, i) => (
-      <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+  loading: () => <div className="space-y-4">
+    {[...Array(2)].map((_, i) => (
+      <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
     ))}
-  </div>
+  </div>,
+  ssr: false // Disable SSR for this component to reduce server load
 });
 
 // Add interface for Workout type
@@ -31,7 +34,7 @@ interface Workout {
   _id: string;
   id: string;
   name: string;
-  days: any[];  // You might want to define a proper type for days
+  days: any[];
   userId: string;
   createdAt: string;
   updatedAt: string;
@@ -99,13 +102,7 @@ const WorkoutContent = memo(function WorkoutContent({
         </button>
       </div>
       
-      <Suspense fallback={<div className="animate-pulse space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        ))}
-      </div>}>
-        <WorkoutList workouts={workouts} isCoach={isCoach} />
-      </Suspense>
+      <WorkoutList workouts={workouts} isCoach={isCoach || isAdmin} />
       
       {workoutLimitReached && (
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
@@ -139,7 +136,8 @@ export default function WorkoutPage() {
       const controller = new AbortController();
       const signal = controller.signal;
       
-      const workoutsRes = await fetch('/api/workout', {
+      // Add timestamp query param to prevent caching
+      const workoutsRes = await fetch(`/api/workout?t=${Date.now()}`, {
         signal,
         headers: {
           'Cache-Control': 'no-cache',
@@ -166,7 +164,7 @@ export default function WorkoutPage() {
       
       // For customers, get their workout count to show the limit
       if (isCustomerUser && !isAdminUser && !isCoachUser) {
-        const countRes = await fetch('/api/workout?count=user', { signal });
+        const countRes = await fetch(`/api/workout?count=user&t=${Date.now()}`, { signal });
         if (countRes.ok) {
           const countData = await countRes.json();
           const count = countData.count || 0;
@@ -181,8 +179,6 @@ export default function WorkoutPage() {
       }
       
       setError(null);
-      
-      controller.abort();
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
@@ -201,10 +197,12 @@ export default function WorkoutPage() {
     }
   }, [session, fetchData]);
   
-  // Prefetch workout routes
+  // Use a more efficient prefetching strategy
   useEffect(() => {
     if (workouts.length > 0) {
-      workouts.forEach(workout => {
+      // Only prefetch the first 3 workouts to reduce network load
+      const workoutsToPrefetch = workouts.slice(0, 3);
+      workoutsToPrefetch.forEach(workout => {
         router.prefetch(`/workout/${workout.id}`);
       });
     }

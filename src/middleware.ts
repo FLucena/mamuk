@@ -229,10 +229,11 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     response.headers.set(key, value);
   });
   
-  // Generar nonce para scripts
-  const nonce = typeof crypto.randomUUID === 'function' 
-    ? crypto.randomUUID() 
-    : Math.random().toString(36).substring(2, 15);
+  // Generar nonce para scripts - use the one from request headers if available
+  const nonce = request.headers.get('x-nonce') || 
+    (typeof crypto.randomUUID === 'function' 
+      ? crypto.randomUUID() 
+      : Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64'));
   
   // Determinar si estamos en desarrollo o producción
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -247,64 +248,97 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     ? `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar http://localhost:* ws://localhost:*`
     : `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar`;
 
-  // Base CSP directives that are common for all routes
-  const baseCSP = {
-    'default-src': ["'self'"],
-    'script-src': isDevelopment 
-      ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"] 
-      : ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net", "'unsafe-inline'", 
-         "'sha256-wcH7AZ3AcJJpGNwM/YsSDmB12/KfulIDMGC1AFRMt/M='", 
-         "'sha256-eMuh8xiwcX72rRYNAGENurQBAcH7kLlAUQcoOri3BIo='"],
-    'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Next.js requires unsafe-inline for styles
-    'img-src': [imgSrc],
-    'font-src': ["'self'", "https://fonts.gstatic.com"],
-    'connect-src': [connectSrc],
-    'frame-src': ["'self'"],
-    'object-src': ["'none'"],
-    'base-uri': ["'self'"],
-    'form-action': ["'self'"],
-    'manifest-src': ["'self'"],
-    'media-src': ["'self'"],
-    'worker-src': ["'self'", "blob:"],
-    'child-src': ["'self'", "blob:"],
-  };
+  // Set the nonce in the request headers
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  
+  // Check if this is an auth page
+  const isAuthPage = 
+    request.nextUrl.pathname.startsWith('/auth') ||
+    request.nextUrl.pathname.includes('signin') ||
+    request.nextUrl.pathname.includes('signout');
+
+  // Define CSP based on page type and environment
+  let cspHeader = '';
+  
+  if (isDevelopment) {
+    // Development CSP - more permissive
+    cspHeader = `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src ${imgSrc};
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src ${connectSrc};
+      frame-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      worker-src 'self' blob:;
+      child-src 'self' blob:;
+      upgrade-insecure-requests;
+    `;
+  } else if (isAuthPage) {
+    // Auth pages CSP - more permissive for auth functionality
+    cspHeader = `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src ${imgSrc};
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src 'self' https://accounts.google.com https://*.googleapis.com https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar http://localhost:* ws://localhost:*;
+      frame-src 'self' https://accounts.google.com;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      worker-src 'self' blob:;
+      child-src 'self' blob:;
+      upgrade-insecure-requests;
+    `;
+  } else {
+    // Regular pages CSP - stricter with nonce
+    cspHeader = `
+      default-src 'self';
+      script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net 'unsafe-inline' 'sha256-wcH7AZ3AcJJpGNwM/YsSDmB12/KfulIDMGC1AFRMt/M=' 'sha256-eMuh8xiwcX72rRYNAGENurQBAcH7kLlAUQcoOri3BIo=' 'strict-dynamic';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src ${imgSrc};
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src ${connectSrc};
+      frame-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      worker-src 'self' blob:;
+      child-src 'self' blob:;
+      frame-ancestors 'none';
+      upgrade-insecure-requests;
+    `;
+  }
 
   // Add frame-src exceptions for routes that need video embeds
   if (
     request.nextUrl.pathname.startsWith('/workout') ||
     request.nextUrl.pathname.startsWith('/coach')
   ) {
-    baseCSP['frame-src'] = ["'self'", "https://www.youtube.com", "https://youtube.com", "https://player.vimeo.com", "https://vimeo.com"];
+    cspHeader = cspHeader.replace(
+      "frame-src 'self';",
+      "frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com https://vimeo.com;"
+    );
     // Remove X-Frame-Options to allow iframes
     response.headers.delete('X-Frame-Options');
   }
 
-  // Use a more permissive CSP for auth pages
-  if (
-    request.nextUrl.pathname.startsWith('/auth') ||
-    request.nextUrl.pathname.includes('signin') ||
-    request.nextUrl.pathname.includes('signout')
-  ) {
-    baseCSP['script-src'] = ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"];
-    baseCSP['connect-src'] = ["'self'", "https://accounts.google.com", "https://*.googleapis.com", "https://www.mamuk.com.ar", "https://mamuk.com.ar", "https://api.mamuk.com.ar", "http://localhost:*", "ws://localhost:*"];
-  }
-
-  // Convert CSP object to string
-  const cspString = Object.entries(baseCSP)
-    .map(([key, values]) => {
-      if (Array.isArray(values)) {
-        return `${key} ${values.join(' ')}`;
-      }
-      return `${key} ${values}`;
-    })
-    .join('; ');
+  // Replace newline characters and spaces
+  const contentSecurityPolicyHeaderValue = cspHeader
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 
   // Set the CSP header
-  response.headers.set('Content-Security-Policy', cspString);
+  response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue);
 
   // Pass the nonce to the response for HTML pages
   if (response.headers.get('content-type')?.includes('text/html')) {
-    response.headers.set('x-csp-nonce', nonce);
+    response.headers.set('x-nonce', nonce);
   }
   
   // Implementar protección contra ataques de fuerza bruta con rate limiting
@@ -375,6 +409,49 @@ function checkSuspiciousIP(request: NextRequest): boolean {
   }
   
   return false;
+}
+
+/**
+ * Configure headers to enable back/forward cache (bfcache) support
+ */
+function enableBfCache(request: NextRequest, response: NextResponse) {
+  const { pathname } = request.nextUrl;
+  
+  // Skip for API routes and WebSocket endpoints
+  if (pathname.startsWith('/api/') || 
+      request.headers.get('upgrade') === 'websocket' ||
+      pathname.includes('/_next/webpack-hmr')) {
+    return response;
+  }
+  
+  // Skip for authentication routes
+  if (pathname.startsWith('/auth/') || 
+      pathname === '/api/auth/signin' || 
+      pathname === '/api/auth/signout') {
+    return response;
+  }
+
+  // For static routes that should support bfcache
+  if (pathname.startsWith('/workout') || 
+      pathname === '/' || 
+      pathname.startsWith('/profile') ||
+      pathname.startsWith('/exercises')) {
+    
+    // Remove no-store directive from Cache-Control if it exists
+    const cacheControl = response.headers.get('Cache-Control');
+    if (cacheControl && cacheControl.includes('no-store')) {
+      // Modify the header to enable bfcache
+      response.headers.set(
+        'Cache-Control', 
+        'private, max-age=0'
+      );
+    }
+    
+    // Add header to explicitly opt-in to bfcache where possible
+    response.headers.set('Cache-Control-Allow-Bfcache', 'true');
+  }
+  
+  return response;
 }
 
 /**
@@ -480,14 +557,38 @@ export default withAuth(
         // Add detailed information to the redirect response
         const response = NextResponse.redirect(redirectUrl);
         response.headers.set('X-Auth-Redirect-Reason', encodeURIComponent(reason));
+        
+        // Apply security headers
+        applySecurityHeaders(request, response);
+        
+        // Enable bfcache support
+        enableBfCache(request, response);
+        
         return response;
       }
       
-      // Continue with the request
-      const response = NextResponse.next();
+      // Generate a nonce for CSP using crypto.randomUUID for better security
+      // This is compatible with Vercel's edge runtime
+      const nonce = typeof crypto.randomUUID === 'function' 
+        ? crypto.randomUUID() 
+        : Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64');
+      
+      // Set the nonce in the request headers
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-nonce', nonce);
+      
+      // Continue with the request, but with the nonce in the headers
+      const response = NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
       
       // Apply security headers
       applySecurityHeaders(request, response);
+      
+      // Enable bfcache support
+      enableBfCache(request, response);
       
       return response;
     } catch (error) {
@@ -562,20 +663,26 @@ function getCachedAuthDecision(path: string, session: any): { hasAccess: boolean
   return null;
 }
 
-// Specify which routes require authentication and include service worker files
+// Specify which paths this middleware will run for
 export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api/auth (NextAuth.js authentication routes)
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - manifest.json (PWA manifest)
-     * - sw.js (Service Worker)
-     * - sw-register.js (Service Worker registration)
      */
-    '/((?!api|_next|fonts|icons|images|[\\w-]+\\.\\w+).*)',
-    '/debug/:path*',
+    {
+      source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
+    '/manifest.json',
+    '/icon.png',
+    '/favicon.ico',
+    '/apple-touch-icon.png',
   ],
 }; 

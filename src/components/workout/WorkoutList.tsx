@@ -1,49 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import Link from 'next/link';
+import { useState, useCallback, useMemo, memo, lazy, Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Edit, Copy, Users, Trash2 } from 'lucide-react';
+import { Eye, Copy, Users, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import RenderTracker from '../RenderTracker';
-import dynamic from 'next/dynamic';
-
-import DuplicateWorkoutModal from '../modals/DuplicateWorkoutModal';
-import AssignWorkoutModal from '../modals/AssignWorkoutModal';
-import RenameWorkoutModal from '../modals/RenameWorkoutModal';
-import DeleteWorkoutModal from '../modals/DeleteWorkoutModal';
 import { duplicateWorkout, assignWorkoutToUser, updateWorkoutName, deleteWorkout } from '@/app/workout/[id]/actions';
 
-/**
- * Performance Enhancement: Virtualized Workout List
- * 
- * We've implemented a virtualized list for the workout items to significantly improve performance:
- * 
- * 1. Window Virtualization: Only renders the items currently visible in the viewport
- * 2. Reduced DOM Nodes: Dramatically reduces the number of DOM nodes for large lists
- * 3. Smooth Scrolling: Maintains 60fps scrolling even with hundreds of workout items
- * 4. Optimized Loading: Uses ResizeObserver for responsive sizing and dynamic measurement
- * 5. Memory Optimization: Reduces memory consumption for large lists
- * 6. Adaptive: Automatically switches between virtualized and standard rendering based on list size
- * 7. Lazy Loading: Components are lazily loaded with fallback UI
- * 
- * This implementation uses @tanstack/react-virtual library with React 18 optimizations.
- */
-
-// Dynamically import virtualized list with loading fallback for performance
-const VirtualizedWorkoutListComponent = dynamic(
-  () => import('./VirtualizedWorkoutList'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="animate-pulse space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        ))}
-      </div>
-    )
-  }
-);
+// Lazy load modals to reduce initial JS bundle size
+const DuplicateWorkoutModal = lazy(() => import('../modals/DuplicateWorkoutModal'));
+const AssignWorkoutModal = lazy(() => import('../modals/AssignWorkoutModal'));
+const RenameWorkoutModal = lazy(() => import('../modals/RenameWorkoutModal'));
+const DeleteWorkoutModal = lazy(() => import('../modals/DeleteWorkoutModal'));
 
 interface Exercise {
   _id: string;
@@ -83,6 +51,144 @@ interface WorkoutListProps {
   isCoach?: boolean;
 }
 
+// Loading skeleton component for better perceived performance
+const WorkoutCardSkeleton = () => (
+  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm animate-pulse">
+    <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+      <div className="flex-1">
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
+      </div>
+      <div className="flex gap-2 mt-3 md:mt-0">
+        <div className="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      </div>
+    </div>
+  </div>
+);
+
+// Cache state helper to improve bfcache compatibility
+const useBFCacheRestoration = (onRestore: () => void) => {
+  useEffect(() => {
+    // When page is restored from bfcache
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        // Page was restored from bfcache
+        onRestore();
+      }
+    };
+
+    // Add event listeners for page transitions
+    window.addEventListener('pageshow', handlePageShow);
+    
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [onRestore]);
+};
+
+// Separate WorkoutCard component to reduce re-renders of the main list
+const WorkoutCard = memo(function WorkoutCard({
+  workout,
+  workoutId,
+  isCoach,
+  onView,
+  onEdit,
+  onDuplicate,
+  onAssign,
+  onDelete,
+  index
+}: {
+  workout: Workout;
+  workoutId: string | null;
+  isCoach: boolean;
+  onView: (id: string) => void;
+  onEdit: (workout: Workout) => void;
+  onDuplicate: (workout: Workout) => void;
+  onAssign: (workout: Workout) => void;
+  onDelete: (workout: Workout) => void;
+  index: number;
+}) {
+  // Determine if this card should have content-visibility optimization for items further down the list
+  const shouldOptimizeVisibility = index > 5;
+  
+  return (
+    <div 
+      key={workoutId || workout._id.toString()} 
+      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm will-change-transform"
+      style={shouldOptimizeVisibility ? { contentVisibility: 'auto' } : undefined}
+      data-testid="workout-card"
+    >
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+            {workout.name}
+          </h3>
+          
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            {workout.days?.length || 0} {workout.days?.length === 1 ? 'día' : 'días'}
+          </p>
+          
+          {workout.description && (
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
+              {workout.description}
+            </p>
+          )}
+        </div>
+        
+        <div className="flex flex-wrap gap-2 mt-3 md:mt-0">
+          {workoutId && (
+            <button
+              onClick={() => onView(workoutId)}
+              className="inline-flex items-center justify-center p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              aria-label={`Ver rutina ${workout.name}`}
+            >
+              <Eye className="w-5 h-5" />
+            </button>
+          )}
+          
+          <button
+            onClick={() => onEdit(workout)}
+            className="inline-flex items-center justify-center p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-label={`Editar rutina ${workout.name}`}
+            data-testid="edit-workout-button"
+          >
+            <Edit className="w-5 h-5" />
+          </button>
+          
+          <button
+            onClick={() => onDuplicate(workout)}
+            className="inline-flex items-center justify-center p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-label={`Duplicar rutina ${workout.name}`}
+          >
+            <Copy className="w-5 h-5" />
+          </button>
+          
+          {isCoach && (
+            <button
+              onClick={() => onAssign(workout)}
+              className="inline-flex items-center justify-center p-2 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              aria-label={`Asignar rutina ${workout.name}`}
+            >
+              <Users className="w-5 h-5" />
+            </button>
+          )}
+          
+          <button
+            onClick={() => onDelete(workout)}
+            className="inline-flex items-center justify-center p-2 bg-red-100 text-red-700 text-sm font-medium rounded-md hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            aria-label={`Eliminar rutina ${workout.name}`}
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // Custom equality function for memo to prevent unnecessary re-renders
 function arePropsEqual(prevProps: WorkoutListProps, nextProps: WorkoutListProps) {
   // Check if isCoach changed
@@ -102,7 +208,7 @@ function arePropsEqual(prevProps: WorkoutListProps, nextProps: WorkoutListProps)
   return true;
 }
 
-// Memoize the entire component
+// Main component - memoized to prevent unnecessary re-renders
 const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoach = false }: WorkoutListProps) {
   const router = useRouter();
   
@@ -114,19 +220,67 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useVirtualization, setUseVirtualization] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Callback for bfcache restoration
+  const handleCacheRestore = useCallback(() => {
+    // Refresh data when restored from bfcache
+    router.refresh();
+  }, [router]);
+
+  // Use bfcache restoration helper
+  useBFCacheRestoration(handleCacheRestore);
+
+  // Fix the useCallback implementation for loading state
+  useEffect(() => {
+    if (initialWorkouts.length > 0) {
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setIsLoading(false);
+    }
+  }, [initialWorkouts]);
+
+  // Handle page visibility changes to manage WebSocket connections
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Page is being hidden, potentially for bfcache
+        // Close any WebSocket connections or clean up resources here
+        document.dispatchEvent(new CustomEvent('mamuk:suspend-connections'));
+      } else if (document.visibilityState === 'visible') {
+        // Page is visible again, potentially restored from bfcache
+        // Restore connections if needed
+        document.dispatchEvent(new CustomEvent('mamuk:resume-connections'));
+      }
+    };
+
+    // Handle page transitions
+    const handlePageHide = () => {
+      // Close any active connections when page is about to be unloaded or put in bfcache
+      document.dispatchEvent(new CustomEvent('mamuk:suspend-connections'));
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, []);
 
   // Memoize the workouts array to prevent unnecessary re-renders
   const workouts = useMemo(() => initialWorkouts, [initialWorkouts]);
 
   // Use useCallback for all functions including utility functions
   const getValidWorkoutId = useCallback((workout: Workout): string | null => {
-    // Verifica si existe workout.id (formato que estamos recibiendo según los logs)
     if (workout.id && typeof workout.id === 'string' && workout.id.length > 0) {
       return workout.id;
     }
     
-    // Mantén también la verificación de workout._id por si acaso
     if (workout._id && typeof workout._id === 'string' && workout._id.length > 0) {
       return workout._id;
     }
@@ -138,28 +292,6 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
   const handleWorkoutClick = useCallback((workoutId: string) => {
     router.push(`/workout/${workoutId}`);
   }, [router]);
-
-  // Format workout data for the virtualization component
-  const formattedWorkouts = useMemo(() => {
-    return workouts.map(workout => ({
-      id: getValidWorkoutId(workout) || workout._id.toString(), 
-      name: workout.name,
-      days: workout.days,
-      createdAt: workout.createdAt,
-      updatedAt: workout.updatedAt,
-      // Pass additional fields needed by WorkoutItem
-      isShared: false, // Update this based on your data model
-      _id: workout._id,
-      description: workout.description,
-      userId: workout.userId // Add userId to match the Workout type
-    }));
-  }, [workouts, getValidWorkoutId]);
-
-  // Detect if list is large enough to benefit from virtualization
-  useEffect(() => {
-    // Enable virtualization based on list size or browser performance
-    setUseVirtualization(workouts.length > 15);
-  }, [workouts.length]);
 
   const handleDuplicateClick = useCallback((workout: Workout) => {
     setSelectedWorkout(workout);
@@ -178,12 +310,10 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
     try {
       const duplicated = await duplicateWorkout(workoutId, newName, newDescription);
       
-      // Verificar que el objeto devuelto tiene la estructura esperada
       if (!duplicated || !duplicated.id) {
         throw new Error('La respuesta del servidor no incluye información válida de la rutina');
       }
       
-      // Si llegamos hasta aquí, la duplicación fue exitosa
       setShowDuplicateModal(false);
       toast.success('Rutina duplicada exitosamente');
       
@@ -191,7 +321,6 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
     } catch (error) {
       setError('Error al duplicar la rutina. Por favor, inténtalo de nuevo.');
       toast.error(error instanceof Error ? error.message : 'Error al duplicar la rutina');
-      // No cerramos el modal en caso de error para permitir reintentar
     } finally {
       setLoading(false);
     }
@@ -267,7 +396,6 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
     setError(null);
 
     try {
-      // Get the userId from the selected workout
       const userId = selectedWorkout?.userId || '';
       await deleteWorkout(workoutId, userId);
       
@@ -283,180 +411,91 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
     }
   }, [router, selectedWorkout]);
 
+  // Memoize the empty state message
+  const emptyState = useMemo(() => (
+    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+      <p>No tienes rutinas todavía.</p>
+    </div>
+  ), []);
+
   return (
     <div className="relative space-y-4" data-testid="workout-list-container">
-      {workouts.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          <p>No tienes rutinas todavía.</p>
-        </div>
-      ) : useVirtualization ? (
-        <VirtualizedWorkoutListComponent
-          workouts={formattedWorkouts}
-          isCoach={isCoach}
-          onWorkoutClick={handleWorkoutClick}
-          onEditClick={(e, workoutItem) => {
-            // Convert WorkoutListItem back to Workout
-            const workout: Workout = {
-              _id: workoutItem._id || workoutItem.id,
-              id: workoutItem.id,
-              name: workoutItem.name,
-              days: workoutItem.days || [],
-              userId: workoutItem.userId,
-              createdAt: workoutItem.createdAt,
-              updatedAt: workoutItem.updatedAt,
-              description: workoutItem.description
-            };
-            handleRenameClick(workout);
-          }}
-          onDuplicateClick={(workoutItem) => {
-            // Convert WorkoutListItem back to Workout
-            const workout: Workout = {
-              _id: workoutItem._id || workoutItem.id,
-              id: workoutItem.id,
-              name: workoutItem.name,
-              days: workoutItem.days || [],
-              userId: workoutItem.userId,
-              createdAt: workoutItem.createdAt,
-              updatedAt: workoutItem.updatedAt,
-              description: workoutItem.description
-            };
-            handleDuplicateClick(workout);
-          }}
-          onDeleteClick={(workoutItem) => {
-            // Convert WorkoutListItem back to Workout
-            const workout: Workout = {
-              _id: workoutItem._id || workoutItem.id,
-              id: workoutItem.id,
-              name: workoutItem.name,
-              days: workoutItem.days || [],
-              userId: workoutItem.userId,
-              createdAt: workoutItem.createdAt,
-              updatedAt: workoutItem.updatedAt,
-              description: workoutItem.description
-            };
-            handleDeleteClick(workout);
-          }}
-        />
-      ) : (
+      {workouts.length === 0 ? emptyState : (
         <div className="grid grid-cols-1 gap-4">
-          {workouts.map((workout) => {
-            const workoutId = getValidWorkoutId(workout);
-            
-            return (
-              <div 
-                key={workoutId || workout._id.toString()} 
-                className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm"
-              >
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                      {workout.name}
-                    </h3>
-                    
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                      {workout.days?.length || 0} {workout.days?.length === 1 ? 'día' : 'días'}
-                    </p>
-                    
-                    {workout.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                        {workout.description}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2 mt-3 md:mt-0">
-                    {workoutId && (
-                      <button
-                        onClick={() => handleWorkoutClick(workoutId)}
-                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        aria-label={`Ver rutina ${workout.name}`}
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                    )}
-                    
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRenameClick(workout);
-                      }}
-                      className="inline-flex items-center justify-center p-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                      aria-label={`Editar rutina ${workout.name}`}
-                      data-testid="edit-workout-button"
-                    >
-                      <Edit className="w-5 h-5" />
-                    </button>
-                    
-                    <button
-                      onClick={() => handleDuplicateClick(workout)}
-                      className="inline-flex items-center justify-center p-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                      aria-label={`Duplicar rutina ${workout.name}`}
-                    >
-                      <Copy className="w-5 h-5" />
-                    </button>
-                    
-                    {isCoach && (
-                      <button
-                        onClick={() => handleAssignClick(workout)}
-                        className="inline-flex items-center justify-center p-2 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        aria-label={`Asignar rutina ${workout.name}`}
-                      >
-                        <Users className="w-5 h-5" />
-                      </button>
-                    )}
-                    
-                    <button
-                      onClick={() => handleDeleteClick(workout)}
-                      className="inline-flex items-center justify-center p-2 bg-red-100 text-red-700 text-sm font-medium rounded-md hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      aria-label={`Eliminar rutina ${workout.name}`}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {isLoading ? (
+            // Show skeleton loaders while loading
+            Array(Math.min(workouts.length, 3)).fill(0).map((_, i) => (
+              <WorkoutCardSkeleton key={i} />
+            ))
+          ) : (
+            workouts.map((workout, index) => {
+              const workoutId = getValidWorkoutId(workout);
+              
+              return (
+                <WorkoutCard
+                  key={workoutId || workout._id.toString()}
+                  workout={workout}
+                  workoutId={workoutId}
+                  isCoach={isCoach}
+                  onView={handleWorkoutClick}
+                  onEdit={handleRenameClick}
+                  onDuplicate={handleDuplicateClick}
+                  onAssign={handleAssignClick}
+                  onDelete={handleDeleteClick}
+                  index={index}
+                />
+              );
+            })
+          )}
         </div>
       )}
 
+      {/* Lazy load modals only when needed */}
       {selectedWorkout && (
-        <>
-          <DuplicateWorkoutModal
-            isOpen={showDuplicateModal}
-            onClose={() => setShowDuplicateModal(false)}
-            onDuplicate={handleDuplicate}
-            workoutId={getValidWorkoutId(selectedWorkout) || ''}
-            workoutName={selectedWorkout.name}
-            workoutDescription={selectedWorkout.description || ''}
-          />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/20 flex items-center justify-center">Loading...</div>}>
+          {showDuplicateModal && (
+            <DuplicateWorkoutModal
+              isOpen={showDuplicateModal}
+              onClose={() => setShowDuplicateModal(false)}
+              onDuplicate={handleDuplicate}
+              workoutId={getValidWorkoutId(selectedWorkout) || ''}
+              workoutName={selectedWorkout.name}
+              workoutDescription={selectedWorkout.description || ''}
+            />
+          )}
           
-          <AssignWorkoutModal
-            isOpen={showAssignModal}
-            onClose={() => setShowAssignModal(false)}
-            onAssign={handleAssign}
-            workoutId={getValidWorkoutId(selectedWorkout) || ''}
-            workoutName={selectedWorkout.name}
-            workoutDescription={selectedWorkout.description || ''}
-          />
+          {showAssignModal && (
+            <AssignWorkoutModal
+              isOpen={showAssignModal}
+              onClose={() => setShowAssignModal(false)}
+              onAssign={handleAssign}
+              workoutId={getValidWorkoutId(selectedWorkout) || ''}
+              workoutName={selectedWorkout.name}
+              workoutDescription={selectedWorkout.description || ''}
+            />
+          )}
           
-          <RenameWorkoutModal
-            isOpen={showRenameModal}
-            onClose={() => setShowRenameModal(false)}
-            onRename={handleRename}
-            workoutId={getValidWorkoutId(selectedWorkout) || ''}
-            currentName={selectedWorkout.name}
-            currentDescription={selectedWorkout.description || ''}
-          />
+          {showRenameModal && (
+            <RenameWorkoutModal
+              isOpen={showRenameModal}
+              onClose={() => setShowRenameModal(false)}
+              onRename={handleRename}
+              workoutId={getValidWorkoutId(selectedWorkout) || ''}
+              currentName={selectedWorkout.name}
+              currentDescription={selectedWorkout.description || ''}
+            />
+          )}
           
-          <DeleteWorkoutModal
-            isOpen={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            onDelete={handleDelete}
-            workoutId={getValidWorkoutId(selectedWorkout) || ''}
-            workoutName={selectedWorkout.name}
-          />
-        </>
+          {showDeleteModal && (
+            <DeleteWorkoutModal
+              isOpen={showDeleteModal}
+              onClose={() => setShowDeleteModal(false)}
+              onDelete={handleDelete}
+              workoutId={getValidWorkoutId(selectedWorkout) || ''}
+              workoutName={selectedWorkout.name}
+            />
+          )}
+        </Suspense>
       )}
       
       <div className="absolute top-0 right-0 m-1">
