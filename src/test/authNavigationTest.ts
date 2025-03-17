@@ -1,6 +1,6 @@
 import { Session } from 'next-auth';
 import { Role } from '@/lib/types/user';
-import { checkRouteAccess, getHomeRedirect, isProtectedRoute, getRequiredRoles } from '@/utils/authNavigation';
+import { checkRouteAccess, getHomeRedirect } from '@/utils/authNavigation';
 
 /**
  * Create a mock session for testing
