@@ -11,7 +11,6 @@ interface FontPreloadOptions {
 
 interface PerformanceOptimizerWrapperProps {
   criticalFonts?: (string | FontPreloadOptions)[];
-  enableServiceWorker?: boolean;
   enableMemoryMonitoring?: boolean;
   memoryCheckInterval?: number;
 }
@@ -22,7 +21,6 @@ interface PerformanceOptimizerWrapperProps {
  */
 export default function PerformanceOptimizerWrapper({
   criticalFonts,
-  enableServiceWorker = true,
   enableMemoryMonitoring = true,
   memoryCheckInterval = 30000,
 }: PerformanceOptimizerWrapperProps) {
@@ -32,7 +30,6 @@ export default function PerformanceOptimizerWrapper({
   return (
     <PerformanceOptimizer
       criticalFonts={criticalFonts}
-      enableServiceWorker={enableServiceWorker}
       enableMemoryMonitoring={enableMemoryMonitoring}
       memoryCheckInterval={memoryCheckInterval}
       onOnline={handleOnline}
