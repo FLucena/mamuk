@@ -38,14 +38,14 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/profile', requiredRoles: ['customer', 'coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
   
   // Coach routes
-  { path: '/coach', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/unauthorized' },
-  { path: '/coach/customers', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/unauthorized' },
-  { path: '/coach/customers/workouts', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/unauthorized' },
+  { path: '/coach', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
+  { path: '/coach/customers', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
+  { path: '/coach/customers/workouts', requiredRoles: ['coach', 'admin'], redirectUnauthenticated: '/auth/signin' },
   
   // Admin routes
-  { path: '/admin', requiredRoles: ['admin'], redirectUnauthenticated: '/unauthorized' },
-  { path: '/admin/users', requiredRoles: ['admin'], redirectUnauthenticated: '/unauthorized' },
-  { path: '/admin/coaches', requiredRoles: ['admin'], redirectUnauthenticated: '/unauthorized' },
+  { path: '/admin', requiredRoles: ['admin'], redirectUnauthenticated: '/auth/signin' },
+  { path: '/admin/users', requiredRoles: ['admin'], redirectUnauthenticated: '/auth/signin' },
+  { path: '/admin/coaches', requiredRoles: ['admin'], redirectUnauthenticated: '/auth/signin' },
 ];
 
 // Add a redirect history tracker to prevent redirect loops and multiple redirects
@@ -175,7 +175,7 @@ export function checkRouteAccess(path: string, session: Session | null): {
     if (!hasRequiredRole) {
       return {
         hasAccess: false,
-        redirectTo: '/unauthorized',
+        redirectTo: '/auth/signin', // MODIFIED: Redirect to signin instead of unauthorized
         reason: `User lacks required role(s): ${route.requiredRoles.join(', ')}`
       };
     }

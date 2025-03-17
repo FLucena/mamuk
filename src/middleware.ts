@@ -558,17 +558,24 @@ export default withAuth(
       
       // If redirect is needed and it's safe to do so
       if (!hasAccess && redirectTo && trackRedirect(path, redirectTo)) {
+        // MODIFIED: Make sure we never redirect to /unauthorized
+        let finalRedirectTo = redirectTo;
+        if (finalRedirectTo === '/unauthorized') {
+          // Replace unauthorized redirects with signin page
+          finalRedirectTo = '/auth/signin';
+        }
+        
         const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = redirectTo;
+        redirectUrl.pathname = finalRedirectTo;
         
         // If redirecting to signin, add the callback URL
-        if (redirectTo === '/auth/signin') {
+        if (finalRedirectTo === '/auth/signin') {
           redirectUrl.searchParams.set('callbackUrl', path);
         }
         
         // Log the redirect in development
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[Auth] Redirecting from ${path} to ${redirectUrl.pathname} - Reason: ${reason}`);
+          console.log(`[Auth] Redirecting from ${path} to ${redirectUrl.pathname} - Original redirect: ${redirectTo} - Reason: ${reason}`);
         }
         
         // Add detailed information to the redirect response

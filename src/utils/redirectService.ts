@@ -93,36 +93,43 @@ export const redirectService = {
     const { force = false, source = 'unknown', sessionStatus = 'unknown' } = options;
     const currentPath = this.isCurrentPath(path) ? path : (typeof window !== 'undefined' ? window.location.pathname : 'unknown');
     
+    // MODIFIED: Never redirect to unauthorized page, redirect to signin instead
+    let finalPath = path;
+    if (finalPath === '/unauthorized') {
+      console.log(`[RedirectService] Redirecting from ${currentPath} to /auth/signin instead of /unauthorized`);
+      finalPath = '/auth/signin';
+    }
+    
     // Skip if we're already on the target page
-    if (currentPath === path) {
-      logRedirect(currentPath, path, source, sessionStatus, false);
+    if (currentPath === finalPath) {
+      logRedirect(currentPath, finalPath, source, sessionStatus, false);
       return false;
     }
     
     // Check if we can redirect (unless forced)
     if (!force && !this.canRedirect()) {
-      logRedirect(currentPath, path, source, sessionStatus, false);
+      logRedirect(currentPath, finalPath, source, sessionStatus, false);
       return false;
     }
     
     // Check for redirect loops (unless forced)
-    if (!force && this.wouldCreateLoop(currentPath, path)) {
-      logRedirect(currentPath, path, source, sessionStatus, false);
+    if (!force && this.wouldCreateLoop(currentPath, finalPath)) {
+      logRedirect(currentPath, finalPath, source, sessionStatus, false);
       return false;
     }
     
     // Track the redirect
-    this.trackRedirect(currentPath, path);
+    this.trackRedirect(currentPath, finalPath);
     
     // Set redirect state
     this.isRedirecting = true;
     this.lastRedirectTime = Date.now();
     
     // Log the redirect
-    logRedirect(currentPath, path, source, sessionStatus, true);
+    logRedirect(currentPath, finalPath, source, sessionStatus, true);
     
     // Perform the redirect
-    router.push(path);
+    router.push(finalPath);
     
     // Reset the redirecting flag after a delay
     setTimeout(() => {

@@ -59,7 +59,7 @@ export function useAuthRedirect(options: {
       const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
       
       if (!hasRequiredRole) {
-        redirectService.performRedirect(router, '/unauthorized', { 
+        redirectService.performRedirect(router, '/auth/signin', { 
           source: 'useAuthRedirect-unauthorized',
           // Force the first redirect
           force: !initialCheckDone.current,
