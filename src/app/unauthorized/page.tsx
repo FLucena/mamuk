@@ -52,13 +52,13 @@ export default function UnauthorizedPage() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit access request');
+        throw new Error(errorData.error || 'Error al enviar la solicitud de acceso');
       }
       
       setRequestSubmitted(true);
     } catch (error) {
       console.error('Error submitting access request:', error);
-      setError(error instanceof Error ? error.message : 'Failed to submit access request');
+      setError(error instanceof Error ? error.message : 'Error al enviar la solicitud de acceso');
     } finally {
       setIsSubmitting(false);
     }
@@ -68,22 +68,22 @@ export default function UnauthorizedPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <Card className="max-w-lg w-full p-8 shadow-lg">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-red-600 mb-2">Access Denied</h1>
+          <h1 className="text-3xl font-bold text-red-600 mb-2">Acceso Denegado</h1>
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-4V8a3 3 0 00-3-3H6a3 3 0 00-3 3v4a3 3 0 003 3h3a3 3 0 003-3z" />
             </svg>
           </div>
           <p className="text-gray-600 mb-4">
-            You don't have permission to access this page.
+            No tienes permisos para acceder a esta página.
           </p>
           <div className="bg-gray-100 rounded-lg p-4 mb-6 text-left">
             <p className="text-sm text-gray-700 mb-2">
-              <strong>Your current role:</strong> {primaryRole}
+              <strong>Tu rol actual:</strong> {primaryRole}
             </p>
             {roles.length > 1 && (
               <p className="text-sm text-gray-700">
-                <strong>All roles:</strong> {roles.join(', ')}
+                <strong>Todos tus roles:</strong> {roles.join(', ')}
               </p>
             )}
           </div>
@@ -92,13 +92,13 @@ export default function UnauthorizedPage() {
         {!showRequestForm && !requestSubmitted ? (
           <div className="flex flex-col space-y-3">
             <Button onClick={handleGoBack} variant="outline" className="w-full">
-              Go Back
+              Volver Atrás
             </Button>
             <Button onClick={handleGoHome} variant="outline" className="w-full">
-              Go to Home Page
+              Ir a la Página Principal
             </Button>
             <Button onClick={() => setShowRequestForm(true)} className="w-full">
-              Request Access
+              Solicitar Acceso
             </Button>
           </div>
         ) : requestSubmitted ? (
@@ -108,26 +108,26 @@ export default function UnauthorizedPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-green-600 mb-2">Request Submitted</h2>
+            <h2 className="text-xl font-semibold text-green-600 mb-2">Solicitud Enviada</h2>
             <p className="text-gray-600 mb-6">
-              Your access request has been submitted. An administrator will review your request and get back to you.
+              Tu solicitud de acceso ha sido enviada. Un administrador revisará tu solicitud y te contactará pronto.
             </p>
             <Button onClick={handleGoHome} className="w-full">
-              Return to Home
+              Volver al Inicio
             </Button>
           </div>
         ) : (
           <form onSubmit={handleRequestAccess} className="space-y-4">
-            <h2 className="text-xl font-semibold">Request Access</h2>
+            <h2 className="text-xl font-semibold">Solicitar Acceso</h2>
             <div>
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-1">
-                Why do you need access to this page?
+                ¿Por qué necesitas acceso a esta página?
               </label>
               <textarea
                 id="reason"
                 value={requestReason}
                 onChange={(e) => setRequestReason(e.target.value)}
-                placeholder="Please explain why you need access to this resource..."
+                placeholder="Por favor, explica por qué necesitas acceso a este recurso..."
                 required
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={4}
@@ -148,14 +148,14 @@ export default function UnauthorizedPage() {
                 className="flex-1"
                 disabled={isSubmitting}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button 
                 type="submit" 
                 className="flex-1"
                 disabled={isSubmitting || !requestReason.trim()}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
               </Button>
             </div>
           </form>

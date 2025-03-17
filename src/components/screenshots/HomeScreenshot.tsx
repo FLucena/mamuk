@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+'use client';
+
 import SchemaOrg from '@/components/SchemaOrg';
 import { generateOrganizationSchema, generateWebPageSchema, generateFAQSchema } from '@/lib/utils/schema';
 import { SignInButtons } from '@/components/auth/SignInButtons';
@@ -9,10 +8,6 @@ import ResponsiveContainer from '@/components/ui/ResponsiveContainer';
 import ResponsiveImage from '@/components/ui/ResponsiveImage';
 import { ResponsiveHeading1, ResponsiveHeading2, ResponsiveHeading3, ResponsiveParagraph } from '@/components/ui/ResponsiveText';
 import ResponsiveGrid from '@/components/ui/ResponsiveGrid';
-
-// Enable incremental static regeneration with a 1 hour revalidation period
-// This makes the page static for unauthenticated users, improving server response time
-export const revalidate = 3600; // 1 hour
 
 // Preguntas frecuentes para el esquema FAQ
 const faqs = [
@@ -39,23 +34,11 @@ const webPageSchema = generateWebPageSchema(
 );
 const faqSchema = generateFAQSchema(faqs);
 
-export default async function Home() {
-  // Always redirect to workout page
-  redirect('/workout');
-  
-  // The code below will never be executed due to the redirect
-  // but is kept for reference in case you want to revert the change
-  
-  // Previous approach (commented out)
-  /*
-  const session = await getServerSession(authOptions);
-
-  // Si el usuario está autenticado, redirigir a la página de workout
-  if (session?.user) {
-    // Redirect authenticated users to the workout page
-    redirect('/workout');
-  }
-
+/**
+ * HomePage component for screenshots (doesn't redirect)
+ * This is a copy of the original home page before we added the redirect
+ */
+export default function HomeScreenshot() {
   return (
     <>
       <SchemaOrg schema={organizationSchema} />
@@ -128,5 +111,4 @@ export default async function Home() {
       </main>
     </>
   );
-  */
 } 

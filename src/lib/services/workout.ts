@@ -150,7 +150,9 @@ export function mapWorkoutToResponse(doc: MongoWorkout): WorkoutType {
 export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   await dbConnect();
   
-  console.time('getWorkouts'); // Start the timer once at the beginning
+  // Track execution time
+  const timerLabel = `getWorkouts_${Date.now()}`;
+  console.time(timerLabel);
   
   try {
     // Handle different possible userId formats
@@ -257,7 +259,7 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
     return [];
   } finally {
     // Always end the timer exactly once, regardless of the code path
-    console.timeEnd('getWorkouts');
+    console.timeEnd(timerLabel);
   }
 }
 
@@ -387,7 +389,7 @@ async function isUserCoach(coachUserId: string, studentUserId: string): Promise<
 }
 
 export async function createWorkout(data: Partial<WorkoutType>, userId: string, creatorId?: string): Promise<WorkoutType> {
-  if (!userId) throw new Error('User ID is required');
+  if (!userId) throw new Error('Se requiere ID de usuario');
 
   await dbConnect();
 
@@ -408,7 +410,7 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string, 
     isCreatedByCoach = creator.roles.includes('coach') || creator.roles.includes('admin');
     
     if (!isCreatedByCoach) {
-      throw new Error('Solo coaches y admins pueden crear rutinas para otros usuarios');
+      throw new Error('Solo entrenadores y administradores pueden crear rutinas para otros usuarios');
     }
   }
 

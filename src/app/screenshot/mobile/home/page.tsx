@@ -1,10 +1,10 @@
 import { ScreenshotHelper } from '@/components/ScreenshotHelper';
-import HomePage from '@/app/page';
+import HomeScreenshot from '@/components/screenshots/HomeScreenshot';
 
 export default function MobileHomeScreenshot() {
   return (
     <ScreenshotHelper type="mobile">
-      <HomePage />
+      <HomeScreenshot />
     </ScreenshotHelper>
   );
 } 

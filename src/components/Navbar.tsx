@@ -98,12 +98,6 @@ const NavbarContent = memo(function NavbarContent() {
       // Define navigation links based on authentication state only
       navLinks: [
         {
-          href: '/',
-          label: 'Inicio',
-          icon: Home,
-          show: true
-        },
-        {
           href: '/workout',
           label: 'Entrenamientos',
           icon: Trophy,
@@ -114,6 +108,18 @@ const NavbarContent = memo(function NavbarContent() {
           label: 'Logros',
           icon: Award,
           show: !!session?.user
+        },
+        {
+          href: '/coach',
+          label: 'Entrenador',
+          icon: Users,
+          show: !!session?.user && session.user.roles.includes('coach')
+        },
+        {
+          href: '/admin',
+          label: 'Administrador',
+          icon: User,
+          show: !!session?.user && session.user.roles.includes('admin')
         }
       ].filter(link => link.show)
     };
@@ -180,7 +186,7 @@ const NavbarContent = memo(function NavbarContent() {
             <button
               onClick={handleThemeChange}
               className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             >
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
