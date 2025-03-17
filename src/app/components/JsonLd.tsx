@@ -10,8 +10,14 @@ export default function JsonLd() {
   
   useEffect(() => {
     setMounted(true);
-    // Get the nonce on the client side
-    setNonce(getNonce());
+    // Get the nonce from the meta tag
+    const metaNonce = document.querySelector('meta[name="csp-nonce"]');
+    if (metaNonce && metaNonce.getAttribute('content')) {
+      setNonce(metaNonce.getAttribute('content') || '');
+    } else {
+      // Fallback to the getNonce function
+      setNonce(getNonce());
+    }
   }, []);
   
   // Don't render anything on the server
@@ -40,6 +46,9 @@ export default function JsonLd() {
       availability: 'https://schema.org/InStock',
     },
   };
+
+  // Only render if we have a nonce
+  if (!nonce) return null;
 
   return (
     <script

@@ -64,6 +64,17 @@ describe('SEO Configuration', () => {
 
   describe('JsonLd Component', () => {
     it('should render proper JSON-LD schema', async () => {
+      // Mock document.querySelector to return a meta tag with nonce
+      const originalQuerySelector = document.querySelector;
+      document.querySelector = jest.fn().mockImplementation((selector) => {
+        if (selector === 'meta[name="csp-nonce"]') {
+          return {
+            getAttribute: () => 'test-nonce-123'
+          };
+        }
+        return originalQuerySelector.call(document, selector);
+      });
+      
       // Mock the getNonce function
       jest.mock('@/lib/csp', () => ({
         getNonce: jest.fn().mockReturnValue('test-nonce-123')
@@ -86,6 +97,9 @@ describe('SEO Configuration', () => {
       expect(schema['@type']).toBe('Organization');
       expect(schema.name).toBe('Mamuk Training');
       // Skip URL check as it might be different in different environments
+      
+      // Restore original querySelector
+      document.querySelector = originalQuerySelector;
     });
   });
 }); 

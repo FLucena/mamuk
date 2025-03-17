@@ -180,7 +180,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <NonceMetaTag />
+        <meta name="csp-nonce" content={nonce} />
         <meta charSet="utf-8" />
         <script
           nonce={nonce}
@@ -203,11 +203,12 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             `,
           }}
         />
-        <JsonLd />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#4f46e5" />
       </head>
       <body className={`${inter.className} bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col overflow-x-hidden w-full`}>
+        <JsonLd />
+        
         <ThemeProvider>
           <Providers>
             <ErrorProvider>
