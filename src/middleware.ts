@@ -537,6 +537,19 @@ export default withAuth(
       // If no cached decision, check route access
       if (!authDecision) {
         authDecision = checkRouteAccess(path, session);
+        
+        // Log auth decisions in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth Debug]', {
+            path,
+            isAuthenticated: !!session,
+            hasAccess: authDecision.hasAccess,
+            redirectTo: authDecision.redirectTo,
+            reason: authDecision.reason,
+            userRoles: session?.user?.roles || []
+          });
+        }
+        
         // Cache the decision for future requests
         cacheAuthDecision(path, session, authDecision);
       }
@@ -630,9 +643,10 @@ export default withAuth(
  * Cache an auth decision for a short period to reduce redundant checks
  */
 function cacheAuthDecision(path: string, session: any, decision: { hasAccess: boolean; redirectTo: string | null; reason: string }): void {
-  // Create a cache key based on path and user roles
-  const roles = session?.user?.roles || [];
-  const cacheKey = `${path}:${roles.join(',')}`;
+  // Create a cache key based only on path and authentication status
+  // MODIFIED: We're removing roles from the cache key as roles no longer matter for access
+  const isAuthenticated = !!session;
+  const cacheKey = `${path}:${isAuthenticated ? 'authenticated' : 'unauthenticated'}`;
   
   AUTH_CACHE.set(cacheKey, {
     decision,
@@ -655,9 +669,10 @@ function cacheAuthDecision(path: string, session: any, decision: { hasAccess: bo
  * Get a cached auth decision if available
  */
 function getCachedAuthDecision(path: string, session: any): { hasAccess: boolean; redirectTo: string | null; reason: string } | null {
-  // Create a cache key based on path and user roles
-  const roles = session?.user?.roles || [];
-  const cacheKey = `${path}:${roles.join(',')}`;
+  // Create a cache key based only on path and authentication status
+  // MODIFIED: We're removing roles from the cache key as roles no longer matter for access
+  const isAuthenticated = !!session;
+  const cacheKey = `${path}:${isAuthenticated ? 'authenticated' : 'unauthenticated'}`;
   
   const cached = AUTH_CACHE.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
