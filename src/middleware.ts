@@ -463,66 +463,165 @@ function enableBfCache(request: NextRequest, response: NextResponse) {
  * Optimized to reduce redundant session checks and API calls
  */
 export default withAuth(
-  async function middleware(req) {
-    const { pathname } = req.nextUrl;
+  async function middleware(request: NextRequest) {
+    // Get the pathname of the request
+    const path = request.nextUrl.pathname;
     
-    // Rate limiting for auth endpoints
-    if (pathname.startsWith('/api/auth') && req.method !== 'GET') {
-      const ip = req.ip ?? 'unknown';
-      const limiter = createRateLimiter(ip);
-      const { success, limit, remaining, reset } = await limiter.limit();
-      
-      if (!success) {
-        trackSuspiciousIP(ip, 'rate_limit_exceeded');
-        console.warn(`[Auth] Rate limit exceeded for ${ip}`);
-        return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-RateLimit-Limit': limit.toString(),
-            'X-RateLimit-Remaining': remaining.toString(),
-            'X-RateLimit-Reset': reset.toString(),
-          },
-        });
-      }
-    }
-    
-    // Skip auth checks for public routes or API routes not requiring auth
+    // Skip middleware for static files and API routes
     if (
-      PUBLIC_ROUTES.some(route => pathname.startsWith(route)) ||
-      (pathname.startsWith('/api/') && !API_AUTH_ROUTES.some(route => pathname.startsWith(route)))
+      path.startsWith('/_next') ||
+      path.startsWith('/static') ||
+      path.startsWith('/api') ||
+      path.includes('.') ||
+      path === '/favicon.ico'
     ) {
       return NextResponse.next();
     }
 
-    const session = req.auth;
+    // Check for domain redirect first
+    const domainRedirect = checkDomainRedirect(request);
+    if (domainRedirect) return domainRedirect;
     
-    // Redirect unauthenticated users to login
-    if (!session) {
-      trackRedirect(req.nextUrl.pathname, '/login');
-      const url = new URL('/login', req.url);
-      url.searchParams.set('callbackUrl', encodeURI(req.url));
-      return NextResponse.redirect(url);
+    // Handle service worker files
+    const swResponse = handleServiceWorkerFiles(request);
+    if (swResponse) return swResponse;
+    
+    // Handle session requests
+    const sessionResponse = handleSessionRequests(request);
+    if (sessionResponse) return sessionResponse;
+    
+    // Protect debug routes in production
+    const debugResponse = protectDebugRoutes(request);
+    if (debugResponse) return debugResponse;
+    
+    // Check rate limiting for critical endpoints
+    const rateLimitResult = shouldRateLimit(request);
+    if (rateLimitResult.blocked) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Too many requests', 
+          message: rateLimitResult.reason,
+          retryAfter: ipRequests[request.headers.get('x-forwarded-for') || 'unknown']?.blockedUntil
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': Math.ceil((ipRequests[request.headers.get('x-forwarded-for') || 'unknown']?.blockedUntil || 0 - Date.now()) / 1000).toString()
+          } 
+        }
+      );
     }
     
-    // Check route access - modified to bypass role checks
-    // Any authenticated user now has access to all routes
-    /* Original role-based check disabled:
-    const { hasAccess, redirectTo, reason } = checkRouteAccess(pathname, session.user?.roles || []);
-    
-    if (!hasAccess && redirectTo) {
-      console.log(`[Auth] Access denied to ${pathname}: ${reason}`);
-      trackRedirect(req.nextUrl.pathname, redirectTo);
-      return NextResponse.redirect(new URL(redirectTo, req.url));
+    // Check for suspicious IP activity
+    if (checkSuspiciousIP(request)) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Access denied', 
+          message: 'Suspicious activity detected'
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
     }
-    */
     
-    // Allow access to any authenticated user
-    return NextResponse.next();
+    try {
+      // Get the token from the request
+      const token = await getToken({ req: request });
+      
+      // Create a properly typed session object from the token
+      const session = createSessionFromToken(token);
+      
+      // Check for cached decision first
+      let authDecision = getCachedAuthDecision(path, session);
+      
+      // If no cached decision, check route access
+      if (!authDecision) {
+        authDecision = checkRouteAccess(path, session);
+        // Cache the decision for future requests
+        cacheAuthDecision(path, session, authDecision);
+      }
+      
+      const { hasAccess, redirectTo, reason } = authDecision;
+      
+      // If redirect is needed and it's safe to do so
+      if (!hasAccess && redirectTo && trackRedirect(path, redirectTo)) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = redirectTo;
+        
+        // If redirecting to signin, add the callback URL
+        if (redirectTo === '/auth/signin') {
+          redirectUrl.searchParams.set('callbackUrl', path);
+        }
+        
+        // Log the redirect in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Auth] Redirecting from ${path} to ${redirectUrl.pathname} - Reason: ${reason}`);
+        }
+        
+        // Add detailed information to the redirect response
+        const response = NextResponse.redirect(redirectUrl);
+        response.headers.set('X-Auth-Redirect-Reason', encodeURIComponent(reason));
+        
+        // Apply security headers
+        applySecurityHeaders(request, response);
+        
+        // Enable bfcache support
+        enableBfCache(request, response);
+        
+        return response;
+      }
+      
+      // Generate a nonce for CSP using crypto.randomUUID for better security
+      // This is compatible with Vercel's edge runtime
+      const nonce = typeof crypto.randomUUID === 'function' 
+        ? crypto.randomUUID() 
+        : Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64');
+      
+      // Set the nonce in the request headers
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-nonce', nonce);
+      
+      // Continue with the request, but with the nonce in the headers
+      const response = NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+      
+      // Apply security headers
+      applySecurityHeaders(request, response);
+      
+      // Enable bfcache support
+      enableBfCache(request, response);
+      
+      return response;
+    } catch (error) {
+      // Improved error handling with more context
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      console.error('[Auth Middleware Error]', {
+        path,
+        error: errorMessage,
+        timestamp: new Date().toISOString()
+      });
+      
+      // In development, add error details to the response
+      if (process.env.NODE_ENV === 'development') {
+        const response = NextResponse.next();
+        response.headers.set('X-Auth-Error', encodeURIComponent(errorMessage));
+        return response;
+      }
+      
+      return NextResponse.next();
+    }
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => {
+        // This is called by next-auth before our middleware
+        // We'll do our actual auth check in the middleware
+        return true;
+      },
     },
   }
 );
