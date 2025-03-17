@@ -76,7 +76,6 @@ const MobileNavLinkComponent = memo(({ href, label, icon: Icon, show, isActive, 
 
 // Remove the comparison function since NavbarContent has no props
 const NavbarContent = memo(function NavbarContent() {
-  const { isAdmin, isCoach } = useAuth();
   const { data: session } = useSession();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -96,36 +95,29 @@ const NavbarContent = memo(function NavbarContent() {
     return {
       user,
       isAuthenticated: !!session?.user,
-      isAdmin,
-      isCoach,
+      // Define navigation links based on authentication state only
       navLinks: [
         {
+          href: '/',
+          label: 'Inicio',
+          icon: Home,
+          show: true
+        },
+        {
           href: '/workout',
-          label: 'Rutinas',
-          icon: Award,
-          show: !!session?.user,
+          label: 'Entrenamientos',
+          icon: Trophy,
+          show: !!session?.user
         },
         {
           href: '/achievements',
           label: 'Logros',
-          icon: Trophy,
-          show: !!session?.user,
-        },
-        {
-          href: '/coach',
-          label: 'Coach',
-          icon: User,
-          show: isCoach || isAdmin,
-        },
-        {
-          href: '/admin',
-          label: 'Admin',
-          icon: Users,
-          show: isAdmin,
-        },
-      ].filter(link => link.show) as NavLink[]
+          icon: Award,
+          show: !!session?.user
+        }
+      ].filter(link => link.show)
     };
-  }, [session?.user, isAdmin, isCoach]);
+  }, [session]);
 
   // Simple callbacks that don't need memoization
   const toggleMenu = () => setIsOpen(prev => !prev);
@@ -152,23 +144,27 @@ const NavbarContent = memo(function NavbarContent() {
   }, []);
 
   return (
-    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link 
-              href={sessionData.isAuthenticated ? "/workout" : "/"}
-              className="flex-shrink-0"
-            >
-              <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                Mamuk
-              </span>
-            </Link>
-          </div>
-
-          {/* Desktop menu */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
-            <div className="ml-10 flex items-center space-x-4">
+    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+        <div className="relative flex items-center justify-between h-16">
+          <div className="flex-1 flex items-center justify-start sm:items-stretch">
+            {/* Logo */}
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/logo.png"
+                  alt="Logo"
+                  width={32}
+                  height={32}
+                  className="block h-8 w-auto"
+                  priority
+                />
+                <span className="ml-2 text-xl font-bold dark:text-white">Mamuk</span>
+              </Link>
+            </div>
+            
+            {/* Desktop navigation */}
+            <div className="hidden md:ml-6 md:flex md:space-x-4 items-center">
               {sessionData.navLinks.map((link: NavLink) => (
                 <NavLinkComponent
                   key={link.href}
@@ -176,23 +172,31 @@ const NavbarContent = memo(function NavbarContent() {
                   isActive={pathname === link.href}
                 />
               ))}
-              
-              {/* Theme toggle button (desktop) */}
-              <button
-                onClick={handleThemeChange}
-                className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-              
-              {/* User profile menu (desktop) */}
+            </div>
+          </div>
+          
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+            {/* Theme toggle button */}
+            <button
+              onClick={handleThemeChange}
+              className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            
+            {/* Profile dropdown */}
+            <div className="ml-3 relative">
               {sessionData.isAuthenticated && (
-                <div className="relative" ref={menuRef}>
+                <div ref={menuRef}>
                   <button
                     onClick={toggleProfileMenu}
-                    className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white focus:outline-none"
+                    className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    id="user-menu-button"
+                    aria-expanded={profileMenuOpen}
+                    aria-haspopup="true"
                   >
+                    <span className="sr-only">Open user menu</span>
                     {sessionData.user?.image ? (
                       <Image
                         src={sessionData.user.image}
@@ -203,50 +207,25 @@ const NavbarContent = memo(function NavbarContent() {
                         priority
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                      <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
                         {sessionData.user?.name?.charAt(0) || 'U'}
                       </div>
                     )}
-                    <span className="ml-2">{sessionData.user?.name}</span>
                   </button>
                   
                   {profileMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10">
-                      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{sessionData.user?.name}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{sessionData.user?.email}</div>
-                        
-                        {/* User role tags */}
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {sessionData.user?.roles?.includes('admin') && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300">
-                              <span className="mr-1">★</span> Admin
-                            </span>
-                          )}
-                          {(sessionData.user?.roles?.includes('admin') || sessionData.user?.roles?.includes('coach')) && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                              Coach
-                            </span>
-                          )}
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                            Cliente
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* User level and badges */}
+                    <div
+                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="user-menu-button"
+                      tabIndex={-1}
+                    >
                       <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center mb-2">
-                          <Award className="w-4 h-4 text-yellow-500 mr-2" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Nivel: Gorila</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Trophy className="w-4 h-4 text-blue-500 mr-2" />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Insignias: 3/10</span>
-                        </div>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{sessionData.user?.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{sessionData.user?.email}</p>
                       </div>
                       
-                      {/* Navigation links */}
                       <div className="py-1">
                         <Link
                           href="/profile"

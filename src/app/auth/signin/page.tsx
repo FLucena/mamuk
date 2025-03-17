@@ -29,18 +29,10 @@ export default async function SignIn() {
   console.log(`[Server] SignIn page - Referer:`, referer);
   console.log(`[Server] SignIn page - CallbackUrl:`, callbackUrl);
 
+  // If user is already authenticated, redirect to the workout page
   if (session?.user) {
-    // Log the redirect decision
-    console.log(`[Server] SignIn page - Redirecting authenticated user to:`, 
-      session.user.roles.includes('coach') ? '/coach' : '/workout');
-    
-    // Redirect based on user roles
-    if (session.user.roles.includes('coach')) {
-      redirect('/coach');
-    } else {
-      // Both regular users and admins go to the workout page by default
-      redirect('/workout');
-    }
+    console.log(`[Server] SignIn page - Redirecting authenticated user to /workout`);
+    redirect('/workout');
   }
 
   return (

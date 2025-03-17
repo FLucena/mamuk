@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
-import { Role } from './lib/types/user';
 import type { NextRequest } from 'next/server';
-import { isProtectedRoute, getRequiredRoles, checkRouteAccess, trackRedirect, createSessionFromToken } from './utils/authNavigation';
+import { isProtectedRoute, checkRouteAccess } from './utils/authNavigation';
 import { getToken } from 'next-auth/jwt';
+import { Role } from './lib/types/user';
 
 interface Token {
   roles: Role[];
@@ -459,8 +459,11 @@ function enableBfCache(request: NextRequest, response: NextResponse) {
 }
 
 /**
- * Middleware for handling authentication and authorization
- * Optimized to reduce redundant session checks and API calls
+ * Middleware function that handles:
+ * - Authentication
+ * - Route protection
+ * - Security headers
+ * - Performance optimizations
  */
 export default withAuth(
   async function middleware(request: NextRequest) {
@@ -478,214 +481,170 @@ export default withAuth(
       return NextResponse.next();
     }
 
-    // Check for domain redirect first
+    // Handle various non-auth middleware functions
     const domainRedirect = checkDomainRedirect(request);
     if (domainRedirect) return domainRedirect;
     
-    // Handle service worker files
+    const debugProtection = protectDebugRoutes(request);
+    if (debugProtection) return debugProtection;
+    
     const swResponse = handleServiceWorkerFiles(request);
     if (swResponse) return swResponse;
     
-    // Handle session requests
     const sessionResponse = handleSessionRequests(request);
     if (sessionResponse) return sessionResponse;
-    
-    // Protect debug routes in production
-    const debugResponse = protectDebugRoutes(request);
-    if (debugResponse) return debugResponse;
     
     // Check rate limiting for critical endpoints
     const rateLimitResult = shouldRateLimit(request);
     if (rateLimitResult.blocked) {
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Too many requests', 
-          message: rateLimitResult.reason,
-          retryAfter: ipRequests[request.headers.get('x-forwarded-for') || 'unknown']?.blockedUntil
-        }),
-        { 
-          status: 429, 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Retry-After': Math.ceil((ipRequests[request.headers.get('x-forwarded-for') || 'unknown']?.blockedUntil || 0 - Date.now()) / 1000).toString()
-          } 
-        }
-      );
-    }
-    
-    // Check for suspicious IP activity
-    if (checkSuspiciousIP(request)) {
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Access denied', 
-          message: 'Suspicious activity detected'
-        }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    try {
-      // Get the token from the request
-      const token = await getToken({ req: request });
+      console.warn(`[Security] Rate limiting request to ${path} from ${request.headers.get('x-forwarded-for') || 'unknown'}`);
       
-      // Create a properly typed session object from the token
-      const session = createSessionFromToken(token);
-      
-      // Check for cached decision first
-      let authDecision = getCachedAuthDecision(path, session);
-      
-      // If no cached decision, check route access
-      if (!authDecision) {
-        authDecision = checkRouteAccess(path, session);
-        
-        // Log auth decisions in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Auth Debug]', {
-            path,
-            isAuthenticated: !!session,
-            hasAccess: authDecision.hasAccess,
-            redirectTo: authDecision.redirectTo,
-            reason: authDecision.reason,
-            userRoles: session?.user?.roles || []
-          });
-        }
-        
-        // Cache the decision for future requests
-        cacheAuthDecision(path, session, authDecision);
+      // If this is an API endpoint, return a JSON response
+      if (path.startsWith('/api/')) {
+        return new NextResponse(
+          JSON.stringify({ 
+            error: 'rate_limit_exceeded',
+            message: rateLimitResult.reason || 'Too many requests. Please try again later.'
+          }),
+          { 
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': '900' // 15 minutes
+            }
+          }
+        );
       }
       
-      const { hasAccess, redirectTo, reason } = authDecision;
+      // For non-API endpoints, redirect to error page
+      const url = new URL('/auth/error', request.url);
+      url.searchParams.set('error', 'RateLimitExceeded');
+      if (rateLimitResult.reason) {
+        url.searchParams.set('message', rateLimitResult.reason);
+      }
       
-      // If redirect is needed and it's safe to do so
-      if (!hasAccess && redirectTo && trackRedirect(path, redirectTo)) {
-        // MODIFIED: Make sure we never redirect to /unauthorized
-        let finalRedirectTo = redirectTo;
+      return NextResponse.redirect(url);
+    }
+    
+    // Get the JWT token
+    const token = await getToken({ req: request });
+    
+    // Create session object with required fields
+    const session = token ? { 
+      user: {
+        id: token.id as string || '',
+        roles: (token.roles as Role[]) || ['customer'],
+        email: token.email,
+        name: token.name
+      },
+      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+    } : null;
+    
+    // Check if the path requires authentication
+    if (isProtectedRoute(path)) {
+      // Check cached auth decision to improve performance
+      const cachedDecision = getCachedAuthDecision(path, session);
+      
+      let authResult;
+      if (cachedDecision) {
+        authResult = cachedDecision;
+      } else {
+        authResult = checkRouteAccess(path, session);
+        // Cache the result for future requests
+        cacheAuthDecision(path, session, authResult);
+      }
+      
+      // If access is denied, redirect to the specified path
+      if (!authResult.hasAccess && authResult.redirectTo) {
+        // Construct final redirect URL
+        let finalRedirectTo = authResult.redirectTo;
+        
+        // Replace unauthorized redirects with signin page
         if (finalRedirectTo === '/unauthorized') {
-          // Replace unauthorized redirects with signin page
           finalRedirectTo = '/auth/signin';
         }
         
-        const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = finalRedirectTo;
-        
         // If redirecting to signin, add the callback URL
         if (finalRedirectTo === '/auth/signin') {
-          redirectUrl.searchParams.set('callbackUrl', path);
+          const url = new URL(finalRedirectTo, request.url);
+          
+          // Generate a callback URL that's the current URL
+          const callbackUrl = encodeURIComponent(request.url);
+          url.searchParams.set('callbackUrl', callbackUrl);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Auth] Redirecting to signin with callbackUrl: ${callbackUrl}`);
+          }
+          
+          return NextResponse.redirect(url);
         }
         
-        // Log the redirect in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Auth] Redirecting from ${path} to ${redirectUrl.pathname} - Original redirect: ${redirectTo} - Reason: ${reason}`);
-        }
-        
-        // Add detailed information to the redirect response
-        const response = NextResponse.redirect(redirectUrl);
-        response.headers.set('X-Auth-Redirect-Reason', encodeURIComponent(reason));
-        
-        // Apply security headers
-        applySecurityHeaders(request, response);
-        
-        // Enable bfcache support
-        enableBfCache(request, response);
-        
-        return response;
+        // Redirect to the final URL
+        return NextResponse.redirect(new URL(finalRedirectTo, request.url));
       }
-      
-      // Generate a nonce for CSP using crypto.randomUUID for better security
-      // This is compatible with Vercel's edge runtime
-      const nonce = typeof crypto.randomUUID === 'function' 
-        ? crypto.randomUUID() 
-        : Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64');
-      
-      // Set the nonce in the request headers
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set('x-nonce', nonce);
-      
-      // Continue with the request, but with the nonce in the headers
-      const response = NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      });
-      
-      // Apply security headers
-      applySecurityHeaders(request, response);
-      
-      // Enable bfcache support
-      enableBfCache(request, response);
-      
-      return response;
-    } catch (error) {
-      // Improved error handling with more context
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      console.error('[Auth Middleware Error]', {
-        path,
-        error: errorMessage,
-        timestamp: new Date().toISOString()
-      });
-      
-      // In development, add error details to the response
-      if (process.env.NODE_ENV === 'development') {
-        const response = NextResponse.next();
-        response.headers.set('X-Auth-Error', encodeURIComponent(errorMessage));
-        return response;
-      }
-      
-      return NextResponse.next();
     }
+    
+    // Create the response
+    const response = NextResponse.next();
+    
+    // Apply security headers
+    applySecurityHeaders(request, response);
+    
+    // Apply browser caching optimizations
+    enableBfCache(request, response);
+    
+    return response;
   },
   {
     callbacks: {
-      authorized: ({ token }) => {
-        // This is called by next-auth before our middleware
-        // We'll do our actual auth check in the middleware
-        return true;
-      },
+      authorized: ({ token }) => !!token,
     },
+    pages: {
+      signIn: '/auth/signin',
+    },
+    // Add a matcher to specify which paths this middleware should run on
+    matcher: [
+      /*
+       * Match all request paths except for:
+       * - Static files (/_next/static/, /_next/image/, /favicon.ico, etc.)
+       * - API routes that don't require authentication
+       * - Public pages
+       */
+      '/((?!_next/static|_next/image|favicon.ico|logo.png|images|icons|robots.txt|sitemap.xml|manifest.json).*)',
+    ]
   }
 );
 
 /**
- * Cache an auth decision for a short period to reduce redundant checks
+ * Cache the result of an auth check to improve performance
  */
 function cacheAuthDecision(path: string, session: any, decision: { hasAccess: boolean; redirectTo: string | null; reason: string }): void {
-  // Create a cache key based only on path and authentication status
-  // MODIFIED: We're removing roles from the cache key as roles no longer matter for access
-  const isAuthenticated = !!session;
-  const cacheKey = `${path}:${isAuthenticated ? 'authenticated' : 'unauthenticated'}`;
+  // Create a cache key based on the path and session
+  const cacheKey = `${path}:${session?.user?.id || 'no-session'}`;
   
+  // Cache the decision
   AUTH_CACHE.set(cacheKey, {
     decision,
-    timestamp: Date.now(),
+    timestamp: Date.now()
   });
-  
-  // Clean up old cache entries periodically
-  if (AUTH_CACHE.size > 100) {
-    const now = Date.now();
-    // Use Array.from to convert Map entries to an array for compatibility
-    Array.from(AUTH_CACHE.entries()).forEach(([key, value]) => {
-      if (now - value.timestamp > CACHE_TTL) {
-        AUTH_CACHE.delete(key);
-      }
-    });
-  }
 }
 
 /**
- * Get a cached auth decision if available
+ * Get the cached result of an auth check
  */
 function getCachedAuthDecision(path: string, session: any): { hasAccess: boolean; redirectTo: string | null; reason: string } | null {
-  // Create a cache key based only on path and authentication status
-  // MODIFIED: We're removing roles from the cache key as roles no longer matter for access
-  const isAuthenticated = !!session;
-  const cacheKey = `${path}:${isAuthenticated ? 'authenticated' : 'unauthenticated'}`;
+  // Create a cache key based on the path and session
+  const cacheKey = `${path}:${session?.user?.id || 'no-session'}`;
   
+  // Check if the decision is cached
   const cached = AUTH_CACHE.get(cacheKey);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+  
+  // If the decision is cached and not expired, return it
+  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
     return cached.decision;
   }
   
+  // Otherwise, return null
   return null;
 }
 

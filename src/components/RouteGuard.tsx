@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { checkRouteAccess } from '@/utils/authNavigation';
 import PageLoading from '@/components/ui/PageLoading';
-import { redirectService } from '@/utils/redirectService';
 
 interface RouteGuardProps {
   children: React.ReactNode;
@@ -35,26 +34,18 @@ export default function RouteGuard({ children }: RouteGuardProps) {
       console.log(`RouteGuard: ${pathname} - ${hasAccess ? 'Access granted' : 'Access denied'} - ${reason}`);
     }
 
-    // If we have a session, we're always authorized regardless of roles
+    // If we have a session, we're authorized
     if (session) {
       setAuthorized(true);
-      // Mark that we've done the initial check
       initialCheckDone.current = true;
       return;
     }
 
-    // For unauthenticated users, follow the normal redirect flow
+    // For unauthenticated users, redirect if needed
     if (!hasAccess && redirectTo) {
-      // Use the centralized redirect service
-      redirectService.performRedirect(router, redirectTo, { 
-        source: 'RouteGuard',
-        // Force the first redirect after login
-        force: !initialCheckDone.current,
-        // Pass the session status
-        sessionStatus: status
-      });
+      router.push(`${redirectTo}?callbackUrl=${encodeURIComponent(pathname || '/')}`);
     } else {
-      // Respect the checkRouteAccess result for unauthenticated users
+      // Otherwise set authorized based on the access check
       setAuthorized(hasAccess);
     }
     
