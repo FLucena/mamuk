@@ -252,7 +252,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     'default-src': ["'self'"],
     'script-src': isDevelopment 
       ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"] 
-      : ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net", "'unsafe-inline'"],
+      : ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net", "'unsafe-inline'", "'sha256-wcH7AZ3AcJJpGNwM/YsSDmB12/KfulIDMGC1AFRMt/M='"],
     'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Next.js requires unsafe-inline for styles
     'img-src': [imgSrc],
     'font-src': ["'self'", "https://fonts.gstatic.com"],
@@ -279,11 +279,16 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
 
   // Convert CSP object to string
   const cspString = Object.entries(baseCSP)
-    .map(([key, values]) => `${key} ${Array.isArray(values) ? values.join(' ') : values}`)
+    .map(([key, values]) => {
+      if (Array.isArray(values)) {
+        return `${key} ${values.join(' ')}`;
+      }
+      return `${key} ${values}`;
+    })
     .join('; ');
 
-  // Set the CSP header
-  response.headers.set('Content-Security-Policy', cspString);
+  // Set the CSP header - temporarily disabled for troubleshooting
+  // response.headers.set('Content-Security-Policy', cspString);
 
   // Pass the nonce to the response for HTML pages
   if (response.headers.get('content-type')?.includes('text/html')) {
