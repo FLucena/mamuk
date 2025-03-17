@@ -162,7 +162,6 @@ const PerformanceComponents = dynamic(() =>
           <PerformanceMonitor />
           <PerformanceOptimizerWrapper 
             criticalFonts={criticalFonts}
-            enableServiceWorker={true}
             enableMemoryMonitoring={true}
           />
         </>
