@@ -171,29 +171,35 @@ function handleSessionRequests(request: NextRequest) {
 }
 
 /**
- * Aplica cabeceras de seguridad a la respuesta
+ * Applies security headers to the response
  */
-function applySecurityHeaders(request: NextRequest, response: NextResponse) {
-  // Determinar si es una solicitud para manifest.json o sw.js
-  const isManifestRequest = request.nextUrl.pathname === '/manifest.json';
-  const isServiceWorkerRequest = request.nextUrl.pathname === '/sw.js' || 
-                                request.nextUrl.pathname === '/sw-register.js' ||
-                                request.nextUrl.pathname === '/api/sw' ||
-                                request.nextUrl.pathname === '/api/sw-register';
+function applySecurityHeaders(req: NextRequest, response: NextResponse) {
+  const isDevelopment = process.env.NODE_ENV !== 'production';
   
-  // Añadir cabeceras de seguridad
-  const securityHeaders: Record<string, string> = {
-    'X-DNS-Prefetch-Control': 'on',
-    'X-XSS-Protection': '1; mode=block',
-    'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-    'X-Frame-Options': 'DENY', // Denegar por defecto, se eliminará para rutas específicas
-  };
+  // Basic security headers for all environments
+  response.headers.set('X-DNS-Prefetch-Control', 'on');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
   
-  // Añadir cabeceras CORS para recursos específicos
+  // Skip CSP and other restrictive headers in development
+  if (isDevelopment) {
+    return response;
+  }
+  
+  // Additional security headers for production
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+  response.headers.set('X-Frame-Options', 'DENY');
+  
+  // Handle manifests and service workers
+  const isManifestRequest = req.nextUrl.pathname === '/manifest.json';
+  const isServiceWorkerRequest = req.nextUrl.pathname === '/sw.js' || 
+                             req.nextUrl.pathname === '/sw-register.js' ||
+                             req.nextUrl.pathname === '/api/sw' ||
+                             req.nextUrl.pathname === '/api/sw-register';
+  
+  // Handle CORS for special requests
   if (isManifestRequest || isServiceWorkerRequest) {
-    // Restringir CORS a dominios específicos
     const allowedOrigins = [
       'https://www.mamuk.com.ar',
       'https://mamuk.com.ar',
@@ -201,68 +207,55 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
       'http://localhost:3001'
     ];
     
-    const origin = request.headers.get('origin');
+    const origin = req.headers.get('origin');
     if (origin && allowedOrigins.includes(origin)) {
-      securityHeaders['Access-Control-Allow-Origin'] = origin;
+      response.headers.set('Access-Control-Allow-Origin', origin);
     } else {
-      // En producción, usar solo el dominio principal
-      securityHeaders['Access-Control-Allow-Origin'] = process.env.NODE_ENV === 'production' 
-        ? 'https://www.mamuk.com.ar' 
-        : '*';
+      response.headers.set('Access-Control-Allow-Origin', isDevelopment ? '*' : 'https://www.mamuk.com.ar');
     }
     
-    securityHeaders['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
-    securityHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+    response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // Establecer el tipo de contenido correcto
     if (isManifestRequest) {
-      securityHeaders['Content-Type'] = 'application/manifest+json';
+      response.headers.set('Content-Type', 'application/manifest+json');
     } else if (isServiceWorkerRequest) {
-      securityHeaders['Content-Type'] = 'application/javascript; charset=utf-8';
-      securityHeaders['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      response.headers.set('Content-Type', 'application/javascript; charset=utf-8');
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       
-      // Add Service-Worker-Allowed header for sw.js
-      if (request.nextUrl.pathname === '/sw.js') {
-        securityHeaders['Service-Worker-Allowed'] = '/';
+      if (req.nextUrl.pathname === '/sw.js') {
+        response.headers.set('Service-Worker-Allowed', '/');
       }
     }
   }
   
-  // Aplicar las cabeceras de seguridad
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
-  
-  // Generar nonce para scripts - use the one from request headers if available
-  const nonce = request.headers.get('x-nonce') || 
+  // Generate nonce for CSP
+  const nonce = req.headers.get('x-nonce') || 
     (typeof crypto.randomUUID === 'function' 
       ? crypto.randomUUID() 
       : Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64'));
   
-  // Determinar si estamos en desarrollo o producción
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  // Define common image sources
+  // Define image sources based on environment
   const imgSrc = isDevelopment
-    ? `'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com https://images.unsplash.com https://*.googleusercontent.com https://avatars.githubusercontent.com https://ui-avatars.com https://randomuser.me https://picsum.photos https://placehold.co`
-    : `'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com https://images.unsplash.com https://*.googleusercontent.com`;
+    ? "'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com https://images.unsplash.com https://*.googleusercontent.com https://avatars.githubusercontent.com https://ui-avatars.com https://randomuser.me https://picsum.photos https://placehold.co"
+    : "'self' data: https://www.mamuk.com.ar https://mamuk.com.ar https://cdn.jsdelivr.net https://fonts.gstatic.com https://images.unsplash.com https://*.googleusercontent.com";
   
   // Define connect-src directive
   const connectSrc = isDevelopment
-    ? `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar http://localhost:* ws://localhost:*`
-    : `'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar`;
-
-  // Set the nonce in the request headers
-  const requestHeaders = new Headers(request.headers);
+    ? "'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar http://localhost:* ws://localhost:*"
+    : "'self' https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar";
+  
+  // Add nonce to request headers
+  const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-nonce', nonce);
   
   // Check if this is an auth page
   const isAuthPage = 
-    request.nextUrl.pathname.startsWith('/auth') ||
-    request.nextUrl.pathname.includes('signin') ||
-    request.nextUrl.pathname.includes('signout');
-
-  // Define CSP based on page type and environment
+    req.nextUrl.pathname.startsWith('/auth') ||
+    req.nextUrl.pathname.includes('signin') ||
+    req.nextUrl.pathname.includes('signout');
+  
+  // Generate CSP header
   let cspHeader = '';
   
   if (isDevelopment) {
@@ -283,14 +276,14 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
       upgrade-insecure-requests;
     `;
   } else if (isAuthPage) {
-    // Auth pages CSP - more permissive for auth functionality
+    // Production auth page CSP
     cspHeader = `
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       img-src ${imgSrc};
       font-src 'self' https://fonts.gstatic.com;
-      connect-src 'self' https://accounts.google.com https://*.googleapis.com https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar http://localhost:* ws://localhost:*;
+      connect-src 'self' https://accounts.google.com https://*.googleapis.com https://www.mamuk.com.ar https://mamuk.com.ar https://api.mamuk.com.ar;
       frame-src 'self' https://accounts.google.com;
       object-src 'none';
       base-uri 'self';
@@ -300,10 +293,10 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
       upgrade-insecure-requests;
     `;
   } else {
-    // Regular pages CSP - stricter with nonce
+    // Production regular page CSP
     cspHeader = `
       default-src 'self';
-      script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net 'unsafe-inline' 'sha256-wcH7AZ3AcJJpGNwM/YsSDmB12/KfulIDMGC1AFRMt/M=' 'sha256-eMuh8xiwcX72rRYNAGENurQBAcH7kLlAUQcoOri3BIo=' 'strict-dynamic';
+      script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net 'unsafe-inline';
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       img-src ${imgSrc};
       font-src 'self' https://fonts.gstatic.com;
@@ -318,11 +311,11 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
       upgrade-insecure-requests;
     `;
   }
-
-  // Add frame-src exceptions for routes that need video embeds
+  
+  // Special handling for pages that need video embeds
   if (
-    request.nextUrl.pathname.startsWith('/workout') ||
-    request.nextUrl.pathname.startsWith('/coach')
+    req.nextUrl.pathname.startsWith('/workout') ||
+    req.nextUrl.pathname.startsWith('/coach')
   ) {
     cspHeader = cspHeader.replace(
       "frame-src 'self';",
@@ -331,32 +324,26 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
     // Remove X-Frame-Options to allow iframes
     response.headers.delete('X-Frame-Options');
   }
-
-  // Replace newline characters and spaces
+  
+  // Clean up and set CSP header
   const contentSecurityPolicyHeaderValue = cspHeader
     .replace(/\s{2,}/g, ' ')
     .trim();
-
-  // Set the CSP header
-  response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue);
-
-  // Pass the nonce to the response for HTML pages
-  if (response.headers.get('content-type')?.includes('text/html')) {
-    response.headers.set('x-nonce', nonce);
-  }
   
-  // Implementar protección contra ataques de fuerza bruta con rate limiting
+  response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue);
+  
+  // Handle rate limiting headers for auth endpoints
   if (
-    (request.nextUrl.pathname === '/api/auth/login' || 
-     request.nextUrl.pathname === '/api/auth/register' ||
-     request.nextUrl.pathname === '/api/auth/reset-password') &&
-    request.method === 'POST'
+    (req.nextUrl.pathname === '/api/auth/login' || 
+     req.nextUrl.pathname === '/api/auth/register' ||
+     req.nextUrl.pathname === '/api/auth/reset-password') &&
+    req.method === 'POST'
   ) {
-    const ip = request.headers.get('x-forwarded-for') || 
-               request.headers.get('x-real-ip') || 
+    const ip = req.headers.get('x-forwarded-for') || 
+               req.headers.get('x-real-ip') || 
                'unknown';
     
-    // Añadir cabeceras de rate limiting
+    // Add rate limiting headers
     if (ipRequests[ip]) {
       const remaining = Math.max(0, 10 - ipRequests[ip].count);
       const reset = Math.ceil((ipRequests[ip].resetTime - Date.now()) / 1000);
@@ -470,17 +457,32 @@ export default withAuth(
     // Get the pathname of the request
     const path = req.nextUrl.pathname;
     
+    // Enhanced debugging in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Middleware] Processing request to: ${path}`);
+    }
+    
     // Skip middleware for static files and API routes
     if (
       path.startsWith('/_next') ||
       path.startsWith('/static') ||
-      path.startsWith('/api') ||
+      path.startsWith('/api/auth') || // Skip Next Auth routes entirely
       path.includes('.') ||
       path === '/favicon.ico'
     ) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Middleware] Skipping middleware for: ${path}`);
+      }
       return NextResponse.next();
     }
 
+    // Debug any OAuth related paths
+    if (path.includes('callback') || path.includes('signin') || path.includes('signout')) {
+      console.log(`[Auth Debug] Auth-related path detected: ${path}`);
+      // Allow auth flows to proceed without middleware interference
+      return NextResponse.next();
+    }
+    
     // Handle various non-auth middleware functions
     const domainRedirect = checkDomainRedirect(req);
     if (domainRedirect) return domainRedirect;
@@ -655,20 +657,18 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - api/auth (Auth API routes)
      * - auth (Auth pages)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - /api/auth (Next Auth routes)
+     * - /_next (Next.js internals)
+     * - /static (public static files)
+     * - /manifest.json (PWA manifest)
+     * - .ico, .jpg, .png, etc. (static files)
      */
     {
-      source: '/((?!api/auth|auth|_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!api/auth|auth|_next|static|favicon.ico|manifest.json|.*\\.ico|.*\\.jpg|.*\\.png|.*\\.svg).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },
       ],
     },
-    '/manifest.json',
-    '/icon.png',
-    '/favicon.ico',
-    '/apple-touch-icon.png',
   ],
 }; 
