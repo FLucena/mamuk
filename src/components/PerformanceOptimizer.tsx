@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { initFontOptimization } from '@/utils/fontOptimizer';
 import { monitorMemoryUsage } from '@/utils/memoryMonitor';
-import { initServiceWorker } from '@/utils/serviceWorkerRegistration';
 
 interface FontPreloadOptions {
   path: string;
@@ -14,7 +13,6 @@ interface FontPreloadOptions {
 
 interface PerformanceOptimizerProps {
   criticalFonts?: (string | FontPreloadOptions)[];
-  enableServiceWorker?: boolean;
   enableMemoryMonitoring?: boolean;
   memoryCheckInterval?: number;
   onOnline?: () => void;
@@ -43,7 +41,6 @@ interface ResourceEntry extends PerformanceEntry {
  */
 export default function PerformanceOptimizer({
   criticalFonts,
-  enableServiceWorker = true,
   enableMemoryMonitoring = true,
   memoryCheckInterval = 30000, // 30 seconds
   onOnline,
@@ -53,15 +50,21 @@ export default function PerformanceOptimizer({
     // Initialize font optimization
     initFontOptimization(criticalFonts);
     
-    // Retrasar la inicialización del service worker para reducir la carga inicial
-    let cleanupServiceWorker = () => {};
-    let serviceWorkerTimer: NodeJS.Timeout | null = null;
+    // Setup online/offline listeners
+    const handleOnline = () => {
+      console.info('[Network] App is online');
+      if (onOnline) onOnline();
+    };
     
-    if (enableServiceWorker) {
-      // Retrasar la inicialización del service worker para no competir con la carga inicial
-      serviceWorkerTimer = setTimeout(() => {
-        cleanupServiceWorker = initServiceWorker(onOnline, onOffline);
-      }, 3000); // Retrasar 3 segundos
+    const handleOffline = () => {
+      console.warn('[Network] App is offline');
+      if (onOffline) onOffline();
+    };
+    
+    // Add event listeners
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
     }
     
     // Retrasar el monitoreo de memoria para reducir la carga inicial
@@ -227,18 +230,19 @@ export default function PerformanceOptimizer({
     
     return () => {
       // Clean up all observers and listeners
-      cleanupServiceWorker();
       cleanupMemoryMonitoring();
-      
-      if (serviceWorkerTimer) {
-        clearTimeout(serviceWorkerTimer);
-      }
       
       if (memoryMonitorTimer) {
         clearTimeout(memoryMonitorTimer);
       }
+      
+      // Remove event listeners
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      }
     };
-  }, [criticalFonts, enableServiceWorker, enableMemoryMonitoring, memoryCheckInterval, onOnline, onOffline]);
+  }, [criticalFonts, enableMemoryMonitoring, memoryCheckInterval, onOnline, onOffline]);
   
   // This component doesn't render anything
   return null;
