@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import middleware from '@/middleware';
+import { middleware } from '@/middleware';
 import { getToken } from 'next-auth/jwt';
 
 // Mock next-auth
@@ -17,13 +17,13 @@ const applySecurityHeaders = jest.fn().mockImplementation((request, response) =>
 });
 
 // Mock the middleware module
-jest.mock('@/middleware', () => {
-  return jest.fn().mockImplementation(async () => {
+jest.mock('@/middleware', () => ({
+  middleware: jest.fn().mockImplementation(async () => {
     const response = NextResponse.next();
     // In a real test, you might want to do something with the request here
     return response;
-  });
-});
+  })
+}));
 
 describe('Middleware CSP Tests', () => {
   let mockRequest: NextRequest;
