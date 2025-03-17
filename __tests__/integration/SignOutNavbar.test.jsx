@@ -92,8 +92,20 @@ describe('Navbar Sign Out Behavior', () => {
       </AuthProvider>
     );
     
-    // Verify user name is displayed
-    const userNameElement = screen.getAllByText('Test User')[0];
-    expect(userNameElement).toBeInTheDocument();
+    // Check for user avatar initials instead of name text
+    const userInitial = screen.getByText('T');
+    expect(userInitial).toBeInTheDocument();
+    
+    // Click on the user menu to open the dropdown
+    const userButton = screen.getByRole('button', { name: /open user menu/i });
+    fireEvent.click(userButton);
+    
+    // Now check for user name in the dropdown
+    const userName = screen.getByText('Test User');
+    expect(userName).toBeInTheDocument();
+    
+    // Also check for the user email
+    const userEmail = screen.getByText('test@example.com');
+    expect(userEmail).toBeInTheDocument();
   });
-}); 
+});

@@ -107,9 +107,12 @@ userSchema.pre('save', function(next) {
 });
 
 // Add a static method for efficient email lookups
-userSchema.statics.findByEmail = function(email: string) {
-  return this.findOne({ email }).lean().exec();
-};
+// Check if statics is defined before adding methods (for tests compatibility)
+if (userSchema.statics) {
+  userSchema.statics.findByEmail = function(email: string) {
+    return this.findOne({ email }).lean().exec();
+  };
+}
 
 // Ensure model gets exported only once
 const User = mongoose.models.User || mongoose.model<IUser>('User', userSchema);

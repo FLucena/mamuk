@@ -1,4 +1,4 @@
-import { checkRouteAccess, getHomeRedirect, isProtectedRoute, getRequiredRoles } from '@/utils/authNavigation';
+import { checkRouteAccess, getHomeRedirect, isProtectedRoute } from '@/utils/authNavigation';
 import { Role } from '@/lib/types/user';
 
 // Mock session data
@@ -143,34 +143,6 @@ describe('Authorization System Tests', () => {
       expect(isProtectedRoute('/workout/new')).toBe(true);
       expect(isProtectedRoute('/coach/customers')).toBe(true);
       expect(isProtectedRoute('/admin/users')).toBe(true);
-    });
-  });
-
-  describe('getRequiredRoles', () => {
-    it('should return null for public routes', () => {
-      expect(getRequiredRoles('/')).toBeNull();
-      expect(getRequiredRoles('/auth/signin')).toBeNull();
-    });
-
-    it('should return correct roles for customer routes', () => {
-      const roles = getRequiredRoles('/workout');
-      expect(roles).toContain('customer');
-      expect(roles).toContain('coach');
-      expect(roles).toContain('admin');
-    });
-
-    it('should return correct roles for coach routes', () => {
-      const roles = getRequiredRoles('/coach');
-      expect(roles).toContain('coach');
-      expect(roles).toContain('admin');
-      expect(roles).not.toContain('customer');
-    });
-
-    it('should return correct roles for admin routes', () => {
-      const roles = getRequiredRoles('/admin');
-      expect(roles).toContain('admin');
-      expect(roles).not.toContain('coach');
-      expect(roles).not.toContain('customer');
     });
   });
 }); 

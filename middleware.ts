@@ -5,6 +5,26 @@ export function middleware(request: NextRequest) {
   // Get the pathname
   const pathname = request.nextUrl.pathname;
 
+  // Skip middleware for service worker and other critical browser files
+  if (pathname.includes('sw.js') || 
+      pathname.includes('workbox') || 
+      pathname.includes('worker') || 
+      pathname.includes('service-worker')) {
+    return NextResponse.next();
+  }
+
+  // Check if this is a script request that would be affected by redirects
+  const isScriptRequest = request.headers.get('sec-fetch-dest') === 'script' || 
+                          pathname.endsWith('.js') || 
+                          pathname.endsWith('.json') ||
+                          pathname.includes('_next/static');
+  
+  if (isScriptRequest) {
+    const response = NextResponse.next();
+    response.headers.set('Cache-Control', 'no-store, must-revalidate');
+    return response;
+  }
+
   // Handle static files specifically
   if (pathname === '/manifest.json' || pathname === '/icon.png' || pathname === '/favicon.ico' || pathname === '/apple-touch-icon.png') {
     const response = NextResponse.next();
@@ -13,6 +33,7 @@ export function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'GET');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    response.headers.set('Cache-Control', 'public, max-age=86400');
     
     return response;
   }
@@ -23,22 +44,31 @@ export function middleware(request: NextRequest) {
   
   if (wwwRegex.test(hostname)) {
     const newHost = hostname.replace(wwwRegex, '');
-    return NextResponse.redirect(
-      `https://${newHost}${pathname}${request.nextUrl.search}`,
-      { status: 301 }
-    );
+    const redirectUrl = `https://${newHost}${pathname}${request.nextUrl.search}`;
+    
+    const response = NextResponse.redirect(redirectUrl, { status: 301 });
+    
+    // Add headers for redirect
+    response.headers.set('Cache-Control', 'no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   }
 
+  // Default response
   return NextResponse.next();
 }
 
-// Specify which paths this middleware will run for
+// Reduce middleware scope to avoid processing unnecessary routes
 export const config = {
   matcher: [
+    // Only match specific files and exclude all script/asset requests
     '/manifest.json',
     '/icon.png',
     '/favicon.ico',
     '/apple-touch-icon.png',
-    '/((?!api|_next/static|_next/image).*)',
+    // Exclude Next.js assets, API routes, static files, etc.
+    '/((?!_next/static|_next/image|_next/script|api|static|.*\\.js$|.*\\.json$).*)',
   ],
 }; 

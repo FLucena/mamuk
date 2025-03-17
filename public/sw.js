@@ -16,7 +16,6 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
   '/favicon.ico',
-  '/sw.js',
 ];
 
 // Assets to cache
@@ -79,6 +78,20 @@ function handleFetch(event) {
   if (event.request.url.includes('/api/')) {
     return;
   }
+  
+  // Skip Next.js script and data requests
+  if (event.request.url.includes('/_next/data/') || 
+      event.request.url.includes('/_next/static/') ||
+      event.request.url.endsWith('.js') || 
+      event.request.url.endsWith('.json')) {
+    return;
+  }
+  
+  // Create fetch options with redirect mode set to follow
+  const fetchOptions = {
+    credentials: 'same-origin',
+    redirect: 'follow'
+  };
 
   event.respondWith(
     caches.match(event.request)
@@ -88,13 +101,10 @@ function handleFetch(event) {
           return response;
         }
 
-        // Clone the request
-        const fetchRequest = event.request.clone();
-
-        // Make network request (network-first strategy)
-        return fetch(fetchRequest)
+        // Make network request with proper redirect mode
+        return fetch(event.request, fetchOptions)
           .then((response) => {
-            // Check if valid response
+            // Check if valid response - also handle redirects properly
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
@@ -124,8 +134,27 @@ function handleFetch(event) {
   );
 }
 
-// Fetch event - serve from cache or network
-self.addEventListener('fetch', handleFetch);
+// Only handle specific fetch events to prevent issues
+self.addEventListener('fetch', (event) => {
+  // Skip handling service worker and Next.js assets
+  if (event.request.url.includes('/sw.js') || 
+      event.request.url.includes('/_next/') || 
+      event.request.url.endsWith('.js') || 
+      event.request.url.endsWith('.json')) {
+    return;
+  }
+  
+  // Only handle navigation requests (HTML pages)
+  if (event.request.mode === 'navigate') {
+    handleFetch(event);
+    return;
+  }
+  
+  // Handle asset requests for cached resources
+  if (STATIC_ASSETS.some(asset => event.request.url.endsWith(asset))) {
+    handleFetch(event);
+  }
+});
 
 // Handle push notifications
 self.addEventListener('push', (event) => {

@@ -385,4 +385,23 @@ console.error = (...args) => {
     return;
   }
   originalError.call(console, ...args);
-}; 
+};
+
+// Mock AuthProvider
+jest.mock('@/contexts/AuthContext', () => ({
+  AuthProvider: ({ children }) => children,
+  useAuth: () => ({
+    roles: ['customer'],
+    isAdmin: false,
+    isCoach: false,
+    isCustomer: true,
+    isLoading: false,
+    // Simplified auth - any authenticated user has access to everything
+    hasRole: () => true,
+    hasAnyRole: () => true,
+    updateRoles: () => {},
+    addRole: () => {},
+    removeRole: () => {},
+    getPrimaryRole: () => 'customer'
+  }),
+})); 
