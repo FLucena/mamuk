@@ -74,9 +74,19 @@ export const authOptions: NextAuthOptions = {
       console.log('Session Callback - Token:', JSON.stringify(token, null, 2));
       
       if (session.user) {
-        session.user.id = token.id as string || '';
-        session.user.roles = token.roles || ['customer'];
-        console.log('Session Callback - Setting user roles:', session.user.roles);
+        try {
+          await dbConnect();
+          const dbUser = await User.findOne({ email: session.user.email })
+            .select('roles')
+            .lean() as { roles?: Role[] } | null;
+
+          session.user.id = token.id as string || '';
+          session.user.roles = (dbUser?.roles || token.roles || ['customer']) as Role[];
+          console.log('Session Callback - Setting user roles:', session.user.roles);
+        } catch (error) {
+          console.error('Error fetching user roles:', error);
+          session.user.roles = token.roles || ['customer'];
+        }
       }
       
       console.log('Session Callback - Final session:', JSON.stringify(session, null, 2));
