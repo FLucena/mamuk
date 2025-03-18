@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import UserList from '@/components/admin/UserList';
 import ArchivedRoutines from '@/components/admin/ArchivedRoutines';
+import AssignCustomersModal from '@/components/admin/AssignCustomersModal';
 import { Role, User } from '@/lib/types/user';
 import { toast } from 'react-hot-toast';
 import { sortRoles } from '@/lib/utils/roles';
+import { debugLog, logApiCall } from '@/lib/utils/debugLogger';
+import { runApiTests } from '@/lib/test/api-test';
 
 // Interfaz para usuarios con rol específico
 interface UserWithRole extends User {
@@ -37,6 +41,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ initialView = 'users' }: AdminDashboardProps) {
+  const { data: session, status } = useSession();
   const [currentView, setCurrentView] = useState<AdminView>(initialView);
   const [users, setUsers] = useState<User[]>([]);
   const [archivedRoutines, setArchivedRoutines] = useState<ArchivedRoutine[]>([]);
@@ -46,12 +51,38 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [assignedCustomers, setAssignedCustomers] = useState<string[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   
   // Pagination state
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [isDebugMode, setIsDebugMode] = useState(false);
+
+  // Check if user is admin on mount
+  useEffect(() => {
+    debugLog({ 
+      title: 'AdminDashboard - Session Status',
+      data: { status, isAdmin: session?.user?.roles?.includes('admin') },
+      session
+    });
+    
+    if (status === 'loading') {
+      // Still loading, don't do anything yet
+      return;
+    }
+    
+    if (!session || !session.user || !session.user.roles?.includes('admin')) {
+      // Redirect or show error if user is not an admin
+      setError('No tienes permisos para acceder a esta página');
+      toast.error('No tienes permisos para acceder a esta página');
+      console.error('User lacks admin permissions', { 
+        authenticated: !!session,
+        roles: session?.user?.roles || [] 
+      });
+    }
+  }, [session, status]);
 
   // Cargar datos al montar el componente o cuando cambia la vista
   useEffect(() => {
@@ -86,15 +117,46 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
 
   // Obtener usuarios con paginación
   const fetchUsers = useCallback(async () => {
+    if (status !== 'authenticated') {
+      debugLog({ 
+        title: 'Fetch Users - Not Authenticated',
+        data: { status },
+        error: true
+      });
+      return;
+    }
+    
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/users?page=${page}&limit=${pageSize}`);
+      const apiUrl = `/api/admin/users?page=${page}&limit=${pageSize}`;
+      
+      debugLog({
+        title: 'Fetching Users',
+        data: { page, pageSize, apiUrl },
+        session
+      });
+      
+      const response = await logApiCall(apiUrl, {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
+      }, 'Admin Users API');
       
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText} - ${errorText}`);
       }
       
       const data = await response.json();
+      
+      debugLog({
+        title: 'Users Data Received',
+        data: { 
+          count: data.users?.length || data.length,
+          pagination: data.pagination
+        }
+      });
       
       // Check if the response has the new structure with pagination
       const usersList = data.users ? data.users : data;
@@ -118,16 +180,19 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      toast.error('Error al cargar los usuarios');
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, session, status]);
 
   // Obtener rutinas archivadas
   const fetchArchivedRoutines = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/routines/archived');
+      const response = await fetch('/api/admin/routines/archived', {
+        credentials: 'include'
+      });
       
       if (!response.ok) {
         // Check for specific status codes to provide better error messages
@@ -158,40 +223,243 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   }, []);
 
   const handleSelectCoach = useCallback(async (coach: User) => {
+    if (status !== 'authenticated') {
+      debugLog({ 
+        title: 'Select Coach - Not Authenticated',
+        data: { status, coach },
+        error: true,
+        session
+      });
+      
+      toast.error('Tu sesión ha caducado. Por favor, inicia sesión de nuevo.');
+      return;
+    }
+    
     setSelectedCoach(coach);
     setSelectedCustomers([]);
+    setIsAssignModalOpen(true);
+    
+    debugLog({
+      title: 'Coach Selected',
+      data: { 
+        coach: {
+          id: coach._id,
+          name: coach.name,
+          email: coach.email
+        }
+      }
+    });
     
     // Fetch assigned customers for this coach
     try {
-      // Ensure we're using the correct API endpoint structure
-      const response = await fetch(`/api/admin/coaches/${coach._id}/customers`);
+      setAssignmentLoading(true);
+      
+      // First, try to get the coach's document ID
+      debugLog({
+        title: 'Fetching Coaches Data',
+        data: { endpoint: '/api/admin/coaches' }
+      });
+      
+      const coachResponse = await logApiCall('/api/admin/coaches', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      }, 'Coaches API');
+      
+      // Check for auth errors specifically
+      if (coachResponse.status === 401) {
+        debugLog({
+          title: 'Authorization Error - Coaches API',
+          data: { status: coachResponse.status },
+          error: true
+        });
+        toast.error('Error de autenticación. Por favor, inicia sesión de nuevo.');
+        return;
+      }
+      
+      if (coachResponse.status === 403) {
+        debugLog({
+          title: 'Permission Error - Coaches API',
+          data: { status: coachResponse.status },
+          error: true
+        });
+        toast.error('No tienes permisos para realizar esta acción.');
+        return;
+      }
+      
+      let coachDocId = coach._id;
+      let assignedCustomersIds: string[] = [];
+      
+      if (coachResponse.ok) {
+        const coachesData = await coachResponse.json();
+        debugLog({
+          title: 'Coaches Data Received',
+          data: { coachesCount: coachesData.length }
+        });
+        
+        // Find the coach document that matches our selected coach's user ID
+        const coachDoc = coachesData.find((c: any) => 
+          c.userId && (c.userId._id === coach._id || c.userId === coach._id)
+        );
+        
+        debugLog({
+          title: 'Coach Document Found',
+          data: { 
+            found: !!coachDoc,
+            coachDocId: coachDoc?._id,
+            originalId: coach._id
+          }
+        });
+        
+        if (coachDoc && coachDoc._id) {
+          coachDocId = coachDoc._id;
+          
+          // If we have a coach document, use its ID to fetch customers
+          debugLog({
+            title: 'Fetching Coach Customers',
+            data: { endpoint: `/api/admin/coaches/${coachDocId}/customers` }
+          });
+          
+          const response = await logApiCall(`/api/admin/coaches/${coachDocId}/customers`, {
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
+          }, 'Coach Customers API');
+          
+          if (response.ok) {
+            const data = await response.json();
+            assignedCustomersIds = data.customers || [];
+            
+            debugLog({
+              title: 'Coach Customers Received',
+              data: { 
+                customersCount: assignedCustomersIds.length,
+                customers: assignedCustomersIds
+              }
+            });
+            
+            setAssignedCustomers(assignedCustomersIds);
+            setAssignmentLoading(false);
+            return; // Exit early if successful
+          } else {
+            debugLog({
+              title: 'Error Fetching Coach Customers',
+              data: { 
+                status: response.status,
+                statusText: response.statusText
+              },
+              error: true
+            });
+          }
+        }
+      }
+      
+      // Fallback: Try using the user ID directly if the above approach fails
+      debugLog({
+        title: 'Trying Fallback - Direct User ID',
+        data: { endpoint: `/api/admin/coaches/${coach._id}/customers` }
+      });
+      
+      const response = await logApiCall(`/api/admin/coaches/${coach._id}/customers`, {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
+      }, 'Coach Customers Fallback API');
+      
       if (response.ok) {
         const data = await response.json();
-        setAssignedCustomers(data.customers || []);
+        assignedCustomersIds = data.customers || [];
+        
+        debugLog({
+          title: 'Coach Customers Received (Fallback)',
+          data: { 
+            customersCount: assignedCustomersIds.length,
+            customers: assignedCustomersIds
+          }
+        });
+        
+        setAssignedCustomers(assignedCustomersIds);
       } else {
         // If the endpoint fails, try a fallback approach
+        debugLog({
+          title: 'Error Fetching Assigned Customers',
+          data: { 
+            status: response.status,
+            statusText: response.statusText
+          },
+          error: true
+        });
+        
         console.error('Error fetching assigned customers');
         try {
           // Try alternative endpoint format if available
-          const fallbackResponse = await fetch(`/api/coach/${coach._id}`);
+          debugLog({
+            title: 'Trying Second Fallback',
+            data: { endpoint: `/api/coach/${coach._id}` }
+          });
+          
+          const fallbackResponse = await logApiCall(`/api/coach/${coach._id}`, {
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
+          }, 'Coach API Fallback');
+          
           if (fallbackResponse.ok) {
             const fallbackData = await fallbackResponse.json();
             setAssignedCustomers(fallbackData.customers || []);
+            
+            debugLog({
+              title: 'Coach Data Received (Second Fallback)',
+              data: { 
+                customersCount: fallbackData.customers?.length || 0
+              }
+            });
           } else {
             setAssignedCustomers([]);
+            
+            debugLog({
+              title: 'All Fallbacks Failed',
+              data: { 
+                status: fallbackResponse.status,
+                statusText: fallbackResponse.statusText
+              },
+              error: true
+            });
+            
             toast.error('No se pudieron cargar los clientes asignados al coach');
           }
         } catch (fallbackError) {
           setAssignedCustomers([]);
+          
+          debugLog({
+            title: 'Fallback Exception',
+            data: fallbackError,
+            error: true
+          });
+          
           toast.error('No se pudieron cargar los clientes asignados al coach');
         }
       }
     } catch (error) {
       console.error('Error fetching assigned customers:', error);
+      
+      debugLog({
+        title: 'Exception in handleSelectCoach',
+        data: error,
+        error: true
+      });
+      
       setAssignedCustomers([]);
       toast.error('No se pudieron cargar los clientes asignados al coach');
+    } finally {
+      setAssignmentLoading(false);
     }
-  }, []);
+  }, [status]);
 
   const handleSelectCustomers = useCallback((customerIds: string[]) => {
     setSelectedCustomers(customerIds);
@@ -200,41 +468,166 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const assignCustomersToCoach = useCallback(async () => {
     if (!selectedCoach || selectedCustomers.length === 0) return;
     
+    if (status !== 'authenticated') {
+      debugLog({ 
+        title: 'Assign Customers - Not Authenticated',
+        data: { status },
+        error: true,
+        session
+      });
+      
+      toast.error('Tu sesión ha caducado. Por favor, inicia sesión de nuevo.');
+      return;
+    }
+    
     setAssignmentLoading(true);
+    debugLog({
+      title: 'Assigning Customers to Coach',
+      data: { 
+        coachId: selectedCoach._id,
+        customerCount: selectedCustomers.length
+      }
+    });
+    
     try {
-      const response = await fetch('/api/admin/coach/assign-customers', {
+      // First, find the coach document ID if it exists
+      let coachDocId = selectedCoach._id;
+      
+      const coachResponse = await logApiCall('/api/admin/coaches', {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
+      }, 'Coaches API (Assignment)');
+      
+      if (coachResponse.ok) {
+        const coachesData = await coachResponse.json();
+        
+        debugLog({
+          title: 'Coaches Data for Assignment',
+          data: { coachesCount: coachesData.length }
+        });
+        
+        // Find the coach document that matches our selected coach's user ID
+        const coachDoc = coachesData.find((c: any) => 
+          c.userId && (c.userId._id === selectedCoach._id || c.userId === selectedCoach._id)
+        );
+        
+        if (coachDoc && coachDoc._id) {
+          coachDocId = coachDoc._id;
+          
+          debugLog({
+            title: 'Coach Document Found for Assignment',
+            data: { 
+              coachDocId,
+              originalId: selectedCoach._id
+            }
+          });
+        }
+      }
+      
+      // Use the coach document ID for the API call
+      debugLog({
+        title: 'Calling Assign Customers API',
+        data: { 
+          endpoint: '/api/admin/coach/assign-customers',
+          coachId: selectedCoach._id,
+          customerCount: selectedCustomers.length
+        }
+      });
+      
+      const response = await logApiCall('/api/admin/coach/assign-customers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
-          coachId: selectedCoach._id,
+          coachId: selectedCoach._id, // User ID is what the API expects
           customerIds: selectedCustomers,
         }),
-      });
+        credentials: 'include'
+      }, 'Assign Customers API');
       
       if (!response.ok) {
-        throw new Error('Failed to assign customers');
+        // Check for specific error types
+        if (response.status === 401) {
+          throw new Error('Tu sesión ha caducado. Por favor, inicia sesión de nuevo.');
+        } else if (response.status === 403) {
+          throw new Error('No tienes permisos para realizar esta acción.');
+        } else {
+          const errorText = await response.text().catch(() => '');
+          throw new Error(`Failed to assign customers: ${response.status} ${response.statusText} ${errorText}`);
+        }
       }
       
-      // Actualizar la lista de clientes asignados
+      // Refresh the list of assigned customers using the document ID if available
       if (selectedCoach) {
-        const response = await fetch(`/api/admin/coaches/${selectedCoach._id}/customers`);
-        if (response.ok) {
-          const data = await response.json();
+        // Try to get the updated list with the correct ID
+        debugLog({
+          title: 'Refreshing Assigned Customers',
+          data: { endpoint: `/api/admin/coaches/${coachDocId}/customers` }
+        });
+        
+        const customerResponse = await logApiCall(`/api/admin/coaches/${coachDocId}/customers`, {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        }, 'Refresh Customers API');
+        
+        if (customerResponse.ok) {
+          const data = await customerResponse.json();
           setAssignedCustomers(data.customers || []);
+          
+          debugLog({
+            title: 'Updated Customers List Received',
+            data: { customersCount: data.customers?.length || 0 }
+          });
+        } else {
+          // Fallback to using the user ID directly
+          debugLog({
+            title: 'Fallback to User ID for Refresh',
+            data: { endpoint: `/api/admin/coaches/${selectedCoach._id}/customers` }
+          });
+          
+          const fallbackResponse = await logApiCall(`/api/admin/coaches/${selectedCoach._id}/customers`, {
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
+          }, 'Refresh Customers Fallback API');
+          
+          if (fallbackResponse.ok) {
+            const data = await fallbackResponse.json();
+            setAssignedCustomers(data.customers || []);
+            
+            debugLog({
+              title: 'Updated Customers List Received (Fallback)',
+              data: { customersCount: data.customers?.length || 0 }
+            });
+          }
         }
       }
       
       toast.success(`${selectedCustomers.length} clientes asignados a ${selectedCoach.name}`);
       setSelectedCustomers([]);
+      // Close the modal after successful assignment
+      setIsAssignModalOpen(false);
     } catch (error) {
       console.error('Error assigning customers:', error);
-      toast.error('Error al asignar clientes');
+      
+      debugLog({
+        title: 'Error Assigning Customers',
+        data: error instanceof Error ? error.message : error,
+        error: true
+      });
+      
+      toast.error(error instanceof Error ? error.message : 'Error al asignar clientes');
     } finally {
       setAssignmentLoading(false);
     }
-  }, [selectedCoach, selectedCustomers]);
+  }, [selectedCoach, selectedCustomers, status, session]);
 
   // Pagination controls
   const handleNextPage = useCallback(() => {
@@ -252,6 +645,39 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const handlePageSizeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setPageSize(Number(e.target.value));
     setPage(1); // Reset to first page when changing page size
+  }, []);
+
+  // Add this function to close the modal
+  const handleCloseModal = useCallback(() => {
+    setIsAssignModalOpen(false);
+  }, []);
+
+  // Run diagnostic tests
+  const handleRunTests = useCallback(async () => {
+    debugLog({
+      title: 'Running API Tests',
+      data: { session },
+    });
+    
+    setLoading(true);
+    try {
+      const results = await runApiTests();
+      if (results.some(r => !r.success)) {
+        toast.error('Some API tests failed. Check console for details.');
+      } else {
+        toast.success('All API tests passed!');
+      }
+    } catch (error) {
+      console.error('Error running tests:', error);
+      toast.error('Error running API tests');
+    } finally {
+      setLoading(false);
+    }
+  }, [session]);
+
+  // Toggle debug mode
+  const toggleDebugMode = useCallback(() => {
+    setIsDebugMode(prev => !prev);
   }, []);
 
   const renderNavigation = useMemo(() => (
@@ -389,82 +815,15 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
                 Asignar Clientes a Coaches
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Selecciona un coach y asígnale clientes.
+                Selecciona un coach de la lista para asignarle clientes.
               </p>
             </div>
-            
-            {selectedCoach && (
-              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <h2 className="text-lg font-semibold text-blue-800 dark:text-blue-300">
-                  Coach seleccionado: {selectedCoach.name}
-                </h2>
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  {selectedCoach.email}
-                </p>
-                {assignedCustomers && assignedCustomers.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                      Clientes asignados: {assignedCustomers.length}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
             
             <UserList 
               users={users.filter(user => user.roles.includes('coach'))} 
               onSelectCoach={handleSelectCoach}
               selectedCoach={selectedCoach?._id}
             />
-            
-            {selectedCoach && (
-              <>
-                <div className="mt-8 mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Seleccionar Clientes
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Selecciona los clientes que quieres asignar al coach.
-                  </p>
-                </div>
-                
-                <UserList 
-                  users={users.filter(user => 
-                    user.roles.includes('customer') && 
-                    (!assignedCustomers || !assignedCustomers.includes(user._id))
-                  )} 
-                  onSelectCustomers={handleSelectCustomers}
-                  selectedCustomers={selectedCustomers}
-                  assignedCustomers={assignedCustomers}
-                />
-                
-                {selectedCustomers.length > 0 && (
-                  <div className="mt-6 flex justify-end">
-                    <button
-                      onClick={assignCustomersToCoach}
-                      disabled={assignmentLoading}
-                      className={`px-6 py-3 rounded-md text-white font-medium ${
-                        assignmentLoading 
-                          ? 'bg-blue-400 cursor-not-allowed' 
-                          : 'bg-blue-600 hover:bg-blue-700'
-                      }`}
-                    >
-                      {assignmentLoading ? (
-                        <span className="flex items-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Asignando...
-                        </span>
-                      ) : (
-                        `Asignar ${selectedCustomers.length} clientes a ${selectedCoach.name}`
-                      )}
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
             
             {renderPagination}
           </div>
@@ -493,20 +852,24 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
     loading, 
     error, 
     fetchData, 
-    selectedCoach, 
-    selectedCustomers, 
-    assignedCustomers, 
-    assignmentLoading,
-    handleSelectCoach,
-    handleSelectCustomers,
-    assignCustomersToCoach,
-    renderPagination
+    selectedCoach,
+    renderPagination,
+    handleSelectCoach
   ]);
 
   return (
     <div className="space-y-6">
       {renderNavigation}
       {renderContent()}
+      
+      {/* Add the modal at the end */}
+      <AssignCustomersModal
+        isOpen={isAssignModalOpen}
+        onClose={handleCloseModal}
+        coach={selectedCoach}
+        allCustomers={users}
+        assignedCustomerIds={assignedCustomers}
+      />
     </div>
   );
 } 

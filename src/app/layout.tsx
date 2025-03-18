@@ -131,6 +131,9 @@ const DynamicErrorNotification = dynamic(() => import('@/components/ErrorNotific
   loading: () => null
 });
 
+// Import ImagePreloader without dynamic to avoid webpack issues
+import ImagePreloader from '@/components/ImagePreloader';
+
 // Development-only components
 const DevComponents = dynamic(() => 
   process.env.NODE_ENV === 'development' 
@@ -143,30 +146,8 @@ const DevComponents = dynamic(() =>
 
 // Optimize performance monitoring
 const PerformanceComponents = dynamic(() => 
-  Promise.all([
-    import('@/components/NavigationTracker'),
-    import('@/components/NavigationPatcher'),
-    import('@/components/PerformanceMonitor'),
-    import('@/components/PerformanceOptimizerWrapper'),
-  ]).then(([
-    { default: NavigationTracker },
-    { default: NavigationPatcher },
-    { default: PerformanceMonitor },
-    { default: PerformanceOptimizerWrapper }
-  ]) => {
-    return function CombinedPerformanceComponents({ criticalFonts }: { criticalFonts: any[] }) {
-      return (
-        <>
-          <NavigationTracker />
-          <NavigationPatcher />
-          <PerformanceMonitor />
-          <PerformanceOptimizerWrapper 
-            criticalFonts={criticalFonts}
-            enableMemoryMonitoring={true}
-          />
-        </>
-      );
-    };
+  import('@/components/performance').then((mod) => {
+    return mod.default;
   }), {
   ssr: false,
   loading: () => null
@@ -234,6 +215,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                       <DynamicErrorNotification />
                       <PerformanceComponents criticalFonts={CRITICAL_FONTS} />
                       {process.env.NODE_ENV === 'development' && <DevComponents />}
+                      <ImagePreloader />
                     </Suspense>
                     
                     <Toaster position="top-right" />

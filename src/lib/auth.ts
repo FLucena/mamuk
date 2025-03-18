@@ -1,8 +1,7 @@
-import { DefaultSession, NextAuthOptions, Session, User as NextAuthUser } from 'next-auth';
+import { DefaultSession, NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import { dbConnect } from './db';
 import User from './models/user';
-import { JWT } from 'next-auth/jwt';
 import { Role } from './types/user';
 
 // Type definitions
@@ -53,6 +52,9 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     // Handle JWT token creation
     async jwt({ token, user }) {
+      console.log('JWT Callback - Initial token:', JSON.stringify(token, null, 2));
+      console.log('JWT Callback - User data:', user ? JSON.stringify(user, null, 2) : 'No user data');
+      
       if (!token.roles) {
         token.roles = ['customer'];
       }
@@ -60,16 +62,24 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.roles = (user.roles as Role[]) || ['customer'];
+        console.log('JWT Callback - Setting roles:', token.roles);
       }
 
+      console.log('JWT Callback - Final token:', JSON.stringify(token, null, 2));
       return token;
     },
     // Add user information to session
     async session({ session, token }) {
+      console.log('Session Callback - Initial session:', JSON.stringify(session, null, 2));
+      console.log('Session Callback - Token:', JSON.stringify(token, null, 2));
+      
       if (session.user) {
         session.user.id = token.id as string || '';
         session.user.roles = token.roles || ['customer'];
+        console.log('Session Callback - Setting user roles:', session.user.roles);
       }
+      
+      console.log('Session Callback - Final session:', JSON.stringify(session, null, 2));
       return session;
     },
     // Basic signIn callback

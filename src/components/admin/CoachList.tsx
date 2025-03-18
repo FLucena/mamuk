@@ -2,16 +2,15 @@
 
 import { useState, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { User as UserIcon, Mail, Edit2, Trash2, Users, UserPlus } from 'lucide-react';
+import { User as UserIcon, Edit2, Trash2, UserPlus } from 'lucide-react';
 import EditCoachModal from './EditCoachModal';
 import DeleteCoachModal from './DeleteCoachModal';
-import Image from 'next/image';
 import { User } from '@/lib/types/user';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import AssignCustomerModal from './AssignCustomerModal';
 import RobustImage from '@/components/ui/RobustImage';
+import { ensureValidSession, authorizedFetch } from '@/lib/utils/session';
 
 interface Coach extends User {
   specialties?: string[];
@@ -105,23 +104,26 @@ export default memo(function CoachList({ users = [], isLoading = false }: CoachL
     }
   };
 
-  const handleAssignCustomers = (coach: Coach) => {
+  const handleAssignCustomers = async (coach: Coach) => {
+    // Validate session before proceeding
+    const isValid = await ensureValidSession();
+    if (!isValid) {
+      return; // Session validation will handle redirect if needed
+    }
+    
     setSelectedCoach(coach);
     setIsAssignModalOpen(true);
   };
 
   const handleAssignSubmit = async (coachId: string, customerIds: string[]) => {
     try {
-      const response = await fetch('/api/admin/coach/assign-customers', {
+      const response = await authorizedFetch('/api/admin/coach/assign-customers', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ coachId, customerIds }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Error al asignar clientes');
       }
 

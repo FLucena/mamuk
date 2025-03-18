@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { createPrivateCachedResponse, createErrorResponse } from '@/lib/utils/api';
-import { getCurrentUserRole } from '@/lib/utils/permissions';
 import { dbConnect } from '@/lib/db';
 import User from '@/lib/models/user';
 import { Role } from '@/lib/types/user';
@@ -27,7 +26,7 @@ export const dynamic = 'force-dynamic'; // 'auto' | 'force-static' | 'force-dyna
 /**
  * Generate ETag for a session object
  */
-function generateETag(session: any): string {
+function generateETag(session: Record<string, unknown>): string {
   const hash = createHash('md5')
     .update(JSON.stringify(session))
     .digest('hex');
@@ -84,7 +83,7 @@ async function getUserRoles(email: string): Promise<Role[]> {
 }
 
 // GET /api/auth/session - Get current session
-export async function GET(request: NextRequest) {
+export async function GET() {
   const requestStart = performance.now();
   
   try {
@@ -183,7 +182,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/auth/session/refresh - Refresh session
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const session = await getServerSession(authOptions);
     
@@ -210,7 +209,7 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/auth/session - Sign out
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
     const session = await getServerSession(authOptions);
     

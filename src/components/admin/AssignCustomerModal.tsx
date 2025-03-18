@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { X, Search, UserPlus } from 'lucide-react';
+import { Search, UserPlus } from 'lucide-react';
+import { ensureValidSession, authorizedFetch } from '@/lib/utils/session';
 
 interface User {
   _id: string;
@@ -47,7 +48,7 @@ export default function AssignCustomerModal({
   const fetchCustomers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/admin/users?role=customer');
+      const response = await authorizedFetch('/api/admin/users?role=customer');
       
       if (!response.ok) {
         throw new Error('Failed to fetch customers');
@@ -75,6 +76,10 @@ export default function AssignCustomerModal({
     }
 
     try {
+      // First validate session
+      const isSessionValid = await ensureValidSession();
+      if (!isSessionValid) return;
+
       setIsLoading(true);
       await onAssign(coach.id, selectedCustomers);
       toast.success('Clientes asignados correctamente');

@@ -379,10 +379,10 @@ export default memo(function EditUserModal({
                       <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                        className="inline-flex items-center px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 w-[160px] justify-center"
                         disabled={isSubmitting}
                       >
-                        <IconWrapper icon={X} className="w-5 h-5" />
+                        <IconWrapper icon={X} className="w-5 h-5 mr-2" />
                         <span>Cancelar</span>
                       </button>
                       <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image, { ImageProps } from 'next/image';
 
 interface RobustImageProps extends Omit<ImageProps, 'onError'> {
@@ -19,13 +19,18 @@ export default function RobustImage({
   fallbackSrc = '/icon.png',
   ...props
 }: RobustImageProps) {
-  const [imgSrc, setImgSrc] = useState<string>(typeof src === 'string' ? src : '');
   const [hasError, setHasError] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
+  // Track component mount to avoid hydration issues
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Simple error handler that switches to fallback
   const handleError = () => {
-    if (!hasError) {
-      console.log(`Image failed to load: ${imgSrc}, using fallback: ${fallbackSrc}`);
-      setImgSrc(fallbackSrc);
+    if (mounted && !hasError) {
+      console.log(`Image failed to load: ${typeof src === 'string' ? src : 'image'}, using fallback`);
       setHasError(true);
     }
   };
@@ -36,9 +41,8 @@ export default function RobustImage({
       src={hasError ? fallbackSrc : src}
       alt={alt}
       onError={handleError}
-      // Make images more stable in production by bypassing Next.js optimization
-      // when dealing with local images (which may behave differently in prod)
-      unoptimized={typeof src === 'string' && (src.startsWith('/') || src.startsWith('.'))}
+      // Make images more stable by bypassing optimization for local images
+      unoptimized={props.unoptimized || (typeof src === 'string' && (src.startsWith('/') || src.startsWith('.')))}
     />
   );
 } 
