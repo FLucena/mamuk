@@ -5,6 +5,28 @@
 import { toast } from 'react-hot-toast';
 import { debugLog } from '../utils/debugLogger';
 
+// Add proper type definitions to replace any
+interface UserData {
+  _id: string;
+  name?: string;
+  email?: string;
+  image?: string;
+  roles?: string[];
+  [key: string]: unknown;
+}
+
+interface UsersResponse {
+  users?: UserData[];
+  [key: string]: unknown;
+}
+
+// Define coach interface for type safety
+interface CoachData {
+  _id: string;
+  userId: string | { _id: string };
+  [key: string]: unknown;
+}
+
 export interface ApiTestResult {
   endpoint: string;
   status: number;
@@ -133,14 +155,14 @@ export async function runApiTests() {
   if (usersResult?.success && usersResult.data) {
     try {
       // Try to extract user info from the users list
-      const usersData = usersResult.data as any;
-      let usersList: any[] = [];
+      const usersData = usersResult.data as UsersResponse;
+      let usersList: UserData[] = [];
       
       // Handle different response formats
       if (usersData.users && Array.isArray(usersData.users)) {
         usersList = usersData.users;
       } else if (Array.isArray(usersData)) {
-        usersList = usersData;
+        usersList = usersData as UserData[];
       }
       
       // Look for a user with admin or coach role
@@ -243,14 +265,14 @@ export async function testAssignCustomersFlow(coachId: string): Promise<FlowTest
   if (userApiTest.success && userApiTest.data) {
     try {
       // Try to find the user in the response
-      const usersData = userApiTest.data as any;
-      let usersList: any[] = [];
+      const usersData = userApiTest.data as UsersResponse;
+      let usersList: UserData[] = [];
       
       // Handle different response formats
       if (usersData.users && Array.isArray(usersData.users)) {
         usersList = usersData.users;
       } else if (Array.isArray(usersData)) {
-        usersList = usersData;
+        usersList = usersData as UserData[];
       }
       
       // Check if the provided coachId exists in the users list
