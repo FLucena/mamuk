@@ -70,8 +70,6 @@ export const authOptions: NextAuthOptions = {
     },
     // Add user information to session
     async session({ session, token }) {
-      console.log('Session Callback - Initial session:', JSON.stringify(session, null, 2));
-      console.log('Session Callback - Token:', JSON.stringify(token, null, 2));
       
       if (session.user) {
         try {

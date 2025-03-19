@@ -1,5 +1,5 @@
 import { Document, Model, Types } from 'mongoose';
-import { EnhancedModel, castToEnhancedModel } from '@/types/mongoose';
+import { EnhancedModel, castToEnhancedModel } from '../../types/mongoose';
 
 /**
  * Gets a properly typed Mongoose model

@@ -34,28 +34,57 @@ export async function getUserWithRole(userId: string): Promise<UserWithRole> {
   let user: UserWithRole | null = null;
   const TypedUser = getTypedModel(User);
   
-  // Try to find by ID first
-  if (Types.ObjectId.isValid(userId)) {
-    user = await TypedUser.findById(userId).select('_id roles').lean();
+  try {
+    // Try to find by ID first
+    if (Types.ObjectId.isValid(userId)) {
+      const result: any = await TypedUser.findById(userId).select('_id roles').lean();
+      
+      if (result && result._id && result.roles) {
+        user = {
+          _id: result._id,
+          roles: result.roles,
+          ...result
+        };
+      }
+    }
+    
+    // If not found, try by email
+    if (!user) {
+      const result: any = await TypedUser.findOne({ email: userId })
+        .select('_id roles')
+        .lean();
+        
+      if (result && result._id && result.roles) {
+        user = {
+          _id: result._id,
+          roles: result.roles,
+          ...result
+        };
+      }
+    }
+    
+    // If still not found, try by sub (for OAuth)
+    if (!user) {
+      const result: any = await TypedUser.findOne({ sub: userId }).select('_id roles').lean();
+        
+      if (result && result._id && result.roles) {
+        user = {
+          _id: result._id,
+          roles: result.roles,
+          ...result
+        };
+      }
+    }
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw new Error('Error al buscar el usuario');
   }
-  
-  // If not found, try by email
-  if (!user) {
-    user = await TypedUser.findOne({ email: userId })
-      .select('_id roles')
-      .lean();
-  }
-  
-  // If still not found, try by sub (for OAuth)
-  if (!user) {
-    user = await TypedUser.findOne({ sub: userId }).select('_id roles').lean();
-  }
-  
-  if (!user) {
-    throw new Error('Usuario no encontrado');
-  }
-  
-  return user;
 }
 
 /**
