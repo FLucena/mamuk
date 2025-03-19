@@ -402,11 +402,17 @@ const WorkoutList = memo(function WorkoutList({ workouts: initialWorkouts, isCoa
       setShowDeleteModal(false);
       toast.success('Rutina eliminada exitosamente');
       
-      router.refresh();
+      // Add a longer delay and keep loading state until refresh is complete
+      setTimeout(() => {
+        router.refresh();
+        // Only remove loading state after refresh
+        setTimeout(() => {
+          setLoading(false);
+        }, 100);
+      }, 800);
     } catch (error) {
       setError('Error al eliminar la rutina. Por favor, inténtalo de nuevo.');
       toast.error(error instanceof Error ? error.message : 'Error al eliminar la rutina');
-    } finally {
       setLoading(false);
     }
   }, [router, selectedWorkout]);

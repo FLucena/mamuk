@@ -191,7 +191,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({
   }, [handleNameSubmit, title]);
 
   return (
-    <div className={`relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 ${!expanded ? 'shadow-sm' : 'shadow-md'}`}>
+    <div className={`relative bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 ${!expanded ? 'shadow-sm' : 'shadow-md'}`}>
       {isLoading && <LoadingOverlay />}
       
       <div 
@@ -231,7 +231,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({
                 e.stopPropagation();
                 handleAddExercise();
               }}
-              className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors"
+              className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
             >
               <Plus className="w-4 h-4 mr-1" />
               Añadir
@@ -254,7 +254,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({
       </div>
       
       {expanded && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/20">
           {exercises && exercises.length > 0 ? (
             <div className="space-y-3">
               {exercises.map((exercise, exerciseIndex) => (
@@ -281,7 +281,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({
               {onAddExercise && (
                 <button
                   onClick={handleAddExercise}
-                  className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors"
+                  className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Añadir el primer ejercicio

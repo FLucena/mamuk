@@ -288,12 +288,24 @@ export async function updateExercise(
 
   await dbConnect();
   try {
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workout.id),
-      userId: session.user.id.toString()
-    });
+    // Find by ID first, then verify ownership
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workout.id));
 
     if (!workoutDoc) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
+    }
 
     const exercise = workoutDoc.days[dayIndex].blocks[blockIndex].exercises[exerciseIndex];
     Object.assign(exercise, data);
@@ -320,12 +332,24 @@ export async function deleteExercise(
 
   await dbConnect();
   try {
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workout.id),
-      userId: session.user.id.toString()
-    });
+    // Find by ID first, then verify ownership - avoids ObjectId casting errors
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workout.id));
 
     if (!workoutDoc) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
+    }
 
     workoutDoc.days[dayIndex].blocks[blockIndex].exercises.splice(exerciseIndex, 1);
     await workoutDoc.save();
@@ -344,25 +368,40 @@ export async function deleteDay(workout: WorkoutType, dayIndex: number) {
     dayIndex
   });
 
+  // Get session for user validation
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    throw new Error('No autorizado');
+  }
+
   await dbConnect();
   try {
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workout.id),
-      userId: workout.userId.toString()
-    });
+    // Find by ID first, then verify ownership
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workout.id));
 
     if (!workoutDoc) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
+    }
 
     workoutDoc.days.splice(dayIndex, 1);
     await workoutDoc.save();
-
-    // Removed console.log
     
     // Revalidate both the specific workout and the list
     revalidatePath(`workout-${workout.id}`);
     revalidatePath('workouts-list');
     
-    // Removed console.log
     return JSON.parse(JSON.stringify(workoutDoc.toObject()));
   } catch (error) {
     console.error('Error in deleteDay action:', error);
@@ -384,12 +423,24 @@ export async function deleteBlock(workout: WorkoutType, dayIndex: number, blockI
 
   await dbConnect();
   try {
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workout.id),
-      userId: session.user.id.toString()
-    });
+    // Find by ID first, then verify ownership
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workout.id));
 
     if (!workoutDoc) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
+    }
 
     workoutDoc.days[dayIndex].blocks.splice(blockIndex, 1);
     await workoutDoc.save();
@@ -409,31 +460,44 @@ export async function deleteWorkout(workoutId: string, userId: string) {
   }
   if (!validateMongoId(workoutId)) throw new Error('Invalid workout ID');
 
-  // Removed console.log
+  console.log('Starting delete workout process:', { workoutId, userId });
 
   await dbConnect();
   try {
-    // Removed console.log
-    const result = await (Workout.findOneAndDelete as any)({
-      _id: new Types.ObjectId(workoutId),
-      userId: userId.toString()
-    });
-
-    if (!result) {
+    // Find workout first by ID only, avoiding casting the userId
+    const workout = await (Workout.findById as any)(new Types.ObjectId(workoutId));
+    
+    if (!workout) {
       console.error('Workout not found');
       throw new Error('Workout not found');
     }
-
-    // Removed console.log
+    
+    // Check if the user has permission to delete this workout
+    // Convert both IDs to strings for comparison to avoid type issues
+    const workoutUserId = String(workout.userId);
+    const requestUserId = String(userId);
+    
+    console.log('Comparing userIds for delete permission:', { workoutUserId, requestUserId });
+    
+    if (workoutUserId !== requestUserId) {
+      // Allow admins and coaches to delete workouts they don't own
+      const userRoles = await getCurrentUserRoles(userId);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        console.error('User not authorized to delete this workout');
+        throw new Error('No tienes permiso para eliminar esta rutina');
+      }
+    }
+    
+    // Now delete the workout
+    await (Workout.findByIdAndDelete as any)(new Types.ObjectId(workoutId));
+    console.log('Workout deleted successfully:', workoutId);
     
     // Revalidate both the specific workout and the workouts list
     revalidatePath(`workout-${workoutId}`);
     revalidatePath('workouts-list');
     
-    // Wait a moment to ensure revalidation is processed
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    // Removed console.log
     return { success: true };
   } catch (error) {
     console.error('Error deleting workout:', error);
@@ -446,7 +510,7 @@ export async function deleteWorkout(workoutId: string, userId: string) {
  * Versión mejorada con validaciones adicionales y mejor manejo de errores
  */
 export async function duplicateWorkout(workoutId: string, newName?: string, newDescription?: string) {
-  // Removed console.log
+  console.log('[Duplication] Starting workout duplication process:', { workoutId, newName });
   
   try {
     // Validar que el ID del workout sea proporcionado
@@ -473,6 +537,13 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       console.error('[SECURITY] Intento de duplicación sin sesión de usuario');
       throw new Error('No autorizado');
     }
+    
+    // Log user information for debugging
+    console.log('[Duplication] User session info:', { 
+      userId: session.user.id,
+      userIdType: typeof session.user.id,
+      email: session.user.email
+    });
     
     // Verificar el rol del usuario
     const userRole = await getCurrentUserRole(session.user.email || '');
@@ -556,20 +627,40 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       return newDay;
     });
     
+    // We need to find the user document to reference its _id
+    // This is to avoid the ObjectId casting error
+    console.log('[Duplication] Finding user document for:', session.user.id);
+    const userDoc = await (User.findOne as any)({ email: session.user.email });
+    
+    if (!userDoc) {
+      console.error('[Duplication] User not found in database:', session.user.email);
+      throw new Error('Usuario no encontrado en la base de datos');
+    }
+    
+    // Use the _id from the user document
+    console.log('[Duplication] Found user document with _id:', userDoc._id);
+    
     // Crear la nueva rutina
     const newWorkout = new Workout({
       ...workoutData,
       name: newName ? sanitizedName : `${sanitizedName} (Copia)`,
       description: sanitizedDescription,
-      userId: session.user.id,
+      userId: userDoc._id,  // Use the MongoDB ObjectId from the user document
+      createdBy: userDoc._id, // Ensure createdBy is also a valid ObjectId
       createdAt: new Date(),
       updatedAt: new Date(),
     });
     
+    // Log the new workout before saving
+    console.log('[Duplication] New workout created:', {
+      id: newWorkout._id,
+      name: newWorkout.name,
+      userId: newWorkout.userId
+    });
+    
     // Guardar el nuevo workout
     await newWorkout.save();
-    
-    // Removed console.log
+    console.log('[Duplication] Workout saved successfully');
     
     // Convertir el objeto Mongoose a un objeto plano para que sea serializable
     try {
@@ -586,7 +677,11 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
           : serializedWorkout._id.toString();
       }
       
-      // Removed console.log
+      console.log('[Duplication] Serialized workout result:', { 
+        id: serializedWorkout.id,
+        name: serializedWorkout.name
+      });
+      
       return serializedWorkout;
     } catch (serializationError) {
       console.error('[ERROR] Error al serializar el workout:', serializationError);
@@ -603,7 +698,7 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
         updatedAt: new Date().toISOString(),
       };
       
-      // Removed console.log
+      console.log('[Duplication] Using fallback serialization');
       return fallbackObject;
     }
   } catch (error) {
@@ -797,13 +892,11 @@ export async function updateDayName(workout: WorkoutType, dayIndex: number, newN
   });
 
   if (!session?.user?.id || !session?.user?.email) {
-    // Removed console.log
     throw new Error('No autorizado');
   }
 
   // Verificar que el index es válido
   if (dayIndex < 0) {
-    // Removed console.log
     throw new Error('Índice de día inválido');
   }
 
@@ -813,24 +906,30 @@ export async function updateDayName(workout: WorkoutType, dayIndex: number, newN
     const workoutId = workout.id;
     
     if (!workoutId || !validateMongoId(workoutId)) {
-      // Removed console.log
       throw new Error('ID de rutina inválido');
     }
 
-    // Buscar la rutina en la base de datos
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workoutId),
-      userId: session.user.id
-    });
+    // Find by ID first, then verify ownership
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workoutId));
 
-    if (!workoutDoc) {
-      // Removed console.log
-      throw new Error('Rutina no encontrada');
+    if (!workoutDoc) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
     }
 
     // Verificar que el día existe
     if (!workoutDoc.days || dayIndex >= workoutDoc.days.length) {
-      // Removed console.log
       throw new Error('Día no encontrado');
     }
 
@@ -839,7 +938,6 @@ export async function updateDayName(workout: WorkoutType, dayIndex: number, newN
     
     // Guardar los cambios
     await workoutDoc.save();
-    // Removed console.log
     
     // Revalidar caché
     revalidatePath(`workout-${workoutId}`);
@@ -874,13 +972,11 @@ export async function updateBlockName(
   });
 
   if (!session?.user?.id) {
-    // Removed console.log
     throw new Error('No autorizado');
   }
 
   // Verificar que los índices son válidos
   if (dayIndex < 0 || blockIndex < 0) {
-    // Removed console.log
     throw new Error('Índices inválidos');
   }
 
@@ -890,30 +986,35 @@ export async function updateBlockName(
     const workoutId = workout.id;
     
     if (!workoutId || !validateMongoId(workoutId)) {
-      // Removed console.log
       throw new Error('ID de rutina inválido');
     }
 
-    // Buscar la rutina en la base de datos
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workoutId),
-      userId: session.user.id
-    });
+    // Find by ID first, then verify ownership
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workoutId));
 
-    if (!workoutDoc) {
-      // Removed console.log
-      throw new Error('Rutina no encontrada');
+    if (!workoutDoc) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
     }
 
     // Verificar que el día existe
     if (!workoutDoc.days || dayIndex >= workoutDoc.days.length) {
-      // Removed console.log
       throw new Error('Día no encontrado');
     }
 
     // Verificar que el bloque existe
     if (!workoutDoc.days[dayIndex].blocks || blockIndex >= workoutDoc.days[dayIndex].blocks.length) {
-      // Removed console.log
       throw new Error('Bloque no encontrado');
     }
 
@@ -922,7 +1023,6 @@ export async function updateBlockName(
     
     // Guardar los cambios
     await workoutDoc.save();
-    // Removed console.log
     
     // Revalidar caché
     revalidatePath(`workout-${workoutId}`);

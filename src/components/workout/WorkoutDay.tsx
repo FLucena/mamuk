@@ -251,7 +251,7 @@ export default memo(function WorkoutDay({
   }, [blocks, dayIndex, expandedBlocks, setExpandedBlocks, setExpandedExercises]);
 
   return (
-    <div className="relative mb-6 rounded-lg overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md">
+    <div className="relative mb-6 rounded-lg overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md">
       {isLoading && <LoadingOverlay />}
       
       <div 
@@ -290,7 +290,7 @@ export default memo(function WorkoutDay({
                 e.stopPropagation();
                 handleAddBlock();
               }}
-              className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+              className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
             >
               <Plus className="w-4 h-4 mr-1.5" />
               Añadir bloque
@@ -313,14 +313,14 @@ export default memo(function WorkoutDay({
       </div>
       
       {expanded && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50">
-          {blocks && blocks.length > 0 ? (
+        <div className="p-4 bg-white dark:bg-gray-900">
+          {blocks.length > 0 ? (
             <div className="space-y-4">
               {blocks.map((block, blockIndex) => (
                 <WorkoutBlock
-                  key={`${block.id || block.name}-${blockIndex}`}
+                  key={block.id || blockIndex}
                   title={block.name}
-                  exercises={block.exercises || []}
+                  exercises={block.exercises}
                   isExpanded={isBlockExpanded(blockIndex)}
                   expandExercises={expandExercises}
                   expandedExercises={expandedExercises}
@@ -337,13 +337,13 @@ export default memo(function WorkoutDay({
             </div>
           ) : (
             <div className="text-center py-6">
-              <p className="text-gray-500 dark:text-gray-400">No hay bloques en este día</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-3">No hay bloques en este día</p>
               {onAddBlock && (
                 <button
                   onClick={handleAddBlock}
-                  className="mt-2 inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                  className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
                 >
-                  <Plus className="w-4 h-4 mr-1.5" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Añadir el primer bloque
                 </button>
               )}

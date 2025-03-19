@@ -53,8 +53,15 @@ export default function RenameWorkoutModal({
 
     try {
       await onRename(workoutId, newName.trim(), newDescription.trim());
+      toast.success('Rutina actualizada correctamente');
+      
+      // Refresh the page data
       router.refresh();
-      onClose();
+      
+      // Add a small delay before closing the modal to ensure the data is refreshed
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } catch (error) {
       console.error('Error al actualizar la rutina:', error);
       setError(error instanceof Error ? error.message : 'Error al actualizar la rutina');

@@ -239,7 +239,11 @@ export default function WorkoutClient({
     try {
       await deleteWorkout(workout.id, userId);
       toast.success('Rutina eliminada exitosamente');
-      router.replace('/workout');
+      
+      // Add a small delay before redirecting to ensure the server has processed the deletion
+      setTimeout(() => {
+        router.replace('/workout');
+      }, 300);
     } catch (error: unknown) {
       console.error('Error al eliminar la rutina:', error);
       toast.error('Error al eliminar la rutina');
@@ -364,13 +368,13 @@ export default function WorkoutClient({
               <div className="flex gap-2">
                 <button
                   onClick={expandAll}
-                  className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-md transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-md transition-colors"
                 >
                   Expandir todo
                 </button>
                 <button
                   onClick={collapseAll}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-md transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md transition-colors"
                 >
                   Colapsar todo
                 </button>
@@ -378,7 +382,7 @@ export default function WorkoutClient({
               
               <button
                 onClick={handleDeleteWorkout}
-                className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded-md transition-colors flex items-center"
+                className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-md transition-colors flex items-center"
                 aria-label="Eliminar rutina"
                 disabled={uiState.isDeleting}
               >
