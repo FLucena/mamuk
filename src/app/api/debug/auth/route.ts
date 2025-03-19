@@ -7,6 +7,14 @@ import { checkRouteAccess } from '@/utils/authNavigation';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // Block access in production environment
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Debug endpoints are not available in production' },
+      { status: 403 }
+    );
+  }
+  
   try {
     // Get the server session
     const session = await getServerSession(authOptions);

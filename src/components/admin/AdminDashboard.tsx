@@ -11,6 +11,9 @@ import { sortRoles } from '@/lib/utils/roles';
 import { debugLog, logApiCall } from '@/lib/utils/debugLogger';
 import { runApiTests } from '@/lib/test/api-test';
 
+// Check if we're in development environment
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 // Interfaz para usuarios con rol específico
 interface UserWithRole extends User {
   roles: Role[];
@@ -58,6 +61,7 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalUsers, setTotalUsers] = useState(0);
+  // Only enable debug mode in development
   const [isDebugMode, setIsDebugMode] = useState(false);
 
   // Check if user is admin on mount
@@ -712,8 +716,18 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
       >
         Rutinas Archivadas
       </button>
+      
+      {/* Debug button - only show in development */}
+      {isDevelopment && (
+        <button
+          className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`}
+          onClick={handleRunTests}
+        >
+          Run API Tests
+        </button>
+      )}
     </div>
-  ), [currentView, handleViewChange]);
+  ), [currentView, handleViewChange, isDevelopment, handleRunTests]);
 
   const renderPagination = useMemo(() => (
     <div className="flex items-center justify-between mt-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">

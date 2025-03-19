@@ -10,6 +10,14 @@ import User from '@/lib/models/user';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  // Block access in production environment
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Debug endpoints are not available in production' },
+      { status: 403 }
+    );
+  }
+  
   try {
     // Get the session from the server
     const session = await getServerSession(authOptions);

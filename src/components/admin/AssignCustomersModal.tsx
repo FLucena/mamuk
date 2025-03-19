@@ -9,6 +9,9 @@ import { debugLog } from '@/lib/utils/debugLogger';
 import { testAssignCustomersFlow } from '@/lib/test/api-test';
 import { ensureValidSession } from '@/lib/utils/session';
 
+// Check if we're in development environment
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 interface AssignCustomersModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -208,13 +211,15 @@ export default function AssignCustomersModal({
               Asignar Clientes a {coach.name}
             </h2>
             <div className="flex items-center">
-              <button 
-                onClick={toggleDebug}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mr-3"
-                aria-label="Toggle debug mode"
-              >
-                <Bug className="h-5 w-5" />
-              </button>
+              {isDevelopment && (
+                <button 
+                  onClick={toggleDebug}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mr-3"
+                  aria-label="Toggle debug mode"
+                >
+                  <Bug className="h-5 w-5" />
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 focus:outline-none"
@@ -225,8 +230,8 @@ export default function AssignCustomersModal({
             </div>
           </div>
           
-          {/* Debug Panel */}
-          {showDebug && (
+          {/* Debug Panel - only show in development */}
+          {isDevelopment && showDebug && (
             <div className="px-6 py-2 bg-gray-100 dark:bg-gray-900 text-xs">
               <div className="overflow-x-auto">
                 <p className="font-mono mb-1">Coach ID: {coach._id}</p>

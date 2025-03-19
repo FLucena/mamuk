@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { runApiTests, testEndpoint, ApiTestResult, testAssignCustomersFlow } from '@/lib/test/api-test';
+import { useRouter } from 'next/navigation';
 
 // Import the interface from the API test module
 interface FlowTestResults {
@@ -16,8 +17,12 @@ interface FlowTestResults {
   };
 }
 
+// Check if we're in development environment
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 export default function AdminDebugPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [customEndpoint, setCustomEndpoint] = useState('/api/admin/users?page=1&limit=10');
   const [results, setResults] = useState<ApiTestResult[]>([]);
   const [customResult, setCustomResult] = useState<ApiTestResult | null>(null);
@@ -25,13 +30,7 @@ export default function AdminDebugPage() {
   const [selectedCoachId, setSelectedCoachId] = useState('');
   const [flowResults, setFlowResults] = useState<FlowTestResults | null>(null);
 
-  // Run initial tests on mount
-  useEffect(() => {
-    if (status === 'authenticated') {
-      handleRunTests();
-    }
-  }, [status]);
-
+  // Define all callbacks first, regardless of environment
   const handleRunTests = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -69,6 +68,25 @@ export default function AdminDebugPage() {
       setIsLoading(false);
     }
   }, [selectedCoachId]);
+
+  // Redirect if in production
+  useEffect(() => {
+    if (!isDevelopment) {
+      router.push('/admin');
+    }
+  }, [router]);
+
+  // Run initial tests on mount
+  useEffect(() => {
+    if (status === 'authenticated' && isDevelopment) {
+      handleRunTests();
+    }
+  }, [status, handleRunTests]);
+
+  // If in production, don't render the debug page
+  if (!isDevelopment) {
+    return null;
+  }
 
   if (status === 'loading') {
     return (
