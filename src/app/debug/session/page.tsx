@@ -3,6 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { sessionCache } from '@/utils/sessionCache';
 import { useLightSession } from '@/hooks/useOptimizedSession';
+import { JsonValue } from '@/types/common';
+
+interface CacheStats {
+  hits: number;
+  misses: number;
+  errors: number;
+  totalTime: number;
+  requestCount: number;
+  lastRequestTime: number | null;
+  slowestRequest: number;
+  fastestRequest: number | null;
+  backgroundRefreshes: number;
+}
 
 /**
  * Debug page for monitoring session performance
@@ -10,8 +23,8 @@ import { useLightSession } from '@/hooks/useOptimizedSession';
  */
 export default function SessionDebugPage() {
   const { data: session, status } = useLightSession();
-  const [stats, setStats] = useState<any>(null);
-  const [sessionData, setSessionData] = useState<any>(null);
+  const [stats, setStats] = useState<CacheStats | null>(null);
+  const [sessionData, setSessionData] = useState<JsonValue>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
   // Fetch session stats
@@ -25,7 +38,7 @@ export default function SessionDebugPage() {
       try {
         const data = await sessionCache.getSession();
         setSessionData(data);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching session:', error);
       }
     };

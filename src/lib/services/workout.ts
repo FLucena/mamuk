@@ -180,7 +180,7 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
     }
     
     // Use a more efficient query with projection and proper typing
-    currentUser = await User.findOne(userQuery)
+    currentUser = await (User.findOne as any)(userQuery)
       .select('_id roles')
       .lean()
       .exec() as LeanUserDocument | null;
@@ -193,19 +193,19 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
 
     // Admin users can see all active workouts
     if (Array.isArray(currentUser.roles) && currentUser.roles.includes('admin')) {
-      const workouts = await Workout.find({ 
+      const workouts = await (Workout.find as any)({ 
         status: { $ne: 'archived' }
       })
       .sort({ createdAt: -1 })
       .limit(100) // Add a reasonable limit
-      .lean<MongoWorkout[]>();
+      .lean() as MongoWorkout[];
       
       return workouts.map(mapWorkoutToResponse);
     }
 
     // Coach users can see their own workouts and their customers' workouts
     if (Array.isArray(currentUser.roles) && currentUser.roles.includes('coach')) {
-      const coach = await Coach.findOne({ userId: currentUser._id });
+      const coach = await (Coach.findOne as any)({ userId: currentUser._id });
       
       // If coach profile doesn't exist, create it
       if (!coach) {
@@ -214,19 +214,19 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
           
           // If we still couldn't create a coach, just return workouts created by this user
           if (!newCoach) {
-            const workouts = await Workout.find({
+            const workouts = await (Workout.find as any)({
               status: 'active',
               userId: currentUser._id.toString()
-            }).lean<MongoWorkout[]>();
+            }).lean() as MongoWorkout[];
             return workouts.map(mapWorkoutToResponse);
           }
         } catch (error) {
           console.error('Error creating coach profile:', error);
           // Return just the user's own workouts if coach creation fails
-          const workouts = await Workout.find({
+          const workouts = await (Workout.find as any)({
             status: 'active',
             userId: currentUser._id.toString()
-          }).lean<MongoWorkout[]>();
+          }).lean() as MongoWorkout[];
           return workouts.map(mapWorkoutToResponse);
         }
       }
@@ -237,21 +237,21 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
         ? coachData.customers.map((id: Types.ObjectId) => id.toString())
         : [];
         
-      const workouts = await Workout.find({
+      const workouts = await (Workout.find as any)({
         status: 'active',
         userId: { $in: [currentUser._id.toString(), ...customerIds] }
-      }).lean<MongoWorkout[]>();
+      }).lean() as MongoWorkout[];
       return workouts.map(mapWorkoutToResponse);
     }
 
     // Regular users can see their own workouts and workouts assigned to them
-    const workouts = await Workout.find({ 
+    const workouts = await (Workout.find as any)({ 
       $or: [
         { userId: currentUser._id.toString() }, // Workouts created by the user
         { assignedCustomers: currentUser._id.toString() } // Workouts assigned to the user as a customer
       ],
       status: 'active'
-    }).lean<MongoWorkout[]>();
+    }).lean() as MongoWorkout[];
     return workouts.map(mapWorkoutToResponse);
   } catch (error) {
     console.error('Error fetching workouts:', error);
@@ -270,7 +270,7 @@ export async function getWorkout(id: string, userId?: string) {
     await dbConnect();
     
     // Buscar el workout
-    const workout = await Workout.findById(id).lean<MongoWorkout>();
+    const workout = await (Workout.findById as any)(id).lean() as MongoWorkout;
     
     if (!workout) {
       console.error(`[INFO] Workout no encontrado. ID: ${id}`);
@@ -359,7 +359,7 @@ async function isUserCoach(coachUserId: string, studentUserId: string): Promise<
   try {
     console.log(`[DEBUG] Verificando si ${coachUserId} es coach de ${studentUserId}`);
     
-    const coach = await Coach.findOne({ userId: coachUserId }).lean();
+    const coach = await (Coach.findOne as any)({ userId: coachUserId }).lean();
     if (!coach) {
       console.log(`[DEBUG] No se encontró el coach con userId: ${coachUserId}`);
       return false;
@@ -394,7 +394,7 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string, 
   await dbConnect();
 
   // Get the user to determine their role
-  const user = await User.findById(userId).select('roles');
+  const user = await (User.findById as any)(userId).select('roles');
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
@@ -402,7 +402,7 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string, 
   // Si se proporciona un creatorId, verificar que sea un coach o admin
   let isCreatedByCoach = false;
   if (creatorId && creatorId !== userId) {
-    const creator = await User.findById(creatorId).select('roles');
+    const creator = await (User.findById as any)(creatorId).select('roles');
     if (!creator) {
       throw new Error('Creador no encontrado');
     }
@@ -421,7 +421,7 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string, 
 
   // For customers, check if they've reached their limit of 3 workouts
   if (!isCoachOrAdmin && !isCreatedByCoach) {
-    const workoutCount = await Workout.countDocuments({
+    const workoutCount = await (Workout.countDocuments as any)({
       userId,
       createdBy: userId,
       status: 'active'
@@ -454,11 +454,11 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string, 
     assignedCustomers: [userId] // Asignar automáticamente al usuario para el que se creó
   };
 
-  const doc = await Workout.create(sanitizedData);
+  const doc = await (Workout.create as any)(sanitizedData);
   
   // Si fue creado por un coach, actualizar también el usuario
   if (creatorId && creatorId !== userId) {
-    await User.findByIdAndUpdate(
+    await (User.findByIdAndUpdate as any)(
       userId,
       { $addToSet: { assignedWorkouts: doc._id } }
     );
@@ -476,13 +476,13 @@ export async function updateWorkout(id: string, data: Partial<WorkoutType>, user
   }
   
   // Get the workout
-  const workout = await Workout.findById(id);
+  const workout = await (Workout.findById as any)(id);
   if (!workout) {
     throw new Error('Rutina no encontrada');
   }
   
   // Check permissions
-  const user = await User.findById(userId);
+  const user = await (User.findById as any)(userId);
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
@@ -497,7 +497,7 @@ export async function updateWorkout(id: string, data: Partial<WorkoutType>, user
   
   // Coach can update workouts they created or for their clients
   if (user.roles.includes('coach')) {
-    const coach = await Coach.findOne({ userId: user._id });
+    const coach = await (Coach.findOne as any)({ userId: user._id });
     
     // If coach profile doesn't exist, they can only update their own workouts
     if (!coach) {
@@ -543,13 +543,13 @@ export async function archiveWorkout(id: string, userId: string): Promise<Workou
   }
   
   // Get the workout
-  const workout = await Workout.findById(id);
+  const workout = await (Workout.findById as any)(id);
   if (!workout) {
     throw new Error('Rutina no encontrada');
   }
   
   // Check permissions
-  const user = await User.findById(userId);
+  const user = await (User.findById as any)(userId);
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
@@ -563,7 +563,7 @@ export async function archiveWorkout(id: string, userId: string): Promise<Workou
   
   // Coach can archive workouts they created or for their clients
   if (user.roles.includes('coach')) {
-    const coach = await Coach.findOne({ userId: user._id });
+    const coach = await (Coach.findOne as any)({ userId: user._id });
     
     // If coach profile doesn't exist, they can only archive their own workouts
     if (!coach) {
@@ -605,13 +605,13 @@ export async function getWorkoutsByUserId(userId: string): Promise<WorkoutType[]
     await dbConnect();
     
     // Buscar workouts del usuario y workouts asignados al usuario
-    const workouts = await Workout.find({ 
+    const workouts = await (Workout.find as any)({ 
       $or: [
         { userId }, // Workouts creados por el usuario
         { assignedCustomers: userId } // Workouts asignados al usuario como cliente
       ],
       status: 'active' // Solo workouts activos
-    }).lean<MongoWorkout[]>();
+    }).lean() as MongoWorkout[];
     
     // Transformar los workouts para la respuesta
     return workouts.map(workout => mapWorkoutToResponse(workout));
@@ -626,7 +626,7 @@ export async function getWorkoutById(id: string, userId?: string): Promise<Worko
   validateIds(id);
   
   await dbConnect();
-  const workout = await Workout.findById(id);
+  const workout = await (Workout.findById as any)(id);
   if (!workout) throw new Error('Workout not found');
   
   // Si se proporcionó un userId, verificar que tenga acceso

@@ -55,11 +55,6 @@ function shouldHavePriority(index: number): boolean {
   return index < 2; // Only prioritize loading the first two images
 }
 
-// Convert boolean to string for priority attribute
-function priorityToString(value: boolean): string | undefined {
-  return value ? "true" : undefined;
-}
-
 export default function AboutPage() {
   return (
     <main className="bg-gray-50 dark:bg-gray-950">

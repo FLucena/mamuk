@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { ErrorPage } from '@/components/ui/error';
 
 export default function WorkoutError({
-  error,
-  reset,
+  error
 }: {
   error: Error & { digest?: string };
   reset: () => void;

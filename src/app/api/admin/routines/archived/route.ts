@@ -8,18 +8,35 @@ import { Workout } from '@/lib/models/workout';
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
-
+// Define interface for the document we get from MongoDB
 interface DbRoutine {
   _id: Types.ObjectId;
   name: string;
-  description: string;
+  description?: string;
   createdAt: Date;
   updatedAt: Date;
-  userId: {
+  userId?: {
+    name?: string;
+    email?: string;
+  };
+  status: string;
+}
+
+// Interface for transformed routine
+interface TransformedRoutine {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  archivedAt: string;
+  coach: {
     name: string;
     email: string;
   };
-  status: string;
+  customer: {
+    name: string;
+    email: string;
+  };
 }
 
 export async function GET() {
@@ -36,7 +53,7 @@ export async function GET() {
     await dbConnect();
     
     // Consultar directamente la base de datos para rutinas archivadas
-    const archivedRoutines = await Workout.find({ 
+    const archivedRoutines = await (Workout.find as any)({ 
       status: 'archived' 
     })
     .populate('userId', 'name email')
@@ -44,12 +61,12 @@ export async function GET() {
     .lean();
 
     // Transform the data to match our interface
-    const transformedRoutines = archivedRoutines.map((routine: any) => ({
+    const transformedRoutines: TransformedRoutine[] = (archivedRoutines as any[]).map((routine: any) => ({
       id: routine._id.toString(),
-      name: routine.name,
+      name: routine.name || 'Sin nombre',
       description: routine.description || 'Sin descripción',
-      createdAt: routine.createdAt.toISOString(),
-      archivedAt: routine.updatedAt.toISOString(),
+      createdAt: new Date(routine.createdAt).toISOString(),
+      archivedAt: new Date(routine.updatedAt).toISOString(),
       coach: {
         name: session.user.name || 'Admin',
         email: session.user.email || 'admin@mamuk.com'

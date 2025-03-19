@@ -86,9 +86,12 @@ export default function ExerciseCard({
       
       toast.success('Exercise updated successfully');
       setIsEditing(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating exercise:', error);
-      toast.error(error.message || 'Failed to update exercise');
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to update exercise';
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
       hideSpinner();

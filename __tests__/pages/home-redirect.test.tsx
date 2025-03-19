@@ -19,7 +19,7 @@ jest.mock('next/navigation', () => ({
 // Mock next/image
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => <img {...props} />,
+  default: (props: React.ComponentProps<'img'>) => <img {...props} />,
 }));
 
 // Mock getServerSession

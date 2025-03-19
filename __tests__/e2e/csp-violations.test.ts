@@ -22,7 +22,7 @@ test.describe('Content Security Policy Tests', () => {
   // Set up CSP violation monitoring
   test.beforeEach(async ({ page }) => {
     // Listen for any CSP violations
-    let cspViolations: any[] = [];
+    let cspViolations: unknown[] = [];
     
     // Setup CSP violation listener
     await page.addInitScript(() => {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getWorkout, updateWorkout, archiveWorkout, getWorkoutById } from '@/lib/services/workout';
+import { updateWorkout, archiveWorkout, getWorkoutById } from '@/lib/services/workout';
 import { validateIds } from '@/lib/utils/security';
 import { handleApiError, createApiError } from '@/lib/utils/api-error-handler';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
@@ -30,7 +30,7 @@ export async function GET(
     
     try {
       validateIds(id);
-    } catch (error) {
+    } catch {
       throw createApiError('Invalid workout ID', 'VALIDATION_ERROR');
     }
     
@@ -77,7 +77,7 @@ export async function PUT(
     
     try {
       validateIds(id);
-    } catch (error) {
+    } catch {
       throw createApiError('Invalid workout ID', 'VALIDATION_ERROR');
     }
     
@@ -120,7 +120,7 @@ export async function DELETE(
     
     try {
       validateIds(id);
-    } catch (error) {
+    } catch {
       throw createApiError('Invalid workout ID', 'VALIDATION_ERROR');
     }
     

@@ -3,14 +3,33 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/user';
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
+// Define UserData interface for better type safety
+interface UserData {
+  name: string;
+  email: string;
+  emailVerified: Date;
+  image: string;
+  roles: string[];
+  provider: string;
+  password: string;
+  height?: number;
+  weight?: number;
+  birthdate?: Date;
+  gender?: string;
+  fitnessLevel?: string;
+  fitnessGoals?: string[];
+  preferredWorkoutDays?: string[];
+  lastLogin: Date;
+  coach?: string;
+}
+
 // Generate a random user
-function generateRandomUser(role: 'admin' | 'coach' | 'customer', index: number) {
+function generateRandomUser(role: 'admin' | 'coach' | 'customer', index: number): UserData {
   const fitnessLevels = ['beginner', 'intermediate', 'advanced'];
   const fitnessGoalsOptions = [
     'weight loss', 'muscle gain', 'endurance', 'flexibility', 
@@ -28,7 +47,7 @@ function generateRandomUser(role: 'admin' | 'coach' | 'customer', index: number)
   const email = `${name.toLowerCase().replace(' ', '.')}${index}@example.com`;
   
   // Base user data
-  const user: any = {
+  const user: UserData = {
     name,
     email,
     emailVerified: new Date(),
@@ -77,7 +96,7 @@ export async function GET(request: NextRequest) {
     const createdUsers = [];
     
     // Create 1 admin if none exists
-    const existingAdmin = await User.findOne({ roles: 'admin' });
+    const existingAdmin = await (User.findOne as any)({ roles: 'admin' });
     if (!existingAdmin) {
       const adminUser = {
         name: 'Admin User',
@@ -90,7 +109,7 @@ export async function GET(request: NextRequest) {
         lastLogin: new Date()
       };
       
-      await User.create(adminUser);
+      await (User.create as any)(adminUser);
       createdUsers.push({ name: adminUser.name, email: adminUser.email, roles: adminUser.roles });
     }
     
@@ -101,7 +120,7 @@ export async function GET(request: NextRequest) {
     for (let i = 0; i < coachCount; i++) {
       const coach = generateRandomUser('coach', i);
       try {
-        const savedCoach = await User.create(coach);
+        const savedCoach = await (User.create as any)(coach);
         coaches.push(savedCoach);
         createdUsers.push({ name: coach.name, email: coach.email, roles: coach.roles });
       } catch (error) {
@@ -122,7 +141,7 @@ export async function GET(request: NextRequest) {
       }
       
       try {
-        await User.create(customer);
+        await (User.create as any)(customer);
         createdUsers.push({ name: customer.name, email: customer.email, roles: customer.roles });
       } catch (error) {
         console.error(`Error creating customer: ${error}`);

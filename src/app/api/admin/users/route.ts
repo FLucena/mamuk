@@ -19,6 +19,17 @@ interface DbUser {
   roles?: string[];
 }
 
+// Define the query interface
+interface UserQuery {
+  roles?: string;
+  $or?: Array<{
+    [key: string]: {
+      $regex: string;
+      $options: string;
+    }
+  }>;
+}
+
 export async function GET(request: Request) {
   try {
     const startTime = performance.now();
@@ -53,7 +64,7 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
     
     // Build query
-    const query: any = {};
+    const query: UserQuery = {};
     if (roleFilter) {
       query.roles = roleFilter;
     }
@@ -68,12 +79,12 @@ export async function GET(request: Request) {
     
     // Execute query with pagination and only select needed fields
     const [users, totalCount] = await Promise.all([
-      User.find(query)
+      (User.find as any)(query)
         .select('name email image roles')
         .skip(skip)
         .limit(limit)
-        .lean<DbUser[]>(),
-      User.countDocuments(query)
+        .lean() as DbUser[],
+      (User.countDocuments as any)(query)
     ]);
 
     // Transformar los datos para la respuesta

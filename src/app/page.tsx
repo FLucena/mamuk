@@ -1,43 +1,8 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import SchemaOrg from '@/components/SchemaOrg';
-import { generateOrganizationSchema, generateWebPageSchema, generateFAQSchema } from '@/lib/utils/schema';
-import { SignInButtons } from '@/components/auth/SignInButtons';
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants/site';
-import ResponsiveContainer from '@/components/ui/ResponsiveContainer';
-import ResponsiveImage from '@/components/ui/ResponsiveImage';
-import { ResponsiveHeading1, ResponsiveHeading2, ResponsiveHeading3, ResponsiveParagraph } from '@/components/ui/ResponsiveText';
-import ResponsiveGrid from '@/components/ui/ResponsiveGrid';
 
 // Enable incremental static regeneration with a 1 hour revalidation period
 // This makes the page static for unauthenticated users, improving server response time
 export const revalidate = 3600; // 1 hour
-
-// Preguntas frecuentes para el esquema FAQ
-const faqs = [
-  {
-    question: '¿Qué es Mamuk Training?',
-    answer: 'Mamuk es una plataforma que conecta entrenadores personales con clientes para crear y gestionar rutinas de entrenamiento personalizadas.'
-  },
-  {
-    question: '¿Cómo puedo registrarme como entrenador?',
-    answer: 'Puedes registrarte como entrenador desde la página de registro seleccionando la opción "Soy entrenador" y completando la información requerida.'
-  },
-  {
-    question: '¿Qué beneficios tiene usar Mamuk?',
-    answer: 'Mamuk te permite crear rutinas personalizadas, hacer seguimiento de tu progreso, recibir feedback de profesionales y compartir tus logros con la comunidad.'
-  }
-];
-
-// Pre-generate the schema data for better performance
-const organizationSchema = generateOrganizationSchema();
-const webPageSchema = generateWebPageSchema(
-  `${SITE_NAME} - ${SITE_DESCRIPTION}`,
-  'Crea, gestiona y comparte rutinas de entrenamiento personalizadas. Mamuk te ayuda a alcanzar tus objetivos fitness con planes adaptados a tus necesidades.',
-  process.env.NEXT_PUBLIC_APP_URL || SITE_URL
-);
-const faqSchema = generateFAQSchema(faqs);
 
 export default async function Home() {
   // Always redirect to workout page

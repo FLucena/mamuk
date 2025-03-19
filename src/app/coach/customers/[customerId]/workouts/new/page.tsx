@@ -47,7 +47,7 @@ export default async function NewWorkoutPage({ params }: NewWorkoutPageProps) {
     }
 
     // Crear la rutina para el cliente (usando el ID del cliente como userId)
-    const workout = await createWorkout({
+    await createWorkout({
       name,
       description,
       days: [

@@ -2,6 +2,7 @@ import { dbConnect } from '@/lib/db';
 import User from '@/lib/models/user';
 import { Types } from 'mongoose';
 import { validateMongoId } from '@/lib/utils/security';
+import { getTypedModel, toObjectId } from '@/lib/utils/mongoose';
 
 interface UserDocument {
   _id: Types.ObjectId;
@@ -20,11 +21,12 @@ export async function getActiveUsers() {
   try {
     // Removed console.log
     await dbConnect();
+    const TypedUser = getTypedModel(User);
     
     // Removed console.log
     
     // Buscar usuarios que sean activos o que no tengan el campo active (asumiendo que son activos)
-    const users = await User.find({
+    const users = await TypedUser.find({
       $or: [
         { active: true },
         { active: { $exists: false } }
@@ -61,8 +63,9 @@ export async function getUserById(userId: string) {
   }
 
   await dbConnect();
+  const TypedUser = getTypedModel(User);
   
-  const user = await User.findOne({ _id: new Types.ObjectId(userId) })
+  const user = await TypedUser.findOne({ _id: toObjectId(userId) as Types.ObjectId })
     .select('name email image roles')
     .lean() as UserDocument | null;
 
@@ -87,11 +90,12 @@ export async function getCustomers() {
   try {
     // Removed console.log
     await dbConnect();
+    const TypedUser = getTypedModel(User);
     
     // Removed console.log
     
     // Buscar usuarios que sean activos y tengan rol de cliente
-    const users = await User.find({
+    const users = await TypedUser.find({
       $and: [
         { 
           $or: [

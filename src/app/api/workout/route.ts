@@ -90,12 +90,12 @@ export async function GET(request: NextRequest) {
     
     // For production, create optimized workout objects with additional data
     const optimizedWorkouts = workouts.map(workout => ({
-      id: workout.id,
-      _id: workout.id,
+      id: workout.id ?? null,
+      _id: workout.id ?? null,
       name: workout.name,
       userId: workout.userId,
       days: Array.isArray(workout.days) ? workout.days.map(day => ({
-        id: day.id,
+        id: day.id ?? null,
         name: day.name,
         blocks: []
       })) : [],
@@ -110,10 +110,14 @@ export async function GET(request: NextRequest) {
       headers,
       200
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching workouts:', error);
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Error fetching workouts';
+      
     return NextResponse.json(
-      { error: 'Error fetching workouts', workouts: [] },
+      { error: errorMessage, workouts: [] },
       { status: 500 }
     );
   }

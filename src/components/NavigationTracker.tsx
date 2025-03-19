@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { trackNavigation, logNavigationStats } from '@/lib/utils/debug';
 
 // Debounce function to limit the frequency of function calls
-function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+function debounce<T extends (...args: unknown[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
   return function(this: any, ...args: Parameters<T>): void {
     const context = this;
@@ -37,8 +37,8 @@ const NavigationTracker = memo(function NavigationTracker() {
   
   // Aumentar el tiempo de debounce para reducir la frecuencia de llamadas
   const debouncedTrackNavigation = useCallback(
-    debounce((from: string, to: string) => {
-      trackNavigation(from, to);
+    debounce((from: unknown, to: unknown) => {
+      trackNavigation(from as string, to as string);
     }, 500), // Aumentado a 500ms
     []
   );

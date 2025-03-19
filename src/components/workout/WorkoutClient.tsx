@@ -1,72 +1,31 @@
 'use client';
 
-import { useState, useEffect, useMemo, SetStateAction } from 'react';
+import { useState, useMemo, SetStateAction } from 'react';
 import { useRouter } from 'next/navigation';
-import { WorkoutDay, Exercise, Workout } from '@/types/models';
+import { Exercise, Workout } from '@/types/models';
 import WorkoutDetailHeader from '@/components/workout/WorkoutDetailHeader';
 import Link from 'next/link';
-import { ChevronLeft, Plus } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { ChevronLeft, Plus, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import WorkoutDayComponent from '@/components/workout/WorkoutDay';
-
-/**
- * Hook personalizado para obtener los roles reales del usuario desde la API
- */
-function useRealUserRoles() {
-  const { data: session } = useSession();
-  const [roles, setRoles] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchUserRoles() {
-      if (!session?.user?.email) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Endpoint que consultará los roles del usuario en la base de datos
-        const response = await fetch(`/api/users/role?email=${encodeURIComponent(session.user.email)}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          // La API devuelve { roles } directamente
-          setRoles(Array.isArray(data.roles) ? data.roles : []);
-        } else {
-          // Fallback a los roles de la sesión si no podemos obtener los roles actualizados
-          setRoles(session.user.roles || []);
-        }
-      } catch (error) {
-        // Fallback a los roles de la sesión
-        setRoles(session.user.roles || []);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchUserRoles();
-  }, [session]);
-
-  return { roles, loading };
-}
+import { ErrorWithMessage } from '@/types/common';
 
 interface WorkoutClientProps {
   workout: Workout;
-  addDay: (workoutId: string, userId: string) => Promise<any>;
-  addBlock: (workout: Workout, dayIndex: number) => Promise<any>;
-  addExercise: (workout: Workout, dayIndex: number, blockIndex: number) => Promise<any>;
-  updateExercise: (workout: Workout, dayIndex: number, blockIndex: number, exerciseIndex: number, data: Partial<Exercise>) => Promise<any>;
-  deleteExercise: (workout: Workout, dayIndex: number, blockIndex: number, exerciseIndex: number) => Promise<any>;
-  deleteBlock: (workout: Workout, dayIndex: number, blockIndex: number) => Promise<any>;
-  deleteDay: (workout: Workout, dayIndex: number) => Promise<any>;
-  deleteWorkout: (workoutId: string, userId: string) => Promise<any>;
-  updateDayName?: (workout: Workout, dayIndex: number, newName: string) => Promise<any>;
-  updateBlockName?: (workout: Workout, dayIndex: number, blockIndex: number, newName: string) => Promise<any>;
+  addDay: (workoutId: string, userId: string) => Promise<Workout>;
+  addBlock: (workout: Workout, dayIndex: number) => Promise<Workout>;
+  addExercise: (workout: Workout, dayIndex: number, blockIndex: number) => Promise<Workout>;
+  updateExercise: (workout: Workout, dayIndex: number, blockIndex: number, exerciseIndex: number, data: Partial<Exercise>) => Promise<Workout>;
+  deleteExercise: (workout: Workout, dayIndex: number, blockIndex: number, exerciseIndex: number) => Promise<Workout>;
+  deleteBlock: (workout: Workout, dayIndex: number, blockIndex: number) => Promise<Workout>;
+  deleteDay: (workout: Workout, dayIndex: number) => Promise<Workout>;
+  deleteWorkout: (workoutId: string, userId: string) => Promise<void>;
+  updateDayName?: (workout: Workout, dayIndex: number, newName: string) => Promise<Workout>;
+  updateBlockName?: (workout: Workout, dayIndex: number, blockIndex: number, newName: string) => Promise<Workout>;
   userId: string;
   showVideosInline?: boolean;
-  isAdmin: boolean;
-  isCoach: boolean;
+  isAdmin?: boolean;
+  isCoach?: boolean;
 }
 
 interface UIState {
@@ -92,12 +51,8 @@ export default function WorkoutClient({
   updateBlockName,
   userId,
   showVideosInline = true,
-  isAdmin,
-  isCoach
 }: WorkoutClientProps) {
   const router = useRouter();
-  const { data: session } = useSession();
-  const { roles: userRoles, loading: rolesLoading } = useRealUserRoles();
   
   // Use a single state object for UI state to reduce re-renders
   const [uiState, setUiState] = useState<UIState>({
@@ -140,9 +95,10 @@ export default function WorkoutClient({
       
       toast.success('Día agregado correctamente');
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al agregar día:', error);
-      toast.error(`Error al agregar día: ${error.message || 'Error desconocido'}`);
+      const err = error as ErrorWithMessage;
+      toast.error(`Error al agregar día: ${err.message || 'Error desconocido'}`);
     } finally {
       updateUIState({ isLoading: false });
     }
@@ -165,9 +121,10 @@ export default function WorkoutClient({
       
       toast.success('Bloque agregado correctamente');
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al agregar bloque:', error);
-      toast.error(error.message || 'Error al agregar bloque');
+      const err = error as ErrorWithMessage;
+      toast.error(err.message || 'Error al agregar bloque');
     } finally {
       updateUIState({ isLoading: false });
     }
@@ -175,21 +132,21 @@ export default function WorkoutClient({
 
   const handleAddExercise = async (dayIndex: number, blockIndex: number) => {
     try {
-      const result = await addExercise(workout, dayIndex, blockIndex);
+      await addExercise(workout, dayIndex, blockIndex);
       toast.success('Ejercicio añadido correctamente');
       router.refresh();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error adding exercise:', error);
       toast.error('Error al añadir el ejercicio');
     }
   };
 
-  const handleUpdateExercise = async (dayIndex: number, blockIndex: number, exerciseIndex: number, data: any) => {
+  const handleUpdateExercise = async (dayIndex: number, blockIndex: number, exerciseIndex: number, data: Partial<Exercise>) => {
     try {
-      const result = await updateExercise(workout, dayIndex, blockIndex, exerciseIndex, data);
+      await updateExercise(workout, dayIndex, blockIndex, exerciseIndex, data);
       toast.success('Ejercicio actualizado correctamente');
       router.refresh();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error updating exercise:', error);
       toast.error('Error al actualizar el ejercicio');
     }
@@ -197,10 +154,10 @@ export default function WorkoutClient({
 
   const handleDeleteExercise = async (dayIndex: number, blockIndex: number, exerciseIndex: number) => {
     try {
-      const result = await deleteExercise(workout, dayIndex, blockIndex, exerciseIndex);
+      await deleteExercise(workout, dayIndex, blockIndex, exerciseIndex);
       toast.success('Ejercicio eliminado correctamente');
       router.refresh();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error deleting exercise:', error);
       toast.error('Error al eliminar el ejercicio');
     }
@@ -208,7 +165,7 @@ export default function WorkoutClient({
 
   const handleDeleteBlock = async (dayIndex: number, blockIndex: number) => {
     try {
-      const result = await deleteBlock(workout, dayIndex, blockIndex);
+      await deleteBlock(workout, dayIndex, blockIndex);
       toast.success('Bloque eliminado correctamente');
       router.refresh();
       
@@ -225,7 +182,7 @@ export default function WorkoutClient({
       });
       
       updateUIState({ expandedBlocks: newExpandedBlocks });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error deleting block:', error);
       toast.error('Error al eliminar el bloque');
     }
@@ -233,7 +190,7 @@ export default function WorkoutClient({
 
   const handleDeleteDay = async (dayIndex: number) => {
     try {
-      const result = await deleteDay(workout, dayIndex);
+      await deleteDay(workout, dayIndex);
       toast.success('Día eliminado correctamente');
       router.refresh();
 
@@ -268,7 +225,7 @@ export default function WorkoutClient({
         expandedDays: newExpandedDays,
         expandedBlocks: newExpandedBlocks
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error deleting day:', error);
       toast.error('Error al eliminar el día');
     }
@@ -283,7 +240,8 @@ export default function WorkoutClient({
       await deleteWorkout(workout.id, userId);
       toast.success('Rutina eliminada exitosamente');
       router.replace('/workout');
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error('Error al eliminar la rutina:', error);
       toast.error('Error al eliminar la rutina');
       updateUIState({ isDeleting: false });
     }
@@ -300,9 +258,10 @@ export default function WorkoutClient({
       await updateDayName(workout, dayIndex, newName);
       toast.success('Nombre actualizado correctamente');
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating day name:', error);
-      toast.error(`Error al actualizar el nombre: ${error.message || 'Error desconocido'}`);
+      const err = error as ErrorWithMessage;
+      toast.error(`Error al actualizar el nombre: ${err.message || 'Error desconocido'}`);
     } finally {
       updateUIState({ isLoading: false });
     }
@@ -319,9 +278,10 @@ export default function WorkoutClient({
       await updateBlockName(workout, dayIndex, blockIndex, newName);
       toast.success('Nombre actualizado correctamente');
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating block name:', error);
-      toast.error(`Error al actualizar el nombre: ${error.message || 'Error desconocido'}`);
+      const err = error as ErrorWithMessage;
+      toast.error(`Error al actualizar el nombre: ${err.message || 'Error desconocido'}`);
     } finally {
       updateUIState({ isLoading: false });
     }
@@ -335,17 +295,17 @@ export default function WorkoutClient({
     
     // Llenar los objetos con los datos necesarios
     if (workout.days) {
-      workout.days.forEach((day, dayIndex) => {
-        allDaysExpanded[dayIndex] = true;
+      workout.days.forEach((day, i) => {
+        allDaysExpanded[i] = true;
         
         if (day.blocks) {
-          day.blocks.forEach((block, blockIndex) => {
-            const blockKey = `${dayIndex}-${blockIndex}`;
+          day.blocks.forEach((block, j) => {
+            const blockKey = `${i}-${j}`;
             allBlocksExpanded[blockKey] = true;
             
             if (block.exercises) {
-              block.exercises.forEach((_, exerciseIndex) => {
-                const exerciseKey = `${block.name}-${exerciseIndex}`;
+              block.exercises.forEach((_, k) => {
+                const exerciseKey = `${block.name}-${k}`;
                 allExercisesExpanded[exerciseKey] = true;
               });
             }
@@ -380,25 +340,7 @@ export default function WorkoutClient({
     const allBlocksCollapsed: Record<string, boolean> = {};
     const allExercisesCollapsed: Record<string, boolean> = {};
     
-    // Llenar los objetos con los datos necesarios
-    if (workout.days) {
-      workout.days.forEach((day, dayIndex) => {
-        // No establecemos nada para los días, lo que equivale a colapsado
-        
-        if (day.blocks) {
-          day.blocks.forEach((block, blockIndex) => {
-            // No establecemos nada para los bloques, lo que equivale a colapsado
-            
-            if (block.exercises) {
-              block.exercises.forEach((_, exerciseIndex) => {
-                const exerciseKey = `${block.name}-${exerciseIndex}`;
-                allExercisesCollapsed[exerciseKey] = false; // Explícitamente colapsado
-              });
-            }
-          });
-        }
-      });
-    }
+    // No es necesario iterar por los elementos ya que estamos colapsando todo
     
     // Actualizar los estados
     updateUIState({
@@ -406,11 +348,6 @@ export default function WorkoutClient({
       expandedBlocks: allBlocksCollapsed,
       expandedExercises: allExercisesCollapsed
     });
-    
-    // Ya no necesitamos este estado global
-    // if (expandExercises) {
-    //   setExpandExercises(false);
-    // }
   };
 
   return (
@@ -444,6 +381,13 @@ export default function WorkoutClient({
                   className="px-3 py-1 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded transition-colors"
                 >
                   Colapsar todo
+                </button>
+                <button
+                  onClick={handleDeleteWorkout}
+                  className="px-3 py-1 text-sm text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded transition-colors flex items-center"
+                  aria-label="Eliminar rutina"
+                >
+                  <Trash className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -530,4 +474,4 @@ export default function WorkoutClient({
       )}
     </div>
   );
-} 
+}

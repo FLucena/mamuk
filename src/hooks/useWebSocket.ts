@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { wsManager } from '@/lib/websocket-manager';
+import { MessageData } from '@/types/common';
 
 interface UseWebSocketOptions {
   url: string;
@@ -17,7 +18,7 @@ interface UseWebSocketReturn {
   socket: WebSocket | null;
   isConnected: boolean;
   isConnecting: boolean;
-  lastMessage: any;
+  lastMessage: MessageData;
   error: Event | null;
   connect: () => void;
   disconnect: () => void;
@@ -39,7 +40,7 @@ const useWebSocket = ({
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [lastMessage, setLastMessage] = useState<any>(null);
+  const [lastMessage, setLastMessage] = useState<MessageData>(null);
   const [error, setError] = useState<Event | null>(null);
   
   // Use a ref to track the instance ID for cleanup

@@ -26,7 +26,7 @@ const users: User[] = [];
 /**
  * GET handler - Return all users
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   // Add cache control headers
   const headers = new Headers();
   headers.set('Cache-Control', 'private, max-age=10');
@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
   const result = await validateRequest(req, UserSchema);
   
   if (!result.success) {
-    return result.response;
+    // Use type assertion to fix TypeScript error
+    return (result as any).response;
   }
   
   // Data is valid, sanitize any HTML content
@@ -95,7 +96,8 @@ export async function PUT(req: NextRequest) {
   }));
   
   if (!result.success) {
-    return result.response;
+    // Use type assertion to fix TypeScript error
+    return (result as any).response;
   }
   
   const updateData = result.data;

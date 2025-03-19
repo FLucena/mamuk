@@ -2,17 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getCoachById, updateCoach, addCustomerToCoach, removeCustomerFromCoach } from '@/lib/services/coach';
-import { validateMongoId } from '@/lib/utils/security';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
-
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  image?: string;
+interface SessionUser {
+  id?: string;
+  name?: string;
+  email?: string;
+  roles: string[];
 }
 
 export async function GET(
@@ -33,7 +31,7 @@ export async function GET(
     }
 
     return NextResponse.json(coach);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error obteniendo coach:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
@@ -53,7 +51,7 @@ export async function PUT(
     }
 
     // Verificar que el usuario es admin
-    const user = session.user as any;
+    const user = session.user as SessionUser;
     if (!user.roles.includes('admin')) {
       return NextResponse.json(
         { error: 'No tienes permisos para actualizar coaches' },
@@ -77,10 +75,10 @@ export async function PUT(
     }
 
     return NextResponse.json(coach);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error actualizando coach:', error);
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
+      { error: error instanceof Error ? error.message : 'Error interno del servidor' },
       { status: 500 }
     );
   }
@@ -97,7 +95,7 @@ export async function PATCH(
     }
 
     // Verificar que el usuario es admin
-    const user = session.user as any;
+    const user = session.user as SessionUser;
     if (!user.roles.includes('admin')) {
       return NextResponse.json(
         { error: 'No tienes permisos para gestionar clientes' },
@@ -136,10 +134,10 @@ export async function PATCH(
     }
 
     return NextResponse.json(coach);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error gestionando cliente:', error);
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
+      { error: error instanceof Error ? error.message : 'Error interno del servidor' },
       { status: 500 }
     );
   }

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Metadata } from 'next';
 
 // Metadata can't be used in client components, so we'll need to move it to a separate layout file
 // or remove it from this client component

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // GET /api/auth/check - Check authentication status
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get the session
     const session = await getServerSession(authOptions);

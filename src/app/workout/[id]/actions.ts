@@ -69,7 +69,7 @@ export async function addDay(workoutId: string, userId: string) {
 
   await dbConnect();
   try {
-    const workout = await Workout.findOne({
+    const workout = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workoutId),
       userId: userId.toString()
     });
@@ -152,7 +152,7 @@ export async function addBlock(workout: WorkoutType, dayIndex: number) {
       userId: session.user.id
     });
 
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workoutId),
       userId: session.user.id.toString()
     });
@@ -221,7 +221,7 @@ export async function addExercise(workout: WorkoutType, dayIndex: number, blockI
 
   await dbConnect();
   try {
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -261,7 +261,7 @@ export async function updateExercise(
 
   await dbConnect();
   try {
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -293,7 +293,7 @@ export async function deleteExercise(
 
   await dbConnect();
   try {
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -319,7 +319,7 @@ export async function deleteDay(workout: WorkoutType, dayIndex: number) {
 
   await dbConnect();
   try {
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workout.id),
       userId: workout.userId.toString()
     });
@@ -357,7 +357,7 @@ export async function deleteBlock(workout: WorkoutType, dayIndex: number, blockI
 
   await dbConnect();
   try {
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workout.id),
       userId: session.user.id.toString()
     });
@@ -387,7 +387,7 @@ export async function deleteWorkout(workoutId: string, userId: string) {
   await dbConnect();
   try {
     // Removed console.log
-    const result = await Workout.findOneAndDelete({
+    const result = await (Workout.findOneAndDelete as any)({
       _id: new Types.ObjectId(workoutId),
       userId: userId.toString()
     });
@@ -452,7 +452,7 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
     const isAdmin = userRole === 'admin';
     
     // Obtener el workout original
-    const originalWorkout = await Workout.findById(workoutId);
+    const originalWorkout = await (Workout.findById as any)(workoutId);
     if (!originalWorkout) {
       console.error(`[SECURITY] Intento de duplicación de workout inexistente. ID: ${workoutId}`);
       throw new Error('Rutina no encontrada');
@@ -484,7 +484,9 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       };
       
       // Eliminar _id si existe
-      delete newDay._id;
+      if ('_id' in newDay) {
+        delete newDay._id;
+      }
       
       // Procesar los bloques del día
       newDay.blocks = (newDay.blocks || []).map((block: any) => {
@@ -498,7 +500,9 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
         };
         
         // Eliminar _id si existe
-        delete newBlock._id;
+        if ('_id' in newBlock) {
+          delete newBlock._id;
+        }
         
         // Procesar los ejercicios del bloque
         newBlock.exercises = (newBlock.exercises || []).map((exercise: any) => {
@@ -512,7 +516,9 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
           };
           
           // Eliminar _id si existe
-          delete newExercise._id;
+          if ('_id' in newExercise) {
+            delete newExercise._id;
+          }
           
           return newExercise;
         });
@@ -615,7 +621,7 @@ export async function assignWorkoutToUser(
       customerIds: data.customerIds.slice(0, 5)
     });
 
-    const updatedWorkout = await Workout.findByIdAndUpdate(
+    const updatedWorkout = await (Workout.findByIdAndUpdate as any)(
       workoutId,
       {
         $addToSet: {
@@ -624,7 +630,7 @@ export async function assignWorkoutToUser(
         }
       },
       { new: true, runValidators: true, session }
-    ).lean<WorkoutAssignment>();
+    ).lean() as WorkoutAssignment;
 
     if (!updatedWorkout) {
       throw new Error('Workout no encontrado o actualización fallida');
@@ -633,14 +639,14 @@ export async function assignWorkoutToUser(
     // 2. Update user documents
     const updateOperations = [
       ...data.coachIds.map(userId => 
-        User.findByIdAndUpdate(
+        (User.findByIdAndUpdate as any)(
           userId,
           { $addToSet: { coachedWorkouts: workoutId } },
           { session }
         )
       ),
       ...data.customerIds.map(userId => 
-        User.findByIdAndUpdate(
+        (User.findByIdAndUpdate as any)(
           userId,
           { $addToSet: { assignedWorkouts: workoutId } },
           { session }
@@ -785,7 +791,7 @@ export async function updateDayName(workout: WorkoutType, dayIndex: number, newN
     }
 
     // Buscar la rutina en la base de datos
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workoutId),
       userId: session.user.id
     });
@@ -862,7 +868,7 @@ export async function updateBlockName(
     }
 
     // Buscar la rutina en la base de datos
-    const workoutDoc = await Workout.findOne({
+    const workoutDoc = await (Workout.findOne as any)({
       _id: new Types.ObjectId(workoutId),
       userId: session.user.id
     });
@@ -919,7 +925,7 @@ export async function updateWorkoutName(workoutId: string, newName: string, newD
       throw new Error('No autorizado');
     }
 
-    const workout = await Workout.findById(workoutId);
+    const workout = await (Workout.findById as any)(workoutId);
     if (!workout) {
       throw new Error('Rutina no encontrada');
     }

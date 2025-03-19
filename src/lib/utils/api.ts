@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { JsonValue } from '@/types/common';
 
 /**
  * Tipos de cache para diferentes tipos de contenido
@@ -28,7 +29,7 @@ interface ApiResponseOptions {
  * @returns Respuesta NextResponse optimizada
  */
 export function createApiResponse(
-  data: any,
+  data: JsonValue,
   options: ApiResponseOptions = {}
 ): NextResponse {
   const {
@@ -81,7 +82,7 @@ export function createApiResponse(
 export function createErrorResponse(
   message: string,
   status: number = 500,
-  additionalData: Record<string, any> = {}
+  additionalData: Record<string, JsonValue> = {}
 ): NextResponse {
   return createApiResponse(
     {
@@ -103,7 +104,7 @@ export function createErrorResponse(
  * Crea una respuesta para contenido público que puede ser cacheado por largo tiempo
  * Útil para datos que cambian con poca frecuencia (ej. metadatos, configuración)
  */
-export function createPublicCachedResponse(data: any, maxAgeSeconds: number = 3600) {
+export function createPublicCachedResponse(data: JsonValue, maxAgeSeconds: number = 3600) {
   return createApiResponse(data, {
     cacheType: CacheType.PUBLIC,
     maxAge: maxAgeSeconds,
@@ -115,7 +116,7 @@ export function createPublicCachedResponse(data: any, maxAgeSeconds: number = 36
  * Crea una respuesta para contenido privado con caché de corta duración
  * Útil para datos personalizados que pueden ser cacheados brevemente (ej. preferencias de usuario)
  */
-export function createPrivateCachedResponse(data: any, maxAgeSeconds: number = 60) {
+export function createPrivateCachedResponse(data: JsonValue, maxAgeSeconds: number = 60) {
   return createApiResponse(data, {
     cacheType: CacheType.PRIVATE,
     maxAge: maxAgeSeconds,
@@ -127,7 +128,7 @@ export function createPrivateCachedResponse(data: any, maxAgeSeconds: number = 6
  * Crea una respuesta para contenido dinámico que no debe ser cacheado
  * Útil para datos que cambian frecuentemente o son altamente personalizados
  */
-export function createDynamicResponse(data: any) {
+export function createDynamicResponse(data: JsonValue) {
   return createApiResponse(data, {
     cacheType: CacheType.NO_STORE,
   });

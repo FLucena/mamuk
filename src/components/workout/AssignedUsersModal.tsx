@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useError } from '@/contexts/ErrorContext';
 import { toast } from 'react-hot-toast';
 import { ErrorSeverity, ErrorType } from '@/contexts/ErrorContext';
+import { ErrorWithMessage } from '@/types/common';
 
 interface User {
   _id: string;
@@ -44,7 +45,7 @@ export default function AssignedUsersModal({
     const fetchUsers = async () => {
       try {
         setIsLoading(true);
-        const hideSpinnerFn = showSpinner();
+        showSpinner();
         
         // Fetch assigned users
         const assignedResponse = await fetch(`/api/workout/${workoutId}/users`);
@@ -70,10 +71,11 @@ export default function AssignedUsersModal({
           
           setAvailableUsers(filteredUsers);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching users:', error);
+        const err = error as ErrorWithMessage;
         addError({
-          message: error.message || 'Failed to fetch users',
+          message: err.message || 'Failed to fetch users',
           severity: ErrorSeverity.ERROR,
           type: ErrorType.API,
         });
@@ -92,7 +94,7 @@ export default function AssignedUsersModal({
     
     try {
       setIsLoading(true);
-      const hideSpinnerFn = showSpinner();
+      showSpinner();
       
       const response = await fetch(`/api/workout/${workoutId}/users`, {
         method: 'POST',
@@ -121,10 +123,11 @@ export default function AssignedUsersModal({
       if (onAssignUser) {
         onAssignUser(selectedUserId);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error assigning user:', error);
+      const err = error as ErrorWithMessage;
       addError({
-        message: error.message || 'Failed to assign user',
+        message: err.message || 'Failed to assign user',
         severity: ErrorSeverity.ERROR,
         type: ErrorType.API,
       });
@@ -138,7 +141,7 @@ export default function AssignedUsersModal({
   const handleRemoveUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      const hideSpinnerFn = showSpinner();
+      showSpinner();
       
       const response = await fetch(`/api/workout/${workoutId}/users/${userId}`, {
         method: 'DELETE',
@@ -162,10 +165,11 @@ export default function AssignedUsersModal({
       if (onRemoveUser) {
         onRemoveUser(userId);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing user:', error);
+      const err = error as ErrorWithMessage;
       addError({
-        message: error.message || 'Failed to remove user',
+        message: err.message || 'Failed to remove user',
         severity: ErrorSeverity.ERROR,
         type: ErrorType.API,
       });

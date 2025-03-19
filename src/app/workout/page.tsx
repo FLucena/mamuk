@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, memo, useCallback, useMemo, lazy } from 'react';
+import React, { useState, useEffect, Suspense, memo, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -29,15 +29,38 @@ const WorkoutList = dynamic(() => import('@/components/workout/WorkoutList'), {
   ssr: false // Disable SSR for this component to reduce server load
 });
 
-// Add interface for Workout type
+// Define the types matching what's in the WorkoutList component
+interface Exercise {
+  _id: string;
+  name: string;
+  sets: number;
+  reps: number;
+  weight?: number;
+  notes?: string;
+  videoUrl?: string;
+}
+
+interface Block {
+  _id: string;
+  name: string;
+  exercises: Exercise[];
+}
+
+interface WorkoutDay {
+  _id: string;
+  name: string;
+  blocks: Block[];
+}
+
 interface Workout {
   _id: string;
-  id: string;
   name: string;
-  days: any[];
+  description?: string;
+  days: WorkoutDay[];
   userId: string;
   createdAt: string;
   updatedAt: string;
+  id?: string;
 }
 
 // Update WorkoutContentProps interface
@@ -46,7 +69,6 @@ interface WorkoutContentProps {
   isCoach: boolean;
   isAdmin: boolean;
   isCustomer: boolean;
-  hasPermissionToCreate: boolean;
   userWorkoutCount: number;
   workoutLimitReached: boolean;
   onRefresh: () => void;
@@ -58,7 +80,6 @@ const WorkoutContent = memo(function WorkoutContent({
   isCoach, 
   isAdmin, 
   isCustomer,
-  hasPermissionToCreate, 
   userWorkoutCount, 
   workoutLimitReached,
   onRefresh
@@ -70,7 +91,7 @@ const WorkoutContent = memo(function WorkoutContent({
       setIsRefreshing(true);
       await onRefresh();
       toast.success('Lista de rutinas actualizada');
-    } catch (error) {
+    } catch {
       toast.error('Error al actualizar las rutinas');
     } finally {
       setIsRefreshing(false);
@@ -123,7 +144,6 @@ export default function WorkoutPage() {
   const [isCoach, setIsCoach] = useState(false);
   const [isCustomer, setIsCustomer] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [hasPermissionToCreate, setHasPermissionToCreate] = useState(false);
   const [userWorkoutCount, setUserWorkoutCount] = useState(0);
   const [workoutLimitReached, setWorkoutLimitReached] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -150,7 +170,29 @@ export default function WorkoutPage() {
       }
       
       const workoutsData = await workoutsRes.json();
-      setWorkouts(workoutsData.workouts || []);
+      
+      // Transform API response to match the expected Workout type
+      const transformedWorkouts: Workout[] = (workoutsData.workouts || []).map((workout: {
+        _id?: string;
+        id?: string;
+        name?: string;
+        description?: string;
+        days?: WorkoutDay[];
+        userId?: string;
+        createdAt?: string;
+        updatedAt?: string;
+      }) => ({
+        _id: workout._id || workout.id || '',
+        id: workout.id || workout._id || '',
+        name: workout.name || '',
+        description: workout.description || '',
+        days: workout.days || [],
+        userId: workout.userId || '',
+        createdAt: workout.createdAt || new Date().toISOString(),
+        updatedAt: workout.updatedAt || new Date().toISOString()
+      }));
+      
+      setWorkouts(transformedWorkouts);
       
       // Set role flags
       const userRoles = session?.user?.roles || [];
@@ -170,21 +212,17 @@ export default function WorkoutPage() {
           const count = countData.count || 0;
           setUserWorkoutCount(count);
           setWorkoutLimitReached(count >= 3);
-          setHasPermissionToCreate(count < 3);
         } else {
           throw new Error(`Error fetching workout count: ${countRes.status} ${countRes.statusText}`);
         }
       } else {
-        setHasPermissionToCreate(true);
+        setWorkoutLimitReached(false);
       }
       
       setError(null);
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('Failed to load workouts. Please try again later.');
-      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load workouts. Please try again later.';
+      setError(errorMessage);
       setWorkouts([]);
     } finally {
       setIsDataLoading(false);
@@ -203,7 +241,9 @@ export default function WorkoutPage() {
       // Only prefetch the first 3 workouts to reduce network load
       const workoutsToPrefetch = workouts.slice(0, 3);
       workoutsToPrefetch.forEach(workout => {
-        router.prefetch(`/workout/${workout.id}`);
+        if (workout.id) {
+          router.prefetch(`/workout/${workout.id}`);
+        }
       });
     }
   }, [workouts, router]);
@@ -234,7 +274,6 @@ export default function WorkoutPage() {
               isCoach={isCoach}
               isAdmin={isAdmin}
               isCustomer={isCustomer}
-              hasPermissionToCreate={hasPermissionToCreate}
               userWorkoutCount={userWorkoutCount}
               workoutLimitReached={workoutLimitReached}
               onRefresh={fetchData}

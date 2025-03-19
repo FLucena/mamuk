@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     await dbConnect();
     
     // Find the archived workout and restore it (change status to active)
-    const workout = await Workout.findOneAndUpdate(
+    const workout = await (Workout.findOneAndUpdate as any)(
       { 
         _id: new Types.ObjectId(id),
         status: 'archived'
@@ -94,7 +94,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     await dbConnect();
     
     // Find and permanently delete the archived workout
-    const result = await Workout.findOneAndDelete({
+    const result = await (Workout.findOneAndDelete as any)({
       _id: new Types.ObjectId(id),
       status: 'archived'
     });

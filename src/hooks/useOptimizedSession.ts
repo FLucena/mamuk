@@ -1,6 +1,7 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { sessionCache } from '@/utils/sessionCache';
+import { JsonValue, JsonObject } from '@/types/common';
 
 /**
  * A lightweight wrapper around useSession that implements:
@@ -27,8 +28,37 @@ export function useLightSession() {
   return session;
 }
 
+// Helper function to safely check if session data has a user property
+const isValidSession = (data: JsonValue): data is JsonObject & { user: JsonObject } => {
+  return data !== null && 
+         typeof data === 'object' && 
+         'user' in data && 
+         data.user !== null &&
+         typeof data.user === 'object';
+};
+
+// Helper function to safely get user property
+const getUserProperty = <T>(data: JsonValue, property: string, defaultValue: T): T => {
+  if (!isValidSession(data)) return defaultValue;
+  
+  const user = data.user;
+  if (!(property in user)) return defaultValue;
+  
+  return user[property] as unknown as T;
+};
+
+// Helper function to safely get user roles
+const getUserRoles = (data: JsonValue): string[] => {
+  if (!isValidSession(data)) return [];
+  
+  const user = data.user;
+  if (!('roles' in user) || !Array.isArray(user.roles)) return [];
+  
+  return user.roles as unknown as string[];
+};
+
 /**
- * Hook for components that only need to check if user is authenticated
+ * Hook for components that only need authentication state
  * without needing the full session data
  */
 export function useIsAuthenticated() {
@@ -45,7 +75,7 @@ export function useIsAuthenticated() {
         const sessionData = await sessionCache.getSession();
         if (isMounted) {
           setState({
-            isAuthenticated: !!sessionData?.user,
+            isAuthenticated: isValidSession(sessionData),
             isLoading: false
           });
         }
@@ -86,8 +116,9 @@ export function useUserRole() {
       try {
         const sessionData = await sessionCache.getSession();
         if (isMounted) {
+          const roles = getUserRoles(sessionData);
           setState({
-            role: sessionData?.user?.roles?.[0] || null,
+            role: roles[0] || null,
             isLoading: false
           });
         }
@@ -116,7 +147,10 @@ export function useUserRole() {
  * without needing the full session data
  */
 export function useUserId() {
-  const [state, setState] = useState({
+  const [state, setState] = useState<{
+    userId: string | null;
+    isLoading: boolean;
+  }>({
     userId: null,
     isLoading: true
   });
@@ -129,7 +163,7 @@ export function useUserId() {
         const sessionData = await sessionCache.getSession();
         if (isMounted) {
           setState({
-            userId: sessionData?.user?.id || null,
+            userId: getUserProperty(sessionData, 'id', null),
             isLoading: false
           });
         }
@@ -173,11 +207,11 @@ export function useMinimalSession() {
       try {
         const sessionData = await sessionCache.getSession();
         if (isMounted) {
-          if (sessionData?.user) {
+          if (isValidSession(sessionData)) {
             // Only include essential user data
             const minimalUser = {
-              id: sessionData.user.id,
-              roles: sessionData.user.roles || []
+              id: getUserProperty(sessionData, 'id', ''),
+              roles: getUserRoles(sessionData)
             };
             
             setState({

@@ -83,8 +83,9 @@ export default function WorkoutFilters({ onFilterChange }: WorkoutFiltersProps) 
   };
 
   // Debounced search handler
-  const debouncedSearch = debounce((value: string) => {
-    const newFilters = { ...filters, search: value };
+  const debouncedSearch = debounce((value: unknown) => {
+    const searchValue = typeof value === 'string' ? value : '';
+    const newFilters = { ...filters, search: searchValue };
     setFilters(newFilters);
     updateUrl(newFilters);
   }, 300);

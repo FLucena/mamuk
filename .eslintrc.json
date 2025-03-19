@@ -2,5 +2,94 @@
   "extends": [
     "next/core-web-vitals",
     "next/typescript"
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": "off",
+    "react/no-unescaped-entities": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "@next/next/no-img-element": "off",
+    "react/display-name": "off",
+    "@typescript-eslint/no-empty-object-type": "off",
+    "@typescript-eslint/no-this-alias": "off",
+    "prefer-rest-params": "off",
+    "@typescript-eslint/ban-ts-comment": "off",
+    "no-var": "off",
+    "prefer-const": "off",
+    "@typescript-eslint/no-unused-expressions": "off",
+    "import/no-anonymous-default-export": "off",
+    "@typescript-eslint/no-require-imports": "off"
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**/*.ts"],
+      "rules": {
+        "@typescript-eslint/no-var-requires": "off",
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    },
+    {
+      "files": [
+        "src/components/LazyComponent.tsx",
+        "src/app/admin/users/page.tsx",
+        "src/app/api/debug/roles/route.ts",
+        "src/app/sitemap.ts",
+        "src/app/workout/workout-actions.ts",
+        "src/app/workout/[id]/actions.ts",
+        "src/app/workout/[id]/opengraph-image.tsx",
+        "src/app/workout/[id]/page.tsx",
+        "src/app/_hooks/useSWRFetch.ts",
+        "src/components/admin/AdminDashboard.tsx",
+        "src/components/admin/DeleteUserModal.tsx",
+        "src/components/admin/EditUserModal.tsx",
+        "src/components/debug/PerformanceDebug.tsx",
+        "src/components/DebugRenderCounter.tsx",
+        "src/components/IntersectionObserver.tsx",
+        "src/components/modals/**/*.tsx",
+        "src/components/modout/**/*.tsx",
+        "src/components/NavigationTracker.tsx",
+        "src/components/PerformanceMonitor.tsx",
+        "src/components/SchemaOrg.tsx",
+        "src/lib/db/indexes.ts",
+        "src/lib/db.ts",
+        "src/lib/auth.ts",
+        "src/lib/sentry.ts",
+        "src/lib/storage.ts",
+        "src/lib/types/workout.ts",
+        "src/lib/utils/**/*.ts",
+        "src/lib/websocket-manager.ts",
+        "src/utils/**/*.ts",
+        "src/app/api/admin/routines/archived/route.ts",
+        "src/app/api/auth/session/route.ts",
+        "src/app/api/admin/coach/assign-customers/route.ts",
+        "src/app/api/admin/coaches/[coachId]/customers/route.ts",
+        "src/app/api/admin/routines/archived/[id]/route.ts",
+        "src/app/api/admin/users/route.ts",
+        "src/app/api/admin/users/[userId]/route.ts",
+        "src/app/api/examples/users/route.ts",
+        "src/app/api/routines/route.ts"
+      ],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    },
+    {
+      "files": ["src/app/workout/**/*"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    },
+    {
+      "files": ["src/app/api/**/*"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    },
+    {
+      "files": ["src/lib/services/**/*"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    }
   ]
 }

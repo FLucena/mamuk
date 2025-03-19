@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     let dbUser: any = null;
     if (session?.user?.email) {
       await dbConnect();
-      dbUser = await User.findOne({ email: session.user.email }).lean();
+      dbUser = await (User.findOne as any)({ email: session.user.email }).lean();
       
       // Convert MongoDB _id to string for JSON serialization
       if (dbUser && dbUser._id) {

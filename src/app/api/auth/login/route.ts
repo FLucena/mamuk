@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { applyRateLimit } from '@/lib/utils/rateLimit';
 import { setSecureCookie } from '@/lib/utils/cookies';
 

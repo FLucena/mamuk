@@ -4,9 +4,36 @@ import { useState, useEffect } from 'react';
 import { getRedirectLogs, analyzeRedirects, clearRedirectLogs } from '@/utils/redirectLogger';
 import { redirectService } from '@/utils/redirectService';
 
+interface RedirectSource {
+  source: string;
+  count: number;
+}
+
+interface PotentialLoop {
+  pattern: string;
+  count: number;
+}
+
+interface RedirectAnalysis {
+  totalRedirects: number;
+  successfulRedirects: number;
+  skippedRedirects: number;
+  mostFrequentSources: RedirectSource[];
+  potentialLoops: PotentialLoop[];
+}
+
+interface RedirectLog {
+  timestamp: number;
+  from: string;
+  to: string;
+  source: string;
+  sessionStatus: string;
+  success: boolean;
+}
+
 export default function RedirectDebugPage() {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [logs, setLogs] = useState<RedirectLog[]>([]);
+  const [analysis, setAnalysis] = useState<RedirectAnalysis | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -59,7 +86,7 @@ export default function RedirectDebugPage() {
             <h2 className="text-xl font-semibold mb-4">Most Frequent Sources</h2>
             {analysis.mostFrequentSources.length > 0 ? (
               <ul className="space-y-2">
-                {analysis.mostFrequentSources.map((source: any, index: number) => (
+                {analysis.mostFrequentSources.map((source: RedirectSource, index: number) => (
                   <li key={index}>
                     <strong>{source.source}:</strong> {source.count} redirects
                   </li>
@@ -74,9 +101,10 @@ export default function RedirectDebugPage() {
             <h2 className="text-xl font-semibold mb-4">Potential Redirect Loops</h2>
             {analysis.potentialLoops.length > 0 ? (
               <ul className="space-y-2">
-                {analysis.potentialLoops.map((loop: any, index: number) => (
+                {analysis.potentialLoops.map((loop: {pattern: string, count: number}, index: number) => (
                   <li key={index}>
-                    <strong>{loop.pattern}:</strong> {loop.count} occurrences
+                    <div className="text-red-600">Possible redirection loop:</div>
+                    <div className="text-yellow-500">{loop.pattern}</div>
                   </li>
                 ))}
               </ul>

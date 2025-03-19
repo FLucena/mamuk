@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { createIndexes, getQueryHint } from './db/indexes';
+import { JsonValue } from '@/types/common';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -135,7 +136,7 @@ function trackQueryPerformance() {
       }
     }
     
-    return originalExec.apply(this, arguments as any).then((result: any) => {
+    return originalExec.apply(this, arguments as any).then((result: JsonValue) => {
       const queryTime = Date.now() - startTime;
       
       // Store query times for analysis (keep last 100)

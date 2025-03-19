@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Get routines for the customer
-    const routines = await Workout.find({
+    const routines = await (Workout.find as any)({
       customerId,
       isArchived: false,
     }).populate('exercises.exercise');

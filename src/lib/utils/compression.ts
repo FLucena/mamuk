@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { gzip } from 'zlib';
 import { promisify } from 'util';
+import { JsonValue } from '@/types/common';
 
 const gzipAsync = promisify(gzip);
 
@@ -13,7 +14,7 @@ const gzipAsync = promisify(gzip);
  * @returns A NextResponse object with compressed data
  */
 export async function compressResponse(
-  data: any, 
+  data: JsonValue, 
   headers: Headers = new Headers(), 
   status: number = 200
 ): Promise<NextResponse> {
@@ -57,7 +58,7 @@ export async function compressResponse(
  * the response by only including essential fields
  */
 export function optimizeResponse(
-  data: any,
+  data: JsonValue,
   headers: Headers = new Headers(),
   status: number = 200
 ): NextResponse {

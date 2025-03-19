@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import User, { IUser } from '@/lib/models/user';
 import { dbConnect } from '@/lib/db';
-import { validateMongoId } from '@/lib/utils';
 
 // Force dynamic rendering for this route since it depends on user session
 export const dynamic = 'force-dynamic';
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
     const roleFilter = searchParams.get('roles')?.split(',') || [];
     
     const query = roleFilter.length > 0 ? { roles: { $in: roleFilter } } : {};
-    const users = await User.find(query).lean<IUser[]>();
+    const users = await (User.find as any)(query).lean() as IUser[];
 
     const transformedUsers = users.map(user => ({
       _id: user._id.toString(),

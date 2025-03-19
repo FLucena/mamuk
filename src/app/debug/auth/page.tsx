@@ -4,9 +4,33 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+interface DbUser {
+  _id: string;
+  email: string;
+  name: string;
+  roles?: string[];
+}
+
+interface AccessCheck {
+  hasAccess: boolean;
+  redirectTo?: string;
+  reason?: string;
+}
+
+interface ServerRolesResponse {
+  adminAccess?: AccessCheck;
+  coachAccess?: AccessCheck;
+  dbUser?: DbUser;
+  hasAdminAccess?: boolean;
+  hasCoachAccess?: boolean;
+  user?: {
+    roles: string[];
+  };
+}
+
 export default function AuthDebugPage() {
   const { data: session, status } = useSession();
-  const [serverRoles, setServerRoles] = useState<any>(null);
+  const [serverRoles, setServerRoles] = useState<ServerRolesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();

@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 declare global {
   namespace jest {
     interface Global {
-      fetch: any;
+      fetch: typeof global.fetch;
     }
   }
 } 

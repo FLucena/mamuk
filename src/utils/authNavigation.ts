@@ -9,6 +9,17 @@ export interface RouteAccess {
   redirectAuthenticated?: string;
 }
 
+// Define JWT token interface for type safety
+export interface JwtToken {
+  id?: string;
+  sub?: string;
+  name?: string;
+  email?: string;
+  picture?: string;
+  roles?: Role[];
+  [key: string]: unknown;
+}
+
 // Define all application routes with their access requirements
 // All routes are now set to public to disable any route protection
 export const ROUTE_ACCESS: RouteAccess[] = [
@@ -168,7 +179,7 @@ export function isProtectedRoute(path: string): boolean {
  * @param token The JWT token
  * @returns A session object or null if no token
  */
-export function createSessionFromToken(token: any): Session | null {
+export function createSessionFromToken(token: JwtToken): Session | null {
   if (!token) return null;
   
   return {

@@ -16,7 +16,7 @@ export async function getArchivedWorkouts(userId: string) {
   await dbConnect();
   try {
     // Check if user is admin
-    const user = await User.findOne({ _id: new Types.ObjectId(userId) });
+    const user = await (User.findOne as any)({ _id: new Types.ObjectId(userId) });
     if (!user) {
       console.error('Service: User not found:', userId);
       throw new Error('Usuario no encontrado');
@@ -28,7 +28,7 @@ export async function getArchivedWorkouts(userId: string) {
     }
 
     // Get all archived workouts
-    const workouts = await Workout.find({
+    const workouts = await (Workout.find as any)({
       status: WORKOUT_STATUS.ARCHIVED
     }).sort({ updatedAt: -1 });
 

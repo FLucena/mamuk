@@ -4,31 +4,42 @@ import { WorkoutProgress, DayProgress } from '@/types/models';
 
 export async function getWorkoutProgress(workoutId: string, userId: string, weekNumber: number, year: number): Promise<WorkoutProgress | null> {
   await dbConnect();
-  return Progress.findOne({ workoutId, userId, weekNumber, year });
+  return (Progress.findOne as any)({ workoutId, userId, weekNumber, year });
 }
 
 export async function getWorkoutProgressHistory(workoutId: string, userId: string): Promise<WorkoutProgress[]> {
   await dbConnect();
-  return Progress.find({ workoutId, userId }).sort({ year: -1, weekNumber: -1 });
+  return (Progress.find as any)({ workoutId, userId }).sort({ year: -1, weekNumber: -1 });
 }
 
 export async function createWorkoutProgress(workoutId: string, userId: string, weekNumber: number, year: number, days: DayProgress[]): Promise<WorkoutProgress> {
   await dbConnect();
-  return Progress.create({
+  return (Progress.create as any)({
     workoutId,
     userId,
     weekNumber,
     year,
     days,
+    createdAt: new Date(),
+    updatedAt: new Date()
   });
 }
 
-export async function updateWorkoutProgress(workoutId: string, userId: string, weekNumber: number, year: number, days: DayProgress[]): Promise<WorkoutProgress | null> {
+export async function updateWorkoutProgress(
+  workoutId: string, 
+  userId: string, 
+  weekNumber: number, 
+  year: number, 
+  days: DayProgress[]
+): Promise<WorkoutProgress | null> {
   await dbConnect();
-  return Progress.findOneAndUpdate(
+  return (Progress.findOneAndUpdate as any)(
     { workoutId, userId, weekNumber, year },
-    { days },
-    { new: true }
+    { 
+      days,
+      updatedAt: new Date() 
+    },
+    { new: true, upsert: true }
   );
 }
 
@@ -41,7 +52,7 @@ export async function updateDayProgress(
   dayProgress: Partial<DayProgress>
 ): Promise<WorkoutProgress | null> {
   await dbConnect();
-  return Progress.findOneAndUpdate(
+  return (Progress.findOneAndUpdate as any)(
     { workoutId, userId, weekNumber, year, 'days.dayId': dayId },
     { 
       $set: {
@@ -65,4 +76,22 @@ export async function getCurrentWeekNumber(): Promise<{ weekNumber: number; year
     weekNumber,
     year: now.getFullYear(),
   };
+}
+
+export async function incrementWorkoutCompletion(
+  workoutId: string, 
+  userId: string, 
+  weekNumber: number, 
+  year: number, 
+  dayIndex: number
+): Promise<WorkoutProgress | null> {
+  await dbConnect();
+  return (Progress.findOneAndUpdate as any)(
+    { workoutId, userId, weekNumber, year },
+    { 
+      $inc: { [`completedDays.${dayIndex}`]: 1 },
+      updatedAt: new Date()
+    },
+    { new: true, upsert: true }
+  );
 } 

@@ -34,7 +34,7 @@ export async function GET(
     await dbConnect();
     
     // Buscar el coach por userId
-    const coach = await Coach.findOne({ userId: coachId });
+    const coach = await (Coach.findOne as any)({ userId: coachId });
     
     if (!coach) {
       // Si el coach no existe, devolver una lista vacía

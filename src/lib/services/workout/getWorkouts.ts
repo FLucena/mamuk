@@ -12,7 +12,7 @@ export async function getWorkouts(userId: string) {
   try {
     await dbConnect();
     
-    const workouts = await Workout.find({
+    const workouts = await (Workout.find as any)({
       userId: userId,
       isArchived: { $ne: true },
     }).sort({ createdAt: -1 });

@@ -29,7 +29,7 @@ export async function GET() {
     const Rutina = mongoose.models.Rutina || mongoose.model('Rutina', new mongoose.Schema({}));
     
     // Obtener las rutinas públicas
-    const publicWorkouts = await Rutina.find({ isPublic: true })
+    const publicWorkouts = await (Rutina.find as any)({ isPublic: true })
       .sort({ updatedAt: -1 })
       .limit(100); // Limitar a 100 rutinas para evitar sitemaps demasiado grandes
     

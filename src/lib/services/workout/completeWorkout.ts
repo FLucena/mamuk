@@ -5,6 +5,7 @@ import { validateMongoId } from '@/lib/utils/security';
 import { transformMongoWorkout } from '@/lib/utils/transformers';
 import { canModifyWorkout } from '@/lib/utils/permissions';
 import { WORKOUT_STATUS } from '@/lib/constants/roles';
+import { getTypedModel, toObjectId } from '@/lib/utils/mongoose';
 
 export async function completeWorkout(id: string, userId: string) {
   // Removed console.log
@@ -20,8 +21,11 @@ export async function completeWorkout(id: string, userId: string) {
 
   await dbConnect();
   try {
+    // Get typed model
+    const TypedWorkout = getTypedModel(Workout);
+    
     // Check if workout exists and user has permission
-    const existingWorkout = await Workout.findOne({ _id: new Types.ObjectId(id) });
+    const existingWorkout = await TypedWorkout.findOne({ _id: toObjectId(id) as Types.ObjectId });
     if (!existingWorkout) {
       console.error('Service: Workout not found:', { id, userId });
       return null;
@@ -56,8 +60,8 @@ export async function completeWorkout(id: string, userId: string) {
       fromStatus: existingWorkout.status 
     });
 
-    const workout = await Workout.findOneAndUpdate(
-      { _id: new Types.ObjectId(id) },
+    const workout = await TypedWorkout.findOneAndUpdate(
+      { _id: toObjectId(id) as Types.ObjectId },
       { $set: { status: WORKOUT_STATUS.COMPLETE } },
       { new: true }
     );

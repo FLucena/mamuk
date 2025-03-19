@@ -1,85 +1,82 @@
 'use client';
-
 import { useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
 
 /**
  * NavigationPatcher implementa soluciones para problemas comunes de navegación
  * - Previene el error de "Throttling navigation" limitando la frecuencia de navegaciones
  */
-export default function NavigationPatcher() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
+export interface NavigationPatcherProps {
+  onNavigationChange?: (from: string, to: string) => void;
+  debounceMs?: number;
+}
+
+export default function NavigationPatcher({
+  onNavigationChange,
+  debounceMs = 100
+}: NavigationPatcherProps) {
   useEffect(() => {
-    // Parche para prevenir el error de "Throttling navigation"
-    const originalReplaceState = window.history.replaceState;
+    if (typeof window === 'undefined') return;
+
+    // Store original methods
     const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
     
-    // Variables para el throttling
-    let lastReplaceTime = 0;
-    let lastPushTime = 0;
-    const throttleTime = 300; // ms entre operaciones
-    let pendingReplaceState: any = null;
-    let pendingPushState: any = null;
+    // Tracking state
+    let pendingReplaceState: ReturnType<typeof setTimeout> | null = null;
+    let pendingPushState: ReturnType<typeof setTimeout> | null = null;
+    let lastUrl = window.location.href;
     
-    // Función para aplicar throttling a replaceState
-    window.history.replaceState = function(...args) {
-      const now = Date.now();
-      
-      // Cancelar cualquier operación pendiente
+    // Patch replaceState
+    window.history.replaceState = function patchedReplaceState(...args) {
+      // Prevent double-firing
       if (pendingReplaceState) {
         clearTimeout(pendingReplaceState);
         pendingReplaceState = null;
       }
+
+      // Apply original method
+      const result = originalReplaceState.apply(this, args);
       
-      // Si ha pasado suficiente tiempo, ejecutar inmediatamente
-      if (now - lastReplaceTime > throttleTime) {
-        lastReplaceTime = now;
-        return originalReplaceState.apply(this, args);
-      }
-      
-      // Si no, programar para más tarde
+      // Debounce navigation change events
+      // This helps with Next.js behavior where multiple replaceState calls may occur in quick succession
       pendingReplaceState = setTimeout(() => {
-        lastReplaceTime = Date.now();
-        originalReplaceState.apply(window.history, args);
+        if (onNavigationChange && lastUrl !== window.location.href) {
+          onNavigationChange(lastUrl, window.location.href);
+          lastUrl = window.location.href;
+        }
         pendingReplaceState = null;
-      }, throttleTime);
+      }, debounceMs);
       
-      return undefined;
+      return result;
     };
     
-    // Función para aplicar throttling a pushState
-    window.history.pushState = function(...args) {
-      const now = Date.now();
-      
-      // Cancelar cualquier operación pendiente
+    // Patch pushState
+    window.history.pushState = function patchedPushState(...args) {
+      // Prevent double-firing
       if (pendingPushState) {
         clearTimeout(pendingPushState);
         pendingPushState = null;
       }
       
-      // Si ha pasado suficiente tiempo, ejecutar inmediatamente
-      if (now - lastPushTime > throttleTime) {
-        lastPushTime = now;
-        return originalPushState.apply(this, args);
-      }
+      // Apply original method
+      const result = originalPushState.apply(this, args);
       
-      // Si no, programar para más tarde
+      // Debounce navigation change events
       pendingPushState = setTimeout(() => {
-        lastPushTime = Date.now();
-        originalPushState.apply(window.history, args);
+        if (onNavigationChange && lastUrl !== window.location.href) {
+          onNavigationChange(lastUrl, window.location.href);
+          lastUrl = window.location.href;
+        }
         pendingPushState = null;
-      }, throttleTime);
+      }, debounceMs);
       
-      return undefined;
+      return result;
     };
     
-    // Limpiar al desmontar
-    return () => {
-      window.history.replaceState = originalReplaceState;
-      window.history.pushState = originalPushState;
-      
+    // Handle back/forward browser navigation
+    const handlePopState = () => {
+      // Cancel any pending events
       if (pendingReplaceState) {
         clearTimeout(pendingReplaceState);
       }
@@ -87,8 +84,27 @@ export default function NavigationPatcher() {
       if (pendingPushState) {
         clearTimeout(pendingPushState);
       }
+      
+      // Notify change immediately for popstate (no debounce)
+      if (onNavigationChange && lastUrl !== window.location.href) {
+        onNavigationChange(lastUrl, window.location.href);
+        lastUrl = window.location.href;
+      }
     };
-  }, []);
+    
+    // Listen for popstate (back/forward navigation)
+    window.addEventListener('popstate', handlePopState);
+    
+    // Cleanup on unmount
+    return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener('popstate', handlePopState);
+      
+      if (pendingPushState) clearTimeout(pendingPushState);
+      if (pendingReplaceState) clearTimeout(pendingReplaceState);
+    };
+  }, [onNavigationChange, debounceMs]);
 
   // Este componente no renderiza nada
   return null;

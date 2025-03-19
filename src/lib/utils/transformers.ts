@@ -65,15 +65,16 @@ export function transformMongoWorkoutDay(dia: MongoWorkoutDay): WorkoutDay {
   };
 }
 
-export function transformMongoWorkout(doc: MongoWorkout): any {
+export function transformMongoWorkout(doc: MongoWorkout): Workout {
   return {
+    id: doc._id?.toString() || '',
     _id: doc._id?.toString() || '',
     userId: doc.userId?.toString() || '',
     name: doc.name || '',
     description: doc.description,
     days: Array.isArray(doc.days) ? doc.days.map(transformMongoWorkoutDay) : [],
-    status: doc.status || 'active',
-    createdAt: doc.createdAt || new Date(),
-    updatedAt: doc.updatedAt || new Date()
+    isArchived: doc.status === 'archived',
+    createdAt: doc.createdAt ? doc.createdAt.toISOString() : new Date().toISOString(),
+    updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : new Date().toISOString()
   };
 } 

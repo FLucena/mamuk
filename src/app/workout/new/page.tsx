@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { ErrorWithMessage } from '@/types/common';
 
 export default function NewWorkoutPage() {
   const [loading, setLoading] = useState(false);
@@ -42,8 +43,9 @@ export default function NewWorkoutPage() {
       const workout = await response.json();
       toast.success('Rutina creada correctamente');
       router.push(`/workout/${workout.id}`);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al crear la rutina');
+    } catch (error: unknown) {
+      const err = error as ErrorWithMessage;
+      toast.error(err.message || 'Error al crear la rutina');
       setLoading(false);
     }
   };

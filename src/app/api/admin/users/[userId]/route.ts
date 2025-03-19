@@ -67,7 +67,7 @@ export async function GET(
 
     await dbConnect();
 
-    const user = await User.findById(userId)
+    const user = await (User.findById as any)(userId)
       .select('name email image roles')
       .lean() as UserDocument;
 
@@ -138,15 +138,15 @@ export async function PUT(
       ? sortRoles(roles) 
       : ['customer'];
 
-    const user = await User.findByIdAndUpdate(
+    const user = await (User.findByIdAndUpdate as any)(
       userId,
       { 
         name, 
         email, 
         roles: userRoles
       },
-      { new: true }
-    ).select('name email image roles').lean() as UserDocument;
+      { new: true, runValidators: true }
+    ).lean() as UserDocument;
 
     if (!user) {
       return NextResponse.json(
@@ -207,7 +207,7 @@ export async function DELETE(
     }
 
     await dbConnect();
-    await User.findByIdAndDelete(userId);
+    await (User.findByIdAndDelete as any)(userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

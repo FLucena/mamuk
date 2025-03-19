@@ -4,6 +4,38 @@
  */
 
 import { SITE_URL } from '@/lib/constants/site';
+import { Role } from '@/lib/types/user';
+
+// Define interfaces for schema generation
+export interface WorkoutSchema {
+  _id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  author?: {
+    name: string;
+  };
+}
+
+export interface PersonSchema {
+  id: string;
+  name: string;
+  email: string;
+  image?: string;
+  roles: Role[];
+  bio?: string;
+}
+
+export interface ExerciseSchema {
+  _id: string;
+  name: string;
+  description?: string;
+  preparation?: string;
+  execution?: string;
+  equipment?: string[];
+  images?: string[];
+}
 
 /**
  * Genera un esquema JSON-LD para una organización
@@ -89,7 +121,7 @@ export function generateWebPageSchema(title: string, description: string, url: s
  * @param workout Datos de la rutina
  * @returns Esquema JSON-LD para la rutina
  */
-export function generateWorkoutSchema(workout: any) {
+export function generateWorkoutSchema(workout: WorkoutSchema) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -125,7 +157,7 @@ export function generateWorkoutSchema(workout: any) {
  * @param person Datos de la persona
  * @returns Esquema JSON-LD para la persona
  */
-export function generatePersonSchema(person: any) {
+export function generatePersonSchema(person: PersonSchema) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Person',
@@ -144,7 +176,7 @@ export function generatePersonSchema(person: any) {
  * @param exercise Datos del ejercicio
  * @returns Esquema JSON-LD para el ejercicio
  */
-export function generateExerciseSchema(exercise: any) {
+export function generateExerciseSchema(exercise: ExerciseSchema) {
   return {
     '@context': 'https://schema.org',
     '@type': 'HowTo',

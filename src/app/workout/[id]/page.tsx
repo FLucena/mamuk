@@ -97,6 +97,12 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
     })
   }));
 
+  // Wrapper for deleteWorkout that returns void instead of {success: true}
+  const deleteWorkoutWrapper = async (workoutId: string, userId: string): Promise<void> => {
+    await actions.deleteWorkout(workoutId, userId);
+    // Return void
+  };
+
   // Generar esquema para SEO
   const workoutSchema = generateWorkoutSchema(workout);
 
@@ -115,7 +121,7 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
         deleteExercise={actions.deleteExercise}
         deleteBlock={actions.deleteBlock}
         deleteDay={actions.deleteDay}
-        deleteWorkout={actions.deleteWorkout}
+        deleteWorkout={deleteWorkoutWrapper}
         updateDayName={actions.updateDayName}
         updateBlockName={actions.updateBlockName}
         isAdmin={isAdmin}
@@ -131,7 +137,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     console.log(`[DEBUG] Generando metadatos para workout ${params.id}`);
     
     await dbConnect();
-    const workout = await Workout.findById(params.id).lean();
+    const workout = await (Workout.findById as any)(params.id).lean();
     
     if (!workout) {
       console.log(`[DEBUG] Workout no encontrado para metadatos: ${params.id}`);

@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getCoachByUserId } from '@/lib/services/coach';
 import CustomerList from '@/components/coach/CustomerList';
-import { getAllCoaches } from '@/lib/services/coach';
 import { getCustomers } from '@/lib/services/user';
 
 export default async function CustomersPage() {

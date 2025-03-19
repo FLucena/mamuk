@@ -1,3 +1,4 @@
+import { JsonValue } from '@/types/common';
 /**
  * Session cache utility to reduce redundant API calls to /api/auth/session
  * Implements:
@@ -28,9 +29,9 @@ interface CacheStats {
 }
 
 class SessionCache {
-  private cache: any = null;
+  private cache: JsonValue = null;
   private lastUpdated: number = 0;
-  private pendingPromise: Promise<any> | null = null;
+  private pendingPromise: Promise<JsonValue> | null = null;
   private requestTimestamp: number | null = null;
   private refreshTimeoutId: NodeJS.Timeout | null = null;
   private stats: CacheStats = {
@@ -190,7 +191,7 @@ class SessionCache {
    * Get the cached session data or fetch it if needed
    * Implements stale-while-revalidate pattern
    */
-  async getSession(): Promise<any> {
+  async getSession(): Promise<JsonValue> {
     // Track request for stats
     this.stats.requestCount++;
     
@@ -268,7 +269,7 @@ class SessionCache {
   /**
    * Manually update the cache with session data
    */
-  updateCache(data: any): void {
+  updateCache(data: JsonValue): void {
     this.cache = data;
     this.lastUpdated = Date.now();
     

@@ -9,7 +9,7 @@ import { es } from 'date-fns/locale';
 interface WorkoutListItem {
   id: string;
   name: string;
-  days?: any[];
+  days?: unknown[];
   createdAt: string;
   updatedAt: string;
   coachId?: string;

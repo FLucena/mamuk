@@ -132,10 +132,14 @@ export default function CreateRoutineForm({ customerId, onSuccess }: CreateRouti
         router.push('/workout');
         router.refresh();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating routine:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to create routine';
+        
       addError({
-        message: error.message || 'Failed to create routine',
+        message: errorMessage,
         severity: ErrorSeverity.ERROR,
         type: ErrorType.API,
       });

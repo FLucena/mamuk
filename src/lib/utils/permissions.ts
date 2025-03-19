@@ -4,6 +4,7 @@ import Coach from '../models/coach';
 import { Workout as WorkoutModel } from '../models/workout';
 import { dbConnect } from '../db';
 import { ensureCoachExists } from '../services/coach';
+import { getTypedModel, toObjectId } from './mongoose';
 
 // Update the Workout type to include the new fields
 interface Workout {
@@ -12,7 +13,7 @@ interface Workout {
   createdBy?: string;
   name: string;
   description?: string;
-  days: any[];
+  days: unknown[];
   status?: 'active' | 'archived' | 'completed';
   createdAt?: Date;
   updatedAt?: Date;
@@ -24,36 +25,37 @@ interface Workout {
 interface UserWithRole {
   _id: Types.ObjectId;
   roles: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export async function getUserWithRole(userId: string): Promise<UserWithRole> {
   await dbConnect();
   
-  let user: any = null;
+  let user: UserWithRole | null = null;
+  const TypedUser = getTypedModel(User);
   
   // Try to find by ID first
   if (Types.ObjectId.isValid(userId)) {
-    user = await User.findById(userId).select('_id roles').lean();
+    user = await TypedUser.findById(userId).select('_id roles').lean();
   }
   
   // If not found, try by email
   if (!user) {
-    user = await User.findOne({ email: userId })
+    user = await TypedUser.findOne({ email: userId })
       .select('_id roles')
       .lean();
   }
   
   // If still not found, try by sub (for OAuth)
   if (!user) {
-    user = await User.findOne({ sub: userId }).select('_id roles').lean();
+    user = await TypedUser.findOne({ sub: userId }).select('_id roles').lean();
   }
   
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
   
-  return user as UserWithRole;
+  return user;
 }
 
 /**
@@ -104,23 +106,24 @@ export async function getCurrentUserRole(userId: string): Promise<string | null>
   
   try {
     await dbConnect();
+    const TypedUser = getTypedModel(User);
     
     let user = null;
     
     // Intentar buscar por ID primero
     if (Types.ObjectId.isValid(userId)) {
-      user = await User.findById(userId).select('roles');
+      user = await TypedUser.findById(userId).select('roles');
     }
     
     // Si no se encuentra, intentar buscar por email
     if (!user) {
-      user = await User.findOne({ email: userId })
+      user = await TypedUser.findOne({ email: userId })
         .select('roles');
     }
     
     // Si aún no se encuentra, intentar buscar por sub (para OAuth)
     if (!user) {
-      user = await User.findOne({ sub: userId }).select('roles');
+      user = await TypedUser.findOne({ sub: userId }).select('roles');
     }
     
     if (!user) return null;
@@ -168,18 +171,18 @@ export async function getCurrentUserRoles(userId: string): Promise<string[]> {
     
     // Intentar buscar por ID primero
     if (Types.ObjectId.isValid(userId)) {
-      user = await User.findById(userId).select('roles');
+      user = await (User.findById as any)(userId).select('roles');
     }
     
     // Si no se encuentra, intentar buscar por email
     if (!user) {
-      user = await User.findOne({ email: userId })
+      user = await (User.findOne as any)({ email: userId })
         .select('roles');
     }
     
     // Si aún no se encuentra, intentar buscar por sub (para OAuth)
     if (!user) {
-      user = await User.findOne({ sub: userId }).select('roles');
+      user = await (User.findOne as any)({ sub: userId }).select('roles');
     }
     
     if (!user) return [];
@@ -213,18 +216,18 @@ export async function getUserRoles(userId: string): Promise<string[]> {
     
     // Intentar buscar por ID primero
     if (Types.ObjectId.isValid(userId)) {
-      user = await User.findById(userId).select('roles');
+      user = await (User.findById as any)(userId).select('roles');
     }
     
     // Si no se encuentra, intentar buscar por email
     if (!user) {
-      user = await User.findOne({ email: userId })
+      user = await (User.findOne as any)({ email: userId })
         .select('roles');
     }
     
     // Si aún no se encuentra, intentar buscar por sub (para OAuth)
     if (!user) {
-      user = await User.findOne({ sub: userId }).select('roles');
+      user = await (User.findOne as any)({ sub: userId }).select('roles');
     }
     
     if (!user) return [];
@@ -249,7 +252,7 @@ export async function canAccessWorkout(userId: string, workout: Workout) {
 
   // Coach can access their own workouts and their clients' workouts
   if (hasRole(user, 'coach')) {
-    const coach = await Coach.findOne({ userId: user._id });
+    const coach = await (Coach.findOne as any)({ userId: user._id });
     
     // If coach profile doesn't exist, try to create it
     if (!coach) {
@@ -314,7 +317,7 @@ export async function canCreateWorkouts(userId: string) {
   // Customers can create up to 3 workouts
   if (hasRole(user, 'customer')) {
     await dbConnect();
-    const workoutCount = await WorkoutModel.countDocuments({ 
+    const workoutCount = await (WorkoutModel.countDocuments as any)({
       userId: user._id.toString(),
       createdBy: user._id.toString(),
       status: 'active'

@@ -4,6 +4,18 @@ import { useState, useCallback, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { runApiTests, testEndpoint, ApiTestResult, testAssignCustomersFlow } from '@/lib/test/api-test';
 
+// Import the interface from the API test module
+interface FlowTestResults {
+  coachesTest: ApiTestResult;
+  customersTest: ApiTestResult;
+  assignTest: ApiTestResult;
+  summary: {
+    success: number;
+    fail: number;
+    total: number;
+  };
+}
+
 export default function AdminDebugPage() {
   const { data: session, status } = useSession();
   const [customEndpoint, setCustomEndpoint] = useState('/api/admin/users?page=1&limit=10');
@@ -11,7 +23,7 @@ export default function AdminDebugPage() {
   const [customResult, setCustomResult] = useState<ApiTestResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCoachId, setSelectedCoachId] = useState('');
-  const [flowResults, setFlowResults] = useState<any>(null);
+  const [flowResults, setFlowResults] = useState<FlowTestResults | null>(null);
 
   // Run initial tests on mount
   useEffect(() => {

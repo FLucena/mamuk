@@ -15,7 +15,7 @@ export default function DebugRenderCounter() {
   const originalConsoleLogRef = useRef<typeof console.log | null>(null);
   
   // Create a stable callback for the console.log override
-  const handleConsoleLog = useCallback(function(...args: any[]) {
+  const handleConsoleLog = useCallback(function(...args: unknown[]) {
     // Look for React render phase logs
     if (typeof args[0] === 'string') {
       const message = args[0];

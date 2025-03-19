@@ -50,7 +50,7 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
 
     // Obtener el workout original
     await dbConnect();
-    const originalWorkout = await Workout.findById(workoutId);
+    const originalWorkout = await (Workout.findById as any)(workoutId);
     if (!originalWorkout) {
       console.error(`[SECURITY] Intento de duplicación de workout inexistente. ID: ${workoutId}`);
       throw new Error('Rutina no encontrada');
@@ -68,7 +68,9 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
 
     // Crear el nuevo workout
     const workoutData = originalWorkout.toObject();
-    delete workoutData._id;
+    if ('_id' in workoutData) {
+      delete workoutData._id;
+    }
 
     // Asignar nuevos IDs a todos los días, bloques y ejercicios
     workoutData.days = workoutData.days.map((day: any) => {
@@ -82,7 +84,9 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
       };
 
       // Eliminar _id si existe
-      delete newDay._id;
+      if ('_id' in newDay) {
+        delete newDay._id;
+      }
 
       // Procesar los bloques del día
       newDay.blocks = (newDay.blocks || []).map((block: any) => {
@@ -96,7 +100,9 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
         };
 
         // Eliminar _id si existe
-        delete newBlock._id;
+        if ('_id' in newBlock) {
+          delete newBlock._id;
+        }
         
         // Procesar los ejercicios del bloque
         newBlock.exercises = (newBlock.exercises || []).map((exercise: any) => {
@@ -110,7 +116,9 @@ export async function duplicateWorkout(workoutId: string, newName?: string) {
           };
 
           // Eliminar _id si existe
-          delete newExercise._id;
+          if ('_id' in newExercise) {
+            delete newExercise._id;
+          }
 
           return newExercise;
         });
@@ -194,7 +202,7 @@ export async function assignWorkoutToUser(workoutId: string, data: {
     if (!session?.user) throw new Error('Unauthorized');
 
     // Verify permissions
-    const workout = await Workout.findById(workoutId);
+    const workout = await (Workout.findById as any)(workoutId);
     if (!workout) {
       throw new Error('Workout not found');
     }
@@ -206,7 +214,7 @@ export async function assignWorkoutToUser(workoutId: string, data: {
     if (!canAssign) throw new Error('Insufficient permissions');
 
     // Update workout with new assignments
-    const updatedWorkout = await Workout.findByIdAndUpdate(
+    const updatedWorkout = await (Workout.findByIdAndUpdate as any)(
       workoutId,
       {
         $addToSet: {
@@ -261,7 +269,7 @@ export async function updateWorkoutName(workoutId: string, newName: string) {
     await dbConnect();
 
     // Buscar la rutina
-    const workout = await Workout.findById(workoutId);
+    const workout = await (Workout.findById as any)(workoutId);
     if (!workout) {
       throw new Error('Rutina no encontrada');
     }
@@ -316,7 +324,7 @@ export async function updateWorkoutDescription(workoutId: string, newDescription
     await dbConnect();
 
     // Buscar la rutina
-    const workout = await Workout.findById(workoutId);
+    const workout = await (Workout.findById as any)(workoutId);
     if (!workout) {
       throw new Error('Rutina no encontrada');
     }

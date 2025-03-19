@@ -7,6 +7,7 @@ import { dbConnect } from '@/lib/db';
 import User from '@/lib/models/user';
 import { Role } from '@/lib/types/user';
 import { createHash } from 'crypto';
+import { JsonObject, JsonValue } from '@/types/common';
 
 // In-memory cache for user roles with TTL
 interface CacheEntry {
@@ -55,7 +56,7 @@ async function getUserRoles(email: string): Promise<Role[]> {
     const startTime = performance.now();
     
     // Use an optimized query with lean(), hint() for index usage, and proper type casting
-    const dbUser = await User.findOne({ email })
+    const dbUser = await (User.findOne as any)({ email })
       .select('roles')
       .hint({ email: 1 }) // Explicitly use the email index
       .lean()
@@ -98,12 +99,14 @@ export async function GET() {
     // If no session, return empty session with 200 status code
     // This prevents NextAuth client errors in the browser console
     if (!session) {
+      const emptyResponse: JsonObject = { 
+        authenticated: false,
+        user: null,
+        expires: null
+      };
+      
       const response = createPrivateCachedResponse(
-        { 
-          authenticated: false,
-          user: null,
-          expires: null
-        },
+        emptyResponse,
         SESSION_CACHE_TIME
       );
       
@@ -117,26 +120,26 @@ export async function GET() {
     }
     
     // Get the most up-to-date roles from cache or database
-    let roles: Role[] = session.user.roles;
+    let roles: Role[] = session.user.roles || [];
     
     if (session.user.email) {
       roles = await getUserRoles(session.user.email);
     }
     
     // Create the session response object
-    const sessionResponse = {
+    const sessionResponse: JsonObject = {
       authenticated: true,
       user: {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        image: session.user.image,
+        id: session.user.id || '',
+        name: session.user.name || null,
+        email: session.user.email || null,
+        image: session.user.image || null,
         roles: roles
       },
-      expires: session.expires,
+      expires: session.expires || null,
       // Include request metadata
       meta: {
-        userAgent,
+        userAgent: userAgent || null,
         timestamp: new Date().toISOString()
       }
     };

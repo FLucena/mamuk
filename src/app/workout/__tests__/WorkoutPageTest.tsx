@@ -8,7 +8,14 @@ const WorkoutHeaderWrapper = ({ title }: { title: string }) => (
   <div data-testid="workout-header">{title}</div>
 );
 
-const WorkoutList = ({ workouts }: { workouts: any[] }) => (
+// Define proper interface for workout item
+interface WorkoutItem {
+  id: string;
+  name: string;
+  // Add other required properties as needed
+}
+
+const WorkoutList = ({ workouts }: { workouts: WorkoutItem[] }) => (
   <div data-testid="workout-list">
     {workouts.map((w) => (
       <div key={w.id}>{w.name}</div>
@@ -19,7 +26,7 @@ const WorkoutList = ({ workouts }: { workouts: any[] }) => (
 // Test version of WorkoutPage that simplifies the complex behavior
 export default function WorkoutPageTest() {
   const { data: session } = useLightSession();
-  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [workouts, setWorkouts] = useState<WorkoutItem[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   

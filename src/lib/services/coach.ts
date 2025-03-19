@@ -41,14 +41,14 @@ export async function getCoachByUserId(userId: string): Promise<CoachDocument | 
     }
 
     await dbConnect();
-    const coachDoc = await Coach.findOne({ userId })
+    const coachDoc = await (Coach.findOne as any)({ userId })
       .populate('userId', 'name email image')
       .populate('customers', 'name email image')
       .lean();
 
     if (!coachDoc) {
       // Check if the user has the coach role
-      const user = await User.findById(userId);
+      const user = await (User.findById as any)(userId);
       if (user && user.roles.includes('coach')) {
         // Create a coach document if the user has the coach role
         return await ensureCoachExists(userId);
@@ -102,7 +102,7 @@ export async function getCoachById(coachId: string): Promise<CoachDocument | nul
     }
 
     await dbConnect();
-    const coachDoc = await Coach.findById(coachId)
+    const coachDoc = await (Coach.findById as any)(coachId)
       .populate('userId', 'name email image')
       .populate('customers', 'name email image')
       .lean();
@@ -152,7 +152,7 @@ export async function getCoachById(coachId: string): Promise<CoachDocument | nul
 export async function getAllCoaches(): Promise<CoachDocument[]> {
   try {
     await dbConnect();
-    const coachDocs = await Coach.find()
+    const coachDocs = await (Coach.find as any)()
       .populate('userId', 'name email image')
       .populate('customers', 'name email image')
       .lean();
@@ -207,17 +207,17 @@ export async function createCoach({
   await dbConnect();
   
   // Check if user exists and is not already a coach
-  const existingUser = await User.findById(userId);
+  const existingUser = await (User.findById as any)(userId);
   if (!existingUser) {
     throw new Error('Usuario no encontrado');
   }
 
-  const existingCoach = await Coach.findOne({ userId });
+  const existingCoach = await (Coach.findOne as any)({ userId });
   if (existingCoach) {
     throw new Error('El usuario ya es un coach');
   }
 
-  const coach = await Coach.create({
+  const coach = await (Coach.create as any)({
     userId,
     specialties,
     bio: biography,
@@ -243,7 +243,7 @@ export async function updateCoach({
   }
 
   await dbConnect();
-  const coach = await Coach.findByIdAndUpdate(
+  const coach = await (Coach.findByIdAndUpdate as any)(
     coachId,
     {
       $set: {
@@ -269,7 +269,7 @@ export async function deleteCoach(coachId: string) {
   }
 
   await dbConnect();
-  const coach = await Coach.findByIdAndDelete(coachId);
+  const coach = await (Coach.findByIdAndDelete as any)(coachId);
   
   if (!coach) {
     throw new Error('Coach no encontrado');
@@ -290,12 +290,12 @@ export async function addCustomerToCoach({
   await dbConnect();
   
   // Check if customer exists
-  const customer = await User.findById(customerId);
+  const customer = await (User.findById as any)(customerId);
   if (!customer) {
     throw new Error('Cliente no encontrado');
   }
 
-  const coach = await Coach.findByIdAndUpdate(
+  const coach = await (Coach.findByIdAndUpdate as any)(
     coachId,
     {
       $addToSet: { customers: customerId }
@@ -324,7 +324,7 @@ export async function removeCustomerFromCoach({
   }
 
   await dbConnect();
-  const coach = await Coach.findByIdAndUpdate(
+  const coach = await (Coach.findByIdAndUpdate as any)(
     coachId,
     {
       $pull: { customers: customerId }
@@ -349,7 +349,7 @@ export async function ensureCoachExists(userId: string): Promise<CoachDocument |
   await dbConnect();
   
   // Check if user exists and has coach role
-  const user = await User.findById(userId);
+  const user = await (User.findById as any)(userId);
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
@@ -359,11 +359,11 @@ export async function ensureCoachExists(userId: string): Promise<CoachDocument |
   }
 
   // Check if coach document already exists
-  let coach = await Coach.findOne({ userId });
+  let coach = await (Coach.findOne as any)({ userId });
   
   // If coach doesn't exist, create it
   if (!coach) {
-    coach = await Coach.create({
+    coach = await (Coach.create as any)({
       userId,
       specialties: [],
       bio: '',

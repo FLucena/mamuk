@@ -10,9 +10,20 @@ export interface ApiTestResult {
   status: number;
   statusText: string;
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
   responseTime: number;
+}
+
+interface FlowTestResults {
+  coachesTest: ApiTestResult;
+  customersTest: ApiTestResult;
+  assignTest: ApiTestResult;
+  summary: {
+    success: number;
+    fail: number;
+    total: number;
+  };
 }
 
 export async function testEndpoint(endpoint: string, options?: RequestInit): Promise<ApiTestResult> {
@@ -41,7 +52,7 @@ export async function testEndpoint(endpoint: string, options?: RequestInit): Pro
     
     try {
       data = await response.json();
-    } catch (e) {
+    } catch {
       error = 'Failed to parse response as JSON';
     }
     
@@ -135,7 +146,7 @@ export async function runApiTests() {
   return results;
 }
 
-export async function testAssignCustomersFlow(coachId: string) {
+export async function testAssignCustomersFlow(coachId: string): Promise<FlowTestResults> {
   console.group('🧪 Testing Assign Customers Flow for Coach: ' + coachId);
   
   // Test coach endpoints
@@ -143,15 +154,38 @@ export async function testAssignCustomersFlow(coachId: string) {
   
   // Find coach document
   let coachDocId = coachId;
-  if (coachesTest.success && coachesTest.data) {
-    const coachDoc = coachesTest.data.find((c: any) => 
-      c.userId && (c.userId._id === coachId || c.userId === coachId)
-    );
+  if (coachesTest.success && coachesTest.data && Array.isArray(coachesTest.data)) {
+    // Find coach document by ID safely
+    const coaches = coachesTest.data as unknown[];
     
-    if (coachDoc && coachDoc._id) {
-      coachDocId = coachDoc._id;
-      console.log(`Found coach document ID: ${coachDocId}`);
-    } else {
+    for (const coach of coaches) {
+      if (
+        typeof coach === 'object' && 
+        coach !== null && 
+        '_id' in coach &&
+        'userId' in coach
+      ) {
+        const c = coach as { _id: string; userId: unknown };
+        
+        if (typeof c.userId === 'string' && c.userId === coachId) {
+          coachDocId = c._id;
+          console.log(`Found coach document ID: ${coachDocId}`);
+          break;
+        } else if (
+          typeof c.userId === 'object' && 
+          c.userId !== null && 
+          '_id' in c.userId && 
+          typeof c.userId._id === 'string' && 
+          c.userId._id === coachId
+        ) {
+          coachDocId = c._id;
+          console.log(`Found coach document ID: ${coachDocId}`);
+          break;
+        }
+      }
+    }
+    
+    if (coachDocId === coachId) {
       console.warn('Could not find coach document for ID:', coachId);
     }
   }

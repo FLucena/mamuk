@@ -76,7 +76,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         try {
           await dbConnect();
-          const dbUser = await User.findOne({ email: session.user.email })
+          const dbUser = await (User.findOne as any)({ email: session.user.email })
             .select('roles')
             .lean() as { roles?: Role[] } | null;
 
@@ -102,7 +102,7 @@ export const authOptions: NextAuthOptions = {
         await dbConnect();
         
         // Find or create user in database
-        const dbUser = await User.findOne({ 
+        const dbUser = await (User.findOne as any)({
           $or: [
             { email: user.email },
             { sub: account.providerAccountId }
@@ -110,8 +110,9 @@ export const authOptions: NextAuthOptions = {
         });
         
         if (!dbUser) {
-          await User.create({
-            email: user.email,
+          // Create new user if not found
+          await (User.create as any)({
+            email: user.email || "",
             name: user.name || '',
             image: user.image,
             roles: ['customer'],

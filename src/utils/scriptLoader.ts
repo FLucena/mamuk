@@ -55,7 +55,7 @@ export function loadScript(src: string, options: ScriptOptions = {}) {
   try {
     domain = new URL(src).origin;
   } catch (e) {
-    console.error(`Invalid URL: ${src}`);
+    console.error(`Invalid URL: ${e}`);
   }
   
   // Add preconnect for external domains

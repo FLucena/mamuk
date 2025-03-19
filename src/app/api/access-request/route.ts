@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get the session to verify the user is an admin
     const session = await getServerSession(authOptions);

@@ -28,7 +28,7 @@ export function useLoadingSpinner() {
    * @returns Wrapped function that shows spinner during execution
    */
   const wrapWithSpinner = useCallback(
-    <T extends any[], R>(fn: (...args: T) => Promise<R>) => {
+    <T extends unknown[], R>(fn: (...args: T) => Promise<R>) => {
       return async (...args: T): Promise<R> => {
         return withSpinner(fn(...args));
       };

@@ -43,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     await dbConnect();
     
     // Obtener solo workouts públicos
-    const workouts = await Workout.find({ isPublic: true })
+    const workouts = await (Workout.find as any)({ isPublic: true })
       .select('_id updatedAt')
       .sort({ updatedAt: -1 })
       .limit(100)

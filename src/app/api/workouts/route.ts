@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { createWorkout } from '@/lib/services/workout';
 import { randomUUID } from 'crypto';
+import { ErrorWithMessage } from '@/types/common';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,11 +55,12 @@ export async function POST(request: NextRequest) {
     }, session.user.id);
     
     return NextResponse.json(workout, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating workout:', error);
     
+    const err = error as ErrorWithMessage;
     return NextResponse.json(
-      { message: error.message || 'Error al crear la rutina' },
+      { message: err.message || 'Error al crear la rutina' },
       { status: 500 }
     );
   }
