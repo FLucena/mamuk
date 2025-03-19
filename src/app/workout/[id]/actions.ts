@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/db';
 import { Workout } from '@/lib/models/workout';
 import { Types } from 'mongoose';
-import { getCurrentUserRole } from '@/lib/utils/permissions';
+import { getCurrentUserRole, getCurrentUserRoles } from '@/lib/utils/permissions';
 import User from '@/lib/models/user';
 import { ObjectId } from 'mongodb';
 import { sanitizeHtml, validateMongoId } from '@/lib/utils/security';
@@ -69,12 +69,24 @@ export async function addDay(workoutId: string, userId: string) {
 
   await dbConnect();
   try {
-    const workout = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workoutId),
-      userId: userId.toString()
-    });
+    // Find by ID first, then verify ownership
+    const workout = await (Workout.findById as any)(new Types.ObjectId(workoutId));
 
     if (!workout) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workout.userId);
+    const requestUserId = String(userId);
+    
+    if (workoutUserId !== requestUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(userId);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
+    }
 
     const defaultBlocks = Array.from({ length: 3 }, (_, blockIndex) => ({
       name: `Bloque ${blockIndex + 1}`,
@@ -116,46 +128,59 @@ export async function addBlock(workout: WorkoutType, dayIndex: number) {
   });
 
   if (!session?.user?.id || !session?.user?.email) {
-    // Removed console.log
     throw new Error('No autorizado');
   }
 
-  // En este caso no necesitamos verificar el rol, pero podríamos hacerlo
-  // para acciones más restrictivas
-  // const userRole = await getCurrentUserRole(session.user.email);
-  // // Removed console.log
-
   if (dayIndex < 0) {
-    // Removed console.log
     throw new Error('Invalid day index');
   }
 
   await dbConnect();
-  // Removed console.log
 
   try {
     const workoutId = workout.id;
-    // Removed console.log
 
     if (!workoutId) {
-      // Removed console.log
       throw new Error('Invalid workout ID');
     }
 
     if (!validateMongoId(workoutId)) {
-      // Removed console.log
       throw new Error('Invalid workout ID format');
     }
 
     console.log('Searching for workout with criteria:', {
-      _id: workoutId,
-      userId: session.user.id
+      _id: workoutId
     });
 
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workoutId),
-      userId: session.user.id.toString()
+    // Find the workout using only the ID and then verify ownership in code
+    // This avoids the ObjectId casting error for userId field
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workoutId));
+
+    if (!workoutDoc) {
+      throw new Error('Workout not found');
+    }
+    
+    // Check if the user has permission to modify this workout
+    // Convert both IDs to strings for comparison to avoid type issues
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    console.log('Comparing userIds:', {
+      workoutUserId,
+      sessionUserId,
+      match: workoutUserId === sessionUserId
     });
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      // If not admin/coach and not the owner, deny access
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
+    }
 
     console.log('Workout document found:', {
       found: !!workoutDoc,
@@ -166,11 +191,6 @@ export async function addBlock(workout: WorkoutType, dayIndex: number) {
         blocksCount: workoutDoc.days[dayIndex].blocks.length
       } : null
     });
-
-    if (!workoutDoc) {
-      // Removed console.log
-      throw new Error('Workout not found');
-    }
 
     if (!workoutDoc.days || dayIndex >= workoutDoc.days.length) {
       console.log('Day not found:', {
@@ -183,22 +203,17 @@ export async function addBlock(workout: WorkoutType, dayIndex: number) {
 
     // Get random exercises for the new block
     const randomExercises = getRandomExercises(3);
-    // Removed console.log
 
     const newBlock = {
       name: `Bloque ${workoutDoc.days[dayIndex].blocks.length + 1}`,
       exercises: randomExercises
     };
-    // Removed console.log
 
     workoutDoc.days[dayIndex].blocks.push(newBlock);
-    // Removed console.log
 
     await workoutDoc.save();
-    // Removed console.log
 
     revalidatePath(`workout-${workoutId}`);
-    // Removed console.log
 
     // Convert to plain object to avoid React serialization issues
     const workoutObject = JSON.parse(JSON.stringify(workoutDoc.toObject()));
@@ -221,12 +236,24 @@ export async function addExercise(workout: WorkoutType, dayIndex: number, blockI
 
   await dbConnect();
   try {
-    const workoutDoc = await (Workout.findOne as any)({
-      _id: new Types.ObjectId(workout.id),
-      userId: session.user.id.toString()
-    });
+    // Find by ID first, then verify ownership - avoids ObjectId casting errors
+    const workoutDoc = await (Workout.findById as any)(new Types.ObjectId(workout.id));
 
     if (!workoutDoc) throw new Error('Workout not found');
+    
+    // Check if the user has permission to modify this workout
+    const workoutUserId = String(workoutDoc.userId);
+    const sessionUserId = String(session.user.id);
+    
+    if (workoutUserId !== sessionUserId) {
+      // Also allow if user is an admin or coach
+      const userRoles = await getCurrentUserRoles(session.user.id);
+      const isAdminOrCoach = userRoles.includes('admin') || userRoles.includes('coach');
+      
+      if (!isAdminOrCoach) {
+        throw new Error('No tienes permiso para modificar esta rutina');
+      }
+    }
 
     const newExercise = {
       name: 'Nuevo ejercicio',

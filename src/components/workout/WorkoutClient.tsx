@@ -359,113 +359,108 @@ export default function WorkoutClient({
             description={workout.description}
           />
           
-          <div className="container max-w-5xl mx-auto p-4">
-            <div className="flex justify-between items-center mb-6">
-              <Link 
-                href="/workout" 
-                className="inline-flex items-center px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Volver a rutinas
-              </Link>
-              
-              <div className="flex space-x-2">
+          <div className="container max-w-5xl mx-auto px-4 py-6">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex gap-2">
                 <button
                   onClick={expandAll}
-                  className="px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-md transition-colors"
                 >
                   Expandir todo
                 </button>
                 <button
                   onClick={collapseAll}
-                  className="px-3 py-1 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-md transition-colors"
                 >
                   Colapsar todo
                 </button>
-                <button
-                  onClick={handleDeleteWorkout}
-                  className="px-3 py-1 text-sm text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded transition-colors flex items-center"
-                  aria-label="Eliminar rutina"
-                >
-                  <Trash className="w-4 h-4" />
-                </button>
               </div>
+              
+              <button
+                onClick={handleDeleteWorkout}
+                className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded-md transition-colors flex items-center"
+                aria-label="Eliminar rutina"
+                disabled={uiState.isDeleting}
+              >
+                <Trash className="w-4 h-4 mr-1.5" />
+                Eliminar
+              </button>
             </div>
             
             {workout.days && workout.days.length > 0 ? (
-              <>
+              <div className="space-y-6">
                 {workout.days.map((day, dayIndex) => (
                   <WorkoutDayComponent
-                    key={`day-${dayIndex}-${day.name}`}
+                    key={`day-${dayIndex}-${day.id || day.name}`}
                     title={day.name}
                     blocks={day.blocks || []}
-                    isExpanded={uiState.expandedDays[dayIndex] || false}
+                    isExpanded={!!uiState.expandedDays[dayIndex]}
                     expandExercises={uiState.expandExercises}
                     expandedBlocks={uiState.expandedBlocks}
                     setExpandedBlocks={(value: SetStateAction<Record<string, boolean>>) => {
                       if (typeof value === 'function') {
-                        setUiState(prev => ({ ...prev, expandedBlocks: value(prev.expandedBlocks) }));
+                        updateUIState({ expandedBlocks: value(uiState.expandedBlocks) });
                       } else {
-                        setUiState(prev => ({ ...prev, expandedBlocks: value }));
+                        updateUIState({ expandedBlocks: value });
                       }
                     }}
                     expandedExercises={uiState.expandedExercises}
                     setExpandedExercises={(value: SetStateAction<Record<string, boolean>>) => {
                       if (typeof value === 'function') {
-                        setUiState(prev => ({ ...prev, expandedExercises: value(prev.expandedExercises) }));
+                        updateUIState({ expandedExercises: value(uiState.expandedExercises) });
                       } else {
-                        setUiState(prev => ({ ...prev, expandedExercises: value }));
+                        updateUIState({ expandedExercises: value });
                       }
                     }}
                     dayIndex={dayIndex}
-                    onAddBlock={() => handleAddBlock(dayIndex)}
-                    onAddExercise={(blockIndex) => handleAddExercise(dayIndex, blockIndex)}
-                    onUpdateExercise={(blockIndex, exerciseIndex, data) => 
-                      handleUpdateExercise(dayIndex, blockIndex, exerciseIndex, data)
-                    }
-                    onDeleteExercise={(blockIndex, exerciseIndex) => 
-                      handleDeleteExercise(dayIndex, blockIndex, exerciseIndex)
-                    }
-                    onUpdateTitle={(newName) => handleUpdateDayName(dayIndex, newName)}
-                    onUpdateBlockTitle={(blockIndex, newName) => handleUpdateBlockName(dayIndex, blockIndex, newName)}
-                    onDeleteBlock={(blockIndex) => handleDeleteBlock(dayIndex, blockIndex)}
-                    onDeleteDay={() => handleDeleteDay(dayIndex)}
+                    onAddBlock={addBlock ? () => handleAddBlock(dayIndex) : undefined}
+                    onAddExercise={addExercise ? (blockIndex) => handleAddExercise(dayIndex, blockIndex) : undefined}
+                    onUpdateExercise={updateExercise ? (blockIndex, exerciseIndex, data) => handleUpdateExercise(dayIndex, blockIndex, exerciseIndex, data) : undefined}
+                    onDeleteExercise={deleteExercise ? (blockIndex, exerciseIndex) => handleDeleteExercise(dayIndex, blockIndex, exerciseIndex) : undefined}
+                    onUpdateTitle={updateDayName ? (newName) => handleUpdateDayName(dayIndex, newName) : undefined}
+                    onUpdateBlockTitle={updateBlockName ? (blockIndex, newName) => handleUpdateBlockName(dayIndex, blockIndex, newName) : undefined}
+                    onDeleteBlock={deleteBlock ? (blockIndex) => handleDeleteBlock(dayIndex, blockIndex) : undefined}
+                    onDeleteDay={deleteDay ? () => handleDeleteDay(dayIndex) : undefined}
                     showVideosInline={showVideosInline}
                   />
                 ))}
-                
-                {/* Botón "Añadir día" después de los días existentes */}
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 mb-6 shadow-sm">
-                  <button 
-                    onClick={handleAddDay}
-                    className="w-full py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">No hay días en esta rutina</p>
+                {addDay && (
+                  <button
+                    onClick={() => handleAddDay()}
+                    className="inline-flex items-center px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors font-medium shadow-sm"
+                    disabled={uiState.isLoading}
                   >
                     <Plus className="w-5 h-5 mr-2" />
-                    Añadir día
+                    Añadir primer día
                   </button>
-                </div>
-              </>
-            ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-sm">
-                <p className="text-gray-500 dark:text-gray-400 mb-4">No hay días en esta rutina</p>
-                <button 
-                  onClick={handleAddDay}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
+                )}
+              </div>
+            )}
+            
+            {workout.days && workout.days.length > 0 && addDay && (
+              <div className="mt-8 text-center">
+                <button
+                  onClick={() => handleAddDay()}
+                  className="inline-flex items-center px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors font-medium shadow-sm"
+                  disabled={uiState.isLoading}
                 >
                   <Plus className="w-5 h-5 mr-2" />
-                  Añadir primer día
+                  Añadir día
                 </button>
               </div>
             )}
           </div>
         </>
       ) : (
-        <div className="container mx-auto p-4 text-center">
-          <h1 className="text-2xl font-bold mb-4">Error al cargar la rutina</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">No se pudo cargar la información de la rutina.</p>
+        <div className="container max-w-5xl mx-auto px-4 py-16 text-center">
+          <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">No se encontró la rutina</p>
           <Link 
             href="/workout" 
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Volver a rutinas

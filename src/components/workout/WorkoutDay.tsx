@@ -251,89 +251,106 @@ export default memo(function WorkoutDay({
   }, [blocks, dayIndex, expandedBlocks, setExpandedBlocks, setExpandedExercises]);
 
   return (
-    <div className="relative">
+    <div className="relative mb-6 rounded-lg overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md">
       {isLoading && <LoadingOverlay />}
       
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div 
+        className={`flex items-center justify-between cursor-pointer p-4 border-b border-gray-200 dark:border-gray-700 transition-colors`}
+        onClick={handleToggle}
+      >
+        <div className="flex items-center space-x-2">
+          <ChevronDown 
+            className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-300 ${expanded ? 'transform rotate-180 text-blue-500 dark:text-blue-400' : ''}`} 
+          />
+          
           {isEditing ? (
-            <div className="flex-1">
-              <input
-                type="text"
-                value={dayTitle}
-                onChange={handleNameChange}
-                onBlur={handleNameSubmit}
-                onKeyDown={handleKeyDown}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                autoFocus
-              />
-            </div>
+            <input
+              type="text"
+              value={dayTitle}
+              onChange={handleNameChange}
+              onBlur={handleNameSubmit}
+              onKeyDown={handleKeyDown}
+              className="text-lg font-medium bg-transparent border-b-2 border-blue-500 focus:outline-none text-gray-900 dark:text-white px-1"
+              autoFocus
+            />
           ) : (
-            <h2 
-              className="text-xl font-semibold text-gray-900 dark:text-white cursor-pointer"
+            <h3 
+              className="text-lg font-medium text-gray-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onDoubleClick={handleDoubleClick}
             >
               {title}
-            </h2>
+            </h3>
           )}
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleToggle}
-              className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              aria-expanded={expanded}
-              aria-label={expanded ? "Collapse day" : "Expand day"}
-            >
-              <ChevronDown 
-                className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform ${expanded ? 'transform rotate-180' : ''}`} 
-              />
-            </button>
-            
-            {onDeleteDay && (
-              <button
-                onClick={handleDeleteDay}
-                className="p-1 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
-                aria-label="Delete day"
-              >
-                <Trash className="h-5 w-5" />
-              </button>
-            )}
-          </div>
         </div>
         
-        {expanded && (
-          <div className="space-y-6">
-            {blocks.map((block, blockIndex) => (
-              <WorkoutBlock
-                key={blockIndex}
-                title={block.name}
-                exercises={block.exercises}
-                isExpanded={isBlockExpanded(blockIndex)}
-                expandExercises={expandExercises}
-                expandedExercises={expandedExercises}
-                setExpandedExercises={setExpandedExercises}
-                onToggle={() => toggleBlockExpansion(blockIndex)}
-                onAddExercise={onAddExercise ? () => handleAddExercise(blockIndex) : undefined}
-                onUpdateExercise={(exerciseIndex, data) => handleUpdateExercise(blockIndex, exerciseIndex, data)}
-                onDeleteExercise={(exerciseIndex) => handleDeleteExercise(blockIndex, exerciseIndex)}
-                onDeleteBlock={() => handleDeleteBlock(blockIndex)}
-                onUpdateTitle={(newTitle) => handleUpdateBlockTitle(blockIndex, newTitle)}
-                showVideosInline={showVideosInline}
-              />
-            ))}
-            
-            {onAddBlock && (
-              <button
-                onClick={handleAddBlock}
-                className="w-full py-3 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors flex items-center justify-center"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Añadir bloque
-              </button>
-            )}
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          {onAddBlock && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                handleAddBlock();
+              }}
+              className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Añadir bloque
+            </button>
+          )}
+          
+          {onDeleteDay && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                handleDeleteDay();
+              }}
+              className="p-2 rounded-full text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+              aria-label="Eliminar día"
+            >
+              <Trash className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
+      
+      {expanded && (
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50">
+          {blocks && blocks.length > 0 ? (
+            <div className="space-y-4">
+              {blocks.map((block, blockIndex) => (
+                <WorkoutBlock
+                  key={`${block.id || block.name}-${blockIndex}`}
+                  title={block.name}
+                  exercises={block.exercises || []}
+                  isExpanded={isBlockExpanded(blockIndex)}
+                  expandExercises={expandExercises}
+                  expandedExercises={expandedExercises}
+                  setExpandedExercises={setExpandedExercises}
+                  onToggle={() => toggleBlockExpansion(blockIndex)}
+                  onAddExercise={onAddExercise ? () => handleAddExercise(blockIndex) : undefined}
+                  onUpdateExercise={onUpdateExercise ? (exerciseIndex, data) => handleUpdateExercise(blockIndex, exerciseIndex, data) : undefined}
+                  onDeleteExercise={onDeleteExercise ? (exerciseIndex) => handleDeleteExercise(blockIndex, exerciseIndex) : undefined}
+                  onUpdateTitle={onUpdateBlockTitle ? (newTitle) => handleUpdateBlockTitle(blockIndex, newTitle) : undefined}
+                  onDeleteBlock={onDeleteBlock ? () => handleDeleteBlock(blockIndex) : undefined}
+                  showVideosInline={showVideosInline}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-gray-500 dark:text-gray-400">No hay bloques en este día</p>
+              {onAddBlock && (
+                <button
+                  onClick={handleAddBlock}
+                  className="mt-2 inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Añadir el primer bloque
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }, arePropsEqual);

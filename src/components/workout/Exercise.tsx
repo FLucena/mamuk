@@ -91,13 +91,13 @@ export default memo(function Exercise({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md">
       <div 
-        className={`px-4 py-3 flex items-center justify-between cursor-pointer ${isExpanded ? 'border-b border-gray-200 dark:border-gray-700' : ''}`}
+        className={`px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${isExpanded ? 'bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-800/80'}`}
         onClick={handleToggleExpand}
       >
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-medium text-gray-900 dark:text-white truncate" data-testid="exercise-name">
+          <h3 className="text-base font-medium text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400" data-testid="exercise-name">
             {name}
           </h3>
           <div className="flex items-center mt-1 space-x-2 text-sm text-gray-500 dark:text-gray-400">
@@ -113,12 +113,12 @@ export default memo(function Exercise({
           </div>
         </div>
         <ChevronDown 
-          className={`h-5 w-5 text-gray-400 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`} 
+          className={`h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform duration-300 ${isExpanded ? 'transform rotate-180' : ''}`} 
         />
       </div>
       
       {isExpanded && (
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 bg-white dark:bg-gray-800">
           <div className="flex flex-wrap gap-2 mb-4">
             <div className="flex-1 min-w-0">
               {notes && (
@@ -133,7 +133,7 @@ export default memo(function Exercise({
                   {localTags.map(tag => (
                     <span 
                       key={tag} 
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
                     >
                       {tag}
                     </span>
@@ -146,17 +146,24 @@ export default memo(function Exercise({
           <div className="flex space-x-2">
             {videoUrl && (
               <button
-                onClick={() => showVideoInline ? setShowVideo(!showVideo) : setIsVideoModalOpen(true)}
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1 rounded transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showVideoInline ? setShowVideo(!showVideo) : setIsVideoModalOpen(true);
+                }}
+                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded transition-colors flex items-center"
                 aria-label={showVideoInline ? (showVideo ? "Ocultar video" : "Mostrar video") : "Ver video"}
               >
-                <Video className="h-5 w-5" />
+                <Video className="h-5 w-5 mr-1" />
+                <span className="text-sm">{showVideo ? "Ocultar video" : "Ver video"}</span>
               </button>
             )}
             
             <button
-              onClick={() => setIsTagsOpen(!isTagsOpen)}
-              className={`p-1 rounded transition-colors ${
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsTagsOpen(!isTagsOpen);
+              }}
+              className={`p-1.5 rounded transition-colors flex items-center ${
                 isTagsOpen 
                   ? 'text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 bg-amber-50 dark:bg-amber-900/20' 
                   : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -164,16 +171,21 @@ export default memo(function Exercise({
               aria-label={isTagsOpen ? "Ocultar zonas del cuerpo" : "Mostrar zonas del cuerpo"}
               aria-expanded={isTagsOpen}
             >
-              <Tag className="h-5 w-5" />
+              <Tag className="h-5 w-5 mr-1" />
+              <span className="text-sm">Zonas</span>
             </button>
             
             {onDelete && (
               <button
-                onClick={onDelete}
-                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded transition-colors flex items-center"
                 aria-label="Eliminar ejercicio"
               >
-                <Trash2 className="h-5 w-5" />
+                <Trash2 className="h-5 w-5 mr-1" />
+                <span className="text-sm">Eliminar</span>
               </button>
             )}
           </div>
@@ -184,7 +196,7 @@ export default memo(function Exercise({
                 videoUrl={videoUrl} 
                 aspectRatio="16:9"
                 controls={true}
-                className="rounded-lg overflow-hidden"
+                className="rounded-lg overflow-hidden shadow-md"
               />
             </div>
           )}
@@ -197,10 +209,10 @@ export default memo(function Exercise({
                   <button
                     key={zone}
                     onClick={() => handleTagToggle(zone)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors 
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-200 
                       ${localTags.includes(zone)
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-                        : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                       }`}
                   >
                     {zone}

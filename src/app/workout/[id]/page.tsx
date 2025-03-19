@@ -24,6 +24,14 @@ interface WorkoutPageProps {
   }>;
 }
 
+// Define the wrapper function separately with "use server" directive
+// This allows it to be passed to client components
+async function deleteWorkoutWrapper(workoutId: string, userId: string): Promise<void> {
+  "use server";
+  await actions.deleteWorkout(workoutId, userId);
+  // Return void
+}
+
 export default async function WorkoutPage({ params }: WorkoutPageProps) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -96,12 +104,6 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
       };
     })
   }));
-
-  // Wrapper for deleteWorkout that returns void instead of {success: true}
-  const deleteWorkoutWrapper = async (workoutId: string, userId: string): Promise<void> => {
-    await actions.deleteWorkout(workoutId, userId);
-    // Return void
-  };
 
   // Generar esquema para SEO
   const workoutSchema = generateWorkoutSchema(workout);
