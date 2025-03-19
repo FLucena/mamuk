@@ -653,8 +653,19 @@ export default function AdminDashboard({ initialView = 'users' }: AdminDashboard
 
   // Add this function to close the modal
   const handleCloseModal = useCallback(() => {
+    debugLog({
+      title: 'Modal Closed',
+      data: {
+        previouslySelectedCoach: selectedCoach ? {
+          id: selectedCoach._id,
+          name: selectedCoach.name
+        } : null
+      }
+    });
+    
     setIsAssignModalOpen(false);
-  }, []);
+    setSelectedCoach(null); // Reset the selected coach when modal is closed
+  }, [selectedCoach]);
 
   // Run diagnostic tests
   const handleRunTests = useCallback(async () => {

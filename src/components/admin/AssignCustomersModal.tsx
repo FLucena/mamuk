@@ -32,15 +32,34 @@ export default function AssignCustomersModal({
   const [isLoading, setIsLoading] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
 
+  // Initialize selected customers with already assigned customers when modal opens
+  useEffect(() => {
+    if (isOpen && coach && assignedCustomerIds.length > 0) {
+      setSelectedCustomerIds(assignedCustomerIds);
+      
+      debugLog({
+        title: 'Modal Opened with Pre-selected Customers',
+        data: {
+          coachId: coach._id,
+          coachName: coach.name,
+          assignedCustomerCount: assignedCustomerIds.length,
+          assignedCustomerIds
+        }
+      });
+    } else {
+      // Reset selections when modal opens without assigned customers
+      setSelectedCustomerIds([]);
+    }
+  }, [isOpen, coach, assignedCustomerIds]);
+
   // Filter customers based on search term
   const filteredCustomers = useMemo(() => {
     // Make sure we have customers to filter
     if (!allCustomers || allCustomers.length === 0) return [];
     
     return allCustomers.filter(customer => {
-      // Only show users with customer role who aren't already assigned to this coach
-      if (!customer.roles?.includes('customer') || 
-          (assignedCustomerIds.includes(customer._id) && !selectedCustomerIds.includes(customer._id))) {
+      // Only show users with customer role
+      if (!customer.roles?.includes('customer')) {
         return false;
       }
       
@@ -55,7 +74,7 @@ export default function AssignCustomersModal({
       
       return true;
     });
-  }, [allCustomers, assignedCustomerIds, selectedCustomerIds, searchTerm]);
+  }, [allCustomers, searchTerm]);
 
   // Reset selection when coach changes
   useEffect(() => {
@@ -73,7 +92,17 @@ export default function AssignCustomersModal({
 
   // Handle assignment of selected customers
   const handleAssign = useCallback(async () => {
-    if (!coach || selectedCustomerIds.length === 0) return;
+    if (!coach) return;
+    
+    // Calculate which customers are being added and which ones removed
+    const customersToAdd = selectedCustomerIds.filter(id => !assignedCustomerIds.includes(id));
+    const customersToRemove = assignedCustomerIds.filter(id => !selectedCustomerIds.includes(id));
+    
+    // If there are no changes, just close the modal
+    if (customersToAdd.length === 0 && customersToRemove.length === 0) {
+      onClose();
+      return;
+    }
     
     // Validate session before proceeding with API call
     const isValid = await ensureValidSession();
@@ -82,12 +111,13 @@ export default function AssignCustomersModal({
     setIsLoading(true);
     
     debugLog({
-      title: 'Assigning Customers',
+      title: 'Updating Coach Customers',
       data: {
         coachId: coach._id,
         coachName: coach.name,
-        customerCount: selectedCustomerIds.length,
-        customerIds: selectedCustomerIds,
+        customersToAdd,
+        customersToRemove,
+        finalCustomerCount: selectedCustomerIds.length,
       }
     });
     
@@ -101,6 +131,7 @@ export default function AssignCustomersModal({
         body: JSON.stringify({
           coachId: coach._id,
           customerIds: selectedCustomerIds,
+          mode: customersToRemove.length > 0 ? 'replace' : 'add', // Use replace mode if we're removing any customers
         }),
         credentials: 'include'
       });
@@ -144,7 +175,15 @@ export default function AssignCustomersModal({
         throw new Error(errorMessage);
       }
       
-      toast.success(`${selectedCustomerIds.length} clientes asignados a ${coach.name}`);
+      // Show appropriate success message based on what happened
+      if (customersToAdd.length > 0 && customersToRemove.length > 0) {
+        toast.success(`Se actualizaron las asignaciones para ${coach.name}`);
+      } else if (customersToAdd.length > 0) {
+        toast.success(`${customersToAdd.length} clientes asignados a ${coach.name}`);
+      } else if (customersToRemove.length > 0) {
+        toast.success(`${customersToRemove.length} clientes removidos de ${coach.name}`);
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error assigning customers:', error);
@@ -159,7 +198,7 @@ export default function AssignCustomersModal({
     } finally {
       setIsLoading(false);
     }
-  }, [coach, selectedCustomerIds, onClose]);
+  }, [coach, selectedCustomerIds, assignedCustomerIds, onClose]);
 
   // Run API tests
   const handleRunTests = useCallback(async () => {
@@ -201,7 +240,13 @@ export default function AssignCustomersModal({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4">
         {/* Backdrop */}
-        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose}></div>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent any other events from interfering
+            onClose();
+          }}
+        ></div>
         
         {/* Modal content */}
         <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden z-10">
@@ -277,44 +322,61 @@ export default function AssignCustomersModal({
                   {filteredCustomers.map((customer) => (
                     <li 
                       key={customer._id} 
-                      className="py-3 flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-md px-2"
-                      onClick={() => toggleCustomer(customer._id)}
+                      className="py-3 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md"
                     >
-                      <input
-                        type="checkbox"
-                        checked={selectedCustomerIds.includes(customer._id)}
-                        onChange={() => toggleCustomer(customer._id)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        aria-label={`Seleccionar ${customer.name || 'cliente'}`}
-                      />
-                      
-                      <div className="ml-3 flex items-center flex-1">
-                        <div className="h-8 w-8 flex-shrink-0">
-                          {customer.image ? (
-                            <RobustImage
-                              className="h-8 w-8 rounded-full"
-                              src={customer.image}
-                              alt={customer.name || ''}
-                              width={32}
-                              height={32}
-                              fallbackSrc="/user-placeholder.png"
-                            />
-                          ) : (
-                            <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-gray-400 dark:text-gray-300" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{customer.name || 'Sin nombre'}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{customer.email || 'Sin email'}</p>
+                      <div className="flex items-center">
+                        {/* Checkbox - stop propagation to avoid double toggling */}
+                        <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedCustomerIds.includes(customer._id)}
+                            onChange={() => toggleCustomer(customer._id)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                            aria-label={`Seleccionar ${customer.name || 'cliente'}`}
+                          />
                         </div>
                         
-                        {assignedCustomerIds.includes(customer._id) && !selectedCustomerIds.includes(customer._id) && (
-                          <span className="ml-auto px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                            Ya asignado
-                          </span>
-                        )}
+                        {/* Customer info - click to toggle selection */}
+                        <div 
+                          className="ml-3 flex items-center flex-1 cursor-pointer" 
+                          onClick={() => toggleCustomer(customer._id)}
+                        >
+                          <div className="h-8 w-8 flex-shrink-0">
+                            {customer.image ? (
+                              <RobustImage
+                                className="h-8 w-8 rounded-full"
+                                src={customer.image}
+                                alt={customer.name || ''}
+                                width={32}
+                                height={32}
+                                fallbackSrc="/user-placeholder.png"
+                              />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                                <UserIcon className="h-5 w-5 text-gray-400 dark:text-gray-300" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{customer.name || 'Sin nombre'}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{customer.email || 'Sin email'}</p>
+                          </div>
+                          
+                          {/* Status indicators */}
+                          <div className="ml-auto">
+                            {assignedCustomerIds.includes(customer._id) && (
+                              <span className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 mr-2">
+                                Ya asignado
+                              </span>
+                            )}
+                            
+                            {selectedCustomerIds.includes(customer._id) && !assignedCustomerIds.includes(customer._id) && (
+                              <span className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                                Nuevo
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </li>
                   ))}
@@ -333,9 +395,9 @@ export default function AssignCustomersModal({
             </button>
             <button
               onClick={handleAssign}
-              disabled={selectedCustomerIds.length === 0 || isLoading}
+              disabled={isButtonDisabled()}
               className={`px-4 py-2 rounded-md text-white ${
-                selectedCustomerIds.length === 0 || isLoading
+                isButtonDisabled()
                   ? 'bg-blue-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
@@ -349,7 +411,7 @@ export default function AssignCustomersModal({
                   Asignando...
                 </span>
               ) : (
-                `Asignar ${selectedCustomerIds.length} clientes`
+                getButtonLabel()
               )}
             </button>
           </div>
@@ -357,4 +419,31 @@ export default function AssignCustomersModal({
       </div>
     </div>
   );
+  
+  // Helper function to get appropriate button label based on selection state
+  function getButtonLabel() {
+    const newSelections = selectedCustomerIds.filter(id => !assignedCustomerIds.includes(id));
+    const removedSelections = assignedCustomerIds.filter(id => !selectedCustomerIds.includes(id));
+    
+    if (newSelections.length > 0 && removedSelections.length > 0) {
+      return `Actualizar asignaciones (${newSelections.length} nuevos, ${removedSelections.length} removidos)`;
+    } else if (newSelections.length > 0) {
+      return `Asignar ${newSelections.length} nuevos clientes`;
+    } else if (removedSelections.length > 0) {
+      return `Remover ${removedSelections.length} clientes`;
+    } else {
+      return "No hay cambios";
+    }
+  }
+
+  // Helper function to determine if button should be disabled
+  function isButtonDisabled() {
+    if (isLoading) return true;
+    
+    const customersToAdd = selectedCustomerIds.filter(id => !assignedCustomerIds.includes(id));
+    const customersToRemove = assignedCustomerIds.filter(id => !selectedCustomerIds.includes(id));
+    
+    // Button is disabled if there are no changes to make
+    return customersToAdd.length === 0 && customersToRemove.length === 0;
+  }
 } 

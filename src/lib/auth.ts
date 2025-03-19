@@ -52,8 +52,6 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     // Handle JWT token creation
     async jwt({ token, user }) {
-      console.log('JWT Callback - Initial token:', JSON.stringify(token, null, 2));
-      console.log('JWT Callback - User data:', user ? JSON.stringify(user, null, 2) : 'No user data');
       
       if (!token.roles) {
         token.roles = ['customer'];
@@ -62,10 +60,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.roles = (user.roles as Role[]) || ['customer'];
-        console.log('JWT Callback - Setting roles:', token.roles);
       }
 
-      console.log('JWT Callback - Final token:', JSON.stringify(token, null, 2));
       return token;
     },
     // Add user information to session
@@ -80,14 +76,12 @@ export const authOptions: NextAuthOptions = {
 
           session.user.id = token.id as string || '';
           session.user.roles = (dbUser?.roles || token.roles || ['customer']) as Role[];
-          console.log('Session Callback - Setting user roles:', session.user.roles);
         } catch (error) {
           console.error('Error fetching user roles:', error);
           session.user.roles = token.roles || ['customer'];
         }
       }
       
-      console.log('Session Callback - Final session:', JSON.stringify(session, null, 2));
       return session;
     },
     // Basic signIn callback
