@@ -89,10 +89,22 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
     
+    // Log the role change attempt with more visible markers
+    console.log('\n🔄 =====================================');
+    console.log('🔄 USER ROLE UPDATE ATTEMPT');
+    console.log('🔄 =====================================');
+    console.log('👤 User ID:', userId);
+    console.log('📧 User Email:', user.email);
+    console.log('📝 Current roles:', user.roles);
+    console.log('🎯 Requested new roles:', roles);
+    console.log('👨‍💼 Updated by admin:', session.user.email);
+    
     // Check if admin is trying to remove their own admin role
     if (session.user.id === userId && 
         user.roles.includes('admin') && 
         !roles.includes('admin')) {
+      console.log('❌ BLOCKED: Attempt to remove own admin role');
+      console.log('🔄 =====================================\n');
       return NextResponse.json(
         { error: 'No se puede remover el rol de administrador de sí mismo' }, 
         { status: 403 }
@@ -108,6 +120,12 @@ export async function PUT(request, { params }) {
       { roles: sortedRoles },
       { new: true }
     );
+    
+    // Log the successful role update
+    console.log('✅ ROLES UPDATED SUCCESSFULLY');
+    console.log('📋 Final roles:', sortedRoles);
+    console.log('⏰ Updated at:', new Date().toISOString());
+    console.log('🔄 =====================================\n');
     
     return NextResponse.json({ roles: sortRoles(updatedUser.roles || []) });
   } catch (error) {

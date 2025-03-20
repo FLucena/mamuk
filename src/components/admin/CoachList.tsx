@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User as UserIcon, Edit2, Trash2, UserPlus } from 'lucide-react';
 import EditCoachModal from './EditCoachModal';
@@ -8,7 +8,7 @@ import DeleteCoachModal from './DeleteCoachModal';
 import { User } from '@/lib/types/user';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import AssignCustomerModal from './AssignCustomerModal';
+import AssignCustomersModal from './AssignCustomersModal';
 import RobustImage from '@/components/ui/RobustImage';
 import { ensureValidSession, authorizedFetch } from '@/lib/utils/session';
 
@@ -31,12 +31,41 @@ export default memo(function CoachList({ users = [], isLoading = false }: CoachL
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [allCustomers, setAllCustomers] = useState<User[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
 
   const coaches = users.filter(user => user.roles?.includes('coach')) as Coach[];
   const filteredCoaches = coaches.filter(coach => 
     coach.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     coach.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Fetch all customers when needed
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setIsLoadingCustomers(true);
+      const response = await authorizedFetch('/api/admin/users?role=customer');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch customers');
+      }
+      
+      const data = await response.json();
+      setAllCustomers(data.users || data);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      toast.error('Error al cargar los clientes');
+    } finally {
+      setIsLoadingCustomers(false);
+    }
+  }, []);
+
+  // Fetch customers when assign modal opens
+  useEffect(() => {
+    if (isAssignModalOpen) {
+      fetchCustomers();
+    }
+  }, [isAssignModalOpen, fetchCustomers]);
 
   const handleEditClick = useCallback((coach: Coach) => {
     setSelectedCoach(coach);
@@ -170,89 +199,91 @@ export default memo(function CoachList({ users = [], isLoading = false }: CoachL
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Coach
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Estado
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredCoaches.map((coach) => (
-              <tr key={coach._id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 flex-shrink-0">
-                      {coach.image ? (
-                        <RobustImage
-                          className="h-10 w-10 rounded-full"
-                          src={coach.image}
-                          alt={coach.name || ''}
-                          width={40}
-                          height={40}
-                          fallbackSrc="/user-placeholder.png"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                          <UserIcon className="h-6 w-6 text-gray-400 dark:text-gray-300" />
+        <div className="align-middle inline-block min-w-full">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Coach
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Estado
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredCoaches.map((coach) => (
+                <tr key={coach._id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 flex-shrink-0">
+                        {coach.image ? (
+                          <RobustImage
+                            className="h-10 w-10 rounded-full"
+                            src={coach.image}
+                            alt={coach.name || ''}
+                            width={40}
+                            height={40}
+                            fallbackSrc="/user-placeholder.png"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                            <UserIcon className="h-6 w-6 text-gray-400 dark:text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {coach.name}
                         </div>
-                      )}
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {coach.name}
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-gray-300">{coach.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Activo
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleEditClick(coach)}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4"
-                    title="Editar"
-                    aria-label="Editar coach"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(coach)}
-                    className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 mr-4"
-                    title="Eliminar"
-                    aria-label="Eliminar coach"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleAssignCustomers(coach)}
-                    className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
-                    title="Asignar Clientes"
-                    aria-label="Asignar clientes al coach"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-300">{coach.email}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      Activo
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleEditClick(coach)}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4"
+                      title="Editar"
+                      aria-label="Editar coach"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(coach)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 mr-4"
+                      title="Eliminar"
+                      aria-label="Eliminar coach"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleAssignCustomers(coach)}
+                      className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+                      title="Asignar Clientes"
+                      aria-label="Asignar clientes al coach"
+                    >
+                      <UserPlus className="w-5 h-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selectedCoach && (
@@ -276,16 +307,12 @@ export default memo(function CoachList({ users = [], isLoading = false }: CoachL
             onConfirm={handleDeleteConfirm}
           />
 
-          <AssignCustomerModal
+          <AssignCustomersModal
             isOpen={isAssignModalOpen}
             onClose={() => setIsAssignModalOpen(false)}
-            coach={{
-              id: selectedCoach._id || '',
-              name: selectedCoach.name || '',
-              email: selectedCoach.email || '',
-              image: selectedCoach.image
-            }}
-            onAssign={handleAssignSubmit}
+            coach={selectedCoach}
+            allCustomers={allCustomers}
+            assignedCustomerIds={selectedCoach.customers || []}
           />
         </>
       )}

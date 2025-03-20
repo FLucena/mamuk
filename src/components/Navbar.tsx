@@ -1,19 +1,14 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Users, LogOut, Menu, X, Award, Sun, Moon, Trophy } from 'lucide-react';
+import { User, Users, Menu, X, Award, Sun, Moon, Trophy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState, Suspense, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { useTheme } from 'next-themes';
 import LoadingNavbar from './ui/LoadingNavbar';
-import Image from 'next/image';
-import { NIVELES_USUARIO } from './user/UserLevel';
-import { INSIGNIAS } from './user/UserBadges';
 import SignOutButton from '@/components/auth/SignOutButton';
-import { Session } from 'next-auth';
 import { Role } from '@/lib/types/user';
 import RenderTracker from './RenderTracker';
 import RobustImage from './ui/RobustImage';
@@ -193,7 +188,7 @@ const NavbarContent = memo(function NavbarContent() {
             </button>
             
             {/* Profile dropdown */}
-            <div className="ml-3 relative">
+            <div className="hidden md:block ml-3 relative">
               {sessionData.isAuthenticated && (
                 <div ref={menuRef}>
                   <button

@@ -138,6 +138,19 @@ export async function PUT(
       ? sortRoles(roles) 
       : ['customer'];
 
+    // Get current user data before update
+    const currentUser = await (User.findById as any)(userId);
+    if (currentUser) {
+      console.log('\n🔄 =====================================');
+      console.log('🔄 USER UPDATE - ROLE CHANGE DETECTED');
+      console.log('🔄 =====================================');
+      console.log('👤 User ID:', userId);
+      console.log('📧 User Email:', currentUser.email);
+      console.log('📝 Current roles:', currentUser.roles);
+      console.log('🎯 New roles:', userRoles);
+      console.log('👨‍💼 Updated by:', session.user.email);
+    }
+
     const user = await (User.findByIdAndUpdate as any)(
       userId,
       { 
@@ -154,6 +167,12 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    // Log successful update
+    console.log('✅ USER UPDATED SUCCESSFULLY');
+    console.log('📋 Final roles:', userRoles);
+    console.log('⏰ Updated at:', new Date().toISOString());
+    console.log('🔄 =====================================\n');
 
     // Transformar los datos para la respuesta
     const transformedUser = {

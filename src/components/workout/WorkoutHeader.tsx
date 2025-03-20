@@ -25,14 +25,14 @@ const WorkoutHeader = memo(function WorkoutHeader({
   
   return (
     <div className="flex flex-col mb-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           {title}
         </h1>
         {hasPermission && (
           <Link
             href="/workout/new"
-            className="inline-flex items-center px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded transition-colors"
+            className="inline-flex items-center justify-center px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded transition-colors w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-1" />
             {newButtonText}
