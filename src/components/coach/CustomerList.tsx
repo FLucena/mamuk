@@ -106,21 +106,23 @@ export default memo(function CustomerList({ coach }: CustomerListProps) {
               key={customer._id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
             >
-              <div className="flex items-center space-x-4 mb-4">
-                {customer.image ? (
-                  <img
-                    src={customer.image}
-                    alt={customer.name}
-                    className="w-12 h-12 rounded-full"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                    <User className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-                  </div>
-                )}
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4">
+                <div className="flex justify-center">
+                  {customer.image ? (
+                    <img
+                      src={customer.image}
+                      alt={customer.name}
+                      className="w-16 h-16 sm:w-12 sm:h-12 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 sm:w-12 sm:h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      <User className="w-8 h-8 sm:w-6 sm:h-6 text-gray-500 dark:text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="text-center sm:text-left">
                   <h3 className="text-lg font-semibold">{customer.name}</h3>
-                  <div className="flex items-center text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center justify-center sm:justify-start text-gray-500 dark:text-gray-400">
                     <Mail className="w-4 h-4 mr-1" />
                     <span className="text-sm">{customer.email}</span>
                   </div>
