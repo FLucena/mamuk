@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { createWorkout } from '@/lib/services/workout';
 import { randomUUID } from 'crypto';
 import { ErrorWithMessage } from '@/types/common';
+import User from '@/lib/models/user';
+import { dbConnect } from '@/lib/db';
+import { IUser } from '@/lib/models/user';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +38,18 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Connect to database
+    await dbConnect();
+    
+    // Find the user by their Google OAuth ID (sub field)
+    const user = await (User.findOne as any)({ sub: session.user.id }).lean() as IUser;
+    if (!user) {
+      return NextResponse.json(
+        { message: 'Usuario no encontrado' },
+        { status: 404 }
+      );
+    }
     
     // Create default workout structure
     const defaultDays = Array.from({ length: 3 }, (_, dayIndex) => ({
@@ -47,12 +62,12 @@ export async function POST(request: NextRequest) {
       }))
     }));
     
-    // Create workout
+    // Create workout using the user's MongoDB ID
     const workout = await createWorkout({
       name,
       description,
       days: defaultDays,
-    }, session.user.id);
+    }, user._id.toString());
     
     return NextResponse.json(workout, { status: 201 });
   } catch (error: unknown) {
