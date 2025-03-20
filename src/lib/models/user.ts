@@ -64,7 +64,7 @@ userSchema.index({ roles: 1 });
 // This replaces the previous duplicate indexes
 userSchema.index({ email: 1 }, { 
   unique: true, 
-  name: 'email_unique_index',
+  name: 'email_unique_index_v2',
   background: true,
   sparse: true, // Allow null/undefined values
   partialFilterExpression: { email: { $exists: true } }, // Only index documents with email

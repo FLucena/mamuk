@@ -30,8 +30,8 @@ export interface CoachDocument {
 }
 
 /**
- * Obtiene un coach por su userId
- * @param userId ID del usuario asociado al coach
+ * Obtiene un coach por su userId (que puede ser un ID de Google OAuth)
+ * @param userId ID del usuario asociado al coach (puede ser un ID de Google OAuth)
  * @returns Objeto coach con sus datos y clientes, o null si no existe
  */
 export async function getCoachByUserId(userId: string): Promise<CoachDocument | null> {
@@ -39,54 +39,66 @@ export async function getCoachByUserId(userId: string): Promise<CoachDocument | 
     console.log('\n=== Starting getCoachByUserId ===');
     console.log('Searching for coach with userId:', userId);
 
-    if (!validateMongoId(userId)) {
-      console.log('❌ Invalid MongoDB ID:', userId);
-      throw new Error('ID de usuario inválido');
-    }
-
     await dbConnect();
     console.log('✅ Database connected');
 
-    // First check if the user has the coach role
-    const user = await (User.findById as any)(userId);
+    // First find the user by their Google ID (sub field)
+    const user = await (User.findOne as any)({ sub: userId });
     console.log('User found:', {
       id: user?._id,
       email: user?.email,
       roles: user?.roles,
-      exists: !!user
+      exists: !!user,
+      sub: user?.sub
     });
 
-    if (!user || !user.roles.includes('coach')) {
-      console.log('❌ User not found or not a coach:', { userId, roles: user?.roles });
+    if (!user) {
+      console.log('❌ User not found with sub:', userId);
       return null;
     }
 
-    // Try to find existing coach profile using ObjectId
-    console.log('Looking for coach profile with userId:', new Types.ObjectId(userId));
-    let coachDoc = await (Coach.findOne as any)({ userId: new Types.ObjectId(userId) })
-      .populate('userId', 'name email image')
-      .populate('customers', 'name email image')
-      .lean();
+    if (!user.roles.includes('coach')) {
+      console.log('❌ User is not a coach:', { userId: user._id, roles: user.roles });
+      return null;
+    }
+
+    // Try to find existing coach profile using the user's MongoDB _id
+    console.log('Looking for coach profile with userId:', user._id);
+    
+    let coachDoc = await (Coach.findOne as any)({ 
+      userId: user._id 
+    })
+    .populate('userId', 'name email image')
+    .populate('customers', 'name email image')
+    .lean();
 
     console.log('Coach profile search result:', {
       found: !!coachDoc,
       coachId: coachDoc?._id,
-      customersCount: coachDoc?.customers?.length || 0
+      userId: typeof coachDoc?.userId === 'object' ? coachDoc.userId._id : coachDoc?.userId,
+      customersCount: coachDoc?.customers?.length || 0,
+      query: { userId: user._id.toString() }
     });
 
     // If no coach profile exists but user has coach role, create one
     if (!coachDoc) {
-      console.log('🔨 No coach profile found, creating one for user:', userId);
-      const newCoach = await ensureCoachExists(userId);
-      if (!newCoach) {
-        console.log('❌ Failed to create coach profile for user:', userId);
+      console.log('🔨 No coach profile found, creating one for user:', user._id);
+      try {
+        const newCoach = await ensureCoachExists(user._id.toString());
+        if (!newCoach) {
+          console.log('❌ Failed to create coach profile for user:', user._id);
+          return null;
+        }
+        console.log('✅ Successfully created new coach profile:', {
+          coachId: newCoach._id,
+          userId: typeof newCoach.userId === 'object' ? newCoach.userId._id : newCoach.userId,
+          customersCount: newCoach.customers?.length || 0
+        });
+        coachDoc = newCoach;
+      } catch (error) {
+        console.error('❌ Error creating coach profile:', error);
         return null;
       }
-      console.log('✅ Successfully created new coach profile:', {
-        coachId: newCoach._id,
-        customersCount: newCoach.customers?.length || 0
-      });
-      coachDoc = newCoach;
     }
 
     // Asegurarse de que coachDoc es un objeto y no un array

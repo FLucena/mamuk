@@ -83,7 +83,7 @@ export default async function CustomersPage() {
       _id: coachData._id,
       userId: typeof coachData.userId === 'string'
         ? {
-            _id: coachData._id, // Usamos el _id del coach como fallback
+            _id: coachData.userId, // Use the actual userId string
             name: 'Coach',
             email: '',
             image: undefined

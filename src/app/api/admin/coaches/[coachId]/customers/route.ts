@@ -33,8 +33,8 @@ export async function GET(
     
     await dbConnect();
     
-    // Buscar el coach por userId
-    const coach = await (Coach.findOne as any)({ userId: coachId });
+    // Buscar el coach por su _id
+    const coach = await (Coach.findById as any)(coachId);
     
     if (!coach) {
       // Si el coach no existe, devolver una lista vacía
