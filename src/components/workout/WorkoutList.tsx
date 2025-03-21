@@ -8,7 +8,8 @@ import RenderTracker from '../RenderTracker';
 import { duplicateWorkout, assignWorkoutToUser, updateWorkoutName, deleteWorkout } from '@/app/workout/[id]/actions';
 import { Workout, Block, Exercise, WorkoutDay } from '@/types/models';
 import { useWorkoutLimit } from '@/hooks/useWorkoutLimit';
-import { useWorkoutBlocker } from '@/utils/workoutBlocker';
+import { useWorkoutLimitStore } from '@/store/workoutLimitStore';
+import { useSession } from 'next-auth/react';
 
 // Lazy load modals to reduce initial JS bundle size
 const DuplicateWorkoutModal = lazy(() => 
@@ -112,10 +113,14 @@ const WorkoutCard = memo(function WorkoutCard({
   index: number;
   workoutLimitReached?: boolean;
 }) {
-  const { isBlocked, isCoachOrAdmin, maxAllowed } = useWorkoutBlocker();
+  // Use the Zustand store directly
+  const { isBlocked, isCoachOrAdmin, formattedMaxAllowed } = useWorkoutLimitStore();
   
   // Use both the props and the Zustand store for determining if duplicate is disabled
   const isDuplicateDisabled = (!isCoachOrAdmin && isBlocked) || (!isCoach && workoutLimitReached);
+  
+  // Format the display text for maxAllowed
+  const displayLimit = formattedMaxAllowed === Infinity ? 'máximo' : formattedMaxAllowed;
   
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm will-change-transform">
@@ -128,7 +133,7 @@ const WorkoutCard = memo(function WorkoutCard({
           <p>isCoachOrAdmin: {String(isCoachOrAdmin)}</p>
           <p>isBlocked: {String(isBlocked)}</p>
           <p>workoutLimitReached: {String(workoutLimitReached)}</p>
-          <p>From hook - maxAllowed: {maxAllowed}</p>
+          <p>From store - maxAllowed: {displayLimit}</p>
         </div>
       )}
       
@@ -181,10 +186,10 @@ const WorkoutCard = memo(function WorkoutCard({
                 : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 cursor-pointer'
             }`}
             aria-label={isDuplicateDisabled 
-              ? `Has alcanzado el límite de ${maxAllowed} rutinas personales`
+              ? `Has alcanzado el límite de ${displayLimit} rutinas personales`
               : `Duplicar rutina ${workout.name}`}
             title={isDuplicateDisabled 
-              ? `Has alcanzado el límite de ${maxAllowed} rutinas personales`
+              ? `Has alcanzado el límite de ${displayLimit} rutinas personales`
               : `Duplicar rutina ${workout.name}`}
             disabled={isDuplicateDisabled}
             data-disabled={isDuplicateDisabled}
@@ -275,11 +280,28 @@ const WorkoutList = memo(function WorkoutList({
 }: WorkoutListProps) {
   const router = useRouter();
   
-  const { isBlocked, maxAllowed, currentCount, isLoading: isLimitLoading, blockAction } = useWorkoutBlocker();
+  const { data: session } = useSession();
+  
+  const { 
+    isBlocked, 
+    isCoachOrAdmin,
+    formattedMaxAllowed, 
+    currentCount,
+    isLoading: isLimitLoading, 
+    blockAction,
+    checkAndBlockAction,
+    checkLimit
+  } = useWorkoutLimitStore();
   
   const effectiveWorkoutLimitReached = isCoach ? false : (workoutLimitReached || isBlocked);
   
-  console.warn('⚠️ MAIN COMPONENT LIMITS - currentCount:', currentCount, 'maxAllowed:', maxAllowed, 'isCoach:', isCoach, 'isBlocked:', isBlocked);
+  // Get workoutIds for linking
+  const workoutIds = useMemo(() => {
+    return initialWorkouts.map(workout => workout.id || null);
+  }, [initialWorkouts]);
+  
+  // Debug information - format the maxAllowed value for display
+  const displayMaxAllowed = formattedMaxAllowed === Infinity ? 'Unlimited' : formattedMaxAllowed;
   
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
@@ -366,11 +388,11 @@ const WorkoutList = memo(function WorkoutList({
       workoutLimitReached,
       isBlocked,
       isCoach,
-      maxAllowed
+      formattedMaxAllowed
     });
     if ((workoutLimitReached || isBlocked) && !isCoach) {
       // Show error message but don't open modal
-      toast.error(`Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
+      toast.error(`Has alcanzado el límite de ${formattedMaxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
       blockAction();
       return;
     }
@@ -552,9 +574,9 @@ const WorkoutList = memo(function WorkoutList({
             <p>workoutLimitReached prop: {String(workoutLimitReached)}</p>
             <p>isCoach prop: {String(isCoach)}</p>
             <p>useWorkoutLimit hook values:</p>
-            <p>- canCreate: {String(maxAllowed > 0)}</p>
+            <p>- canCreate: {String(formattedMaxAllowed > 0)}</p>
             <p>- currentCount: {currentCount}</p>
-            <p>- maxAllowed: {maxAllowed}</p>
+            <p>- maxAllowed: {formattedMaxAllowed}</p>
             <p>- userRole: {String(isCoach)}</p>
             <p>- isLoading: {String(isLimitLoading)}</p>
             <p>Rendered at: {new Date().toLocaleTimeString()}</p>
@@ -572,7 +594,6 @@ const WorkoutList = memo(function WorkoutList({
           ) : (
             workouts.map((workout, index) => {
               const workoutId = getValidWorkoutId(workout);
-              console.warn(`⚠️ Creating WorkoutCard for workout: ${workout.name}, index: ${index}, id: ${workoutId}`);
               
               return (
                 <WorkoutCard

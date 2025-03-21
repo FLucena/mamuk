@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWorkoutBlocker } from '@/utils/workoutBlocker';
+import { useWorkoutLimitStore } from '@/store/workoutLimitStore';
 import { PlusCircle } from 'lucide-react';
 
 interface WorkoutCreationBlockerProps {
@@ -19,7 +19,14 @@ export default function WorkoutCreationBlocker({
   className = "" 
 }: WorkoutCreationBlockerProps) {
   const router = useRouter();
-  const { isBlocked, isCoachOrAdmin, checkAndBlockAction, maxAllowed } = useWorkoutBlocker();
+  
+  // Use the enhanced Zustand store directly
+  const { 
+    isBlocked, 
+    isCoachOrAdmin, 
+    checkAndBlockAction, 
+    formattedMaxAllowed 
+  } = useWorkoutLimitStore();
   
   const handleCreateClick = useCallback((e: React.MouseEvent) => {
     // If blocked, show message and prevent navigation
@@ -36,8 +43,11 @@ export default function WorkoutCreationBlocker({
     ? "bg-gray-300 text-gray-600 hover:bg-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
     : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600";
   
+  // Format the display text for maxAllowed
+  const displayLimit = formattedMaxAllowed === Infinity ? 'máximo' : formattedMaxAllowed;
+  
   const title = isBlocked && !isCoachOrAdmin
-    ? `Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`
+    ? `Has alcanzado el límite de ${displayLimit} rutinas personales. Para crear más, contacta con un entrenador.`
     : "Crear una nueva rutina personalizada";
   
   return (

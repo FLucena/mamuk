@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useWorkoutBlocker } from '@/utils/workoutBlocker';
+import { useWorkoutLimitStore } from '@/store/workoutLimitStore';
+import { useSession } from 'next-auth/react';
 
 interface CreateWorkoutFormProps {
   onSubmit?: (workoutId: string) => void;
@@ -15,23 +16,40 @@ export default function CreateWorkoutForm({
   redirectOnSuccess = true 
 }: CreateWorkoutFormProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [name, setName] = useState('Mi rutina personalizada');
   const [description, setDescription] = useState('Rutina de entrenamiento personalizada');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Use the workout blocker to check if user can create workouts
-  const { isBlocked, isCoachOrAdmin, maxAllowed, refresh } = useWorkoutBlocker();
+  // Use the workout limit store directly for improved state management
+  const { 
+    isBlocked, 
+    isCoachOrAdmin, 
+    formattedMaxAllowed: maxAllowed, 
+    checkLimit,
+    saveRoleToLocalStorage
+  } = useWorkoutLimitStore();
   
-  // Check limits when component mounts
+  // Check limits when component mounts and save user roles
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (session?.user?.id) {
+      // Call checkLimit with the user ID
+      checkLimit(session.user.id);
+      
+      // Save user roles to localStorage
+      if (session.user.roles) {
+        saveRoleToLocalStorage(session.user.roles);
+      }
+    }
+  }, [session?.user?.id, checkLimit, session?.user?.roles, saveRoleToLocalStorage]);
   
   // If user can't create workouts and is not a coach, show error and redirect
   useEffect(() => {
     if (isBlocked && !isCoachOrAdmin) {
-      toast.error(`Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
+      // Format the display text for maxAllowed
+      const displayLimit = maxAllowed === Infinity ? 'máximo' : maxAllowed;
+      toast.error(`Has alcanzado el límite de ${displayLimit} rutinas personales. Para crear más, contacta con un entrenador.`);
       router.push('/workout');
     }
   }, [isBlocked, isCoachOrAdmin, maxAllowed, router]);
@@ -40,7 +58,9 @@ export default function CreateWorkoutForm({
     e.preventDefault();
     
     if (isBlocked && !isCoachOrAdmin) {
-      setError(`Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
+      // Format the display text for maxAllowed
+      const displayLimit = maxAllowed === Infinity ? 'máximo' : maxAllowed;
+      setError(`Has alcanzado el límite de ${displayLimit} rutinas personales. Para crear más, contacta con un entrenador.`);
       return;
     }
     
@@ -77,6 +97,11 @@ export default function CreateWorkoutForm({
         onSubmit(workout.id);
       }
       
+      // Force refresh the workout limit after creating a new workout
+      if (session?.user?.id) {
+        checkLimit(session.user.id);
+      }
+      
       if (redirectOnSuccess) {
         router.push(`/workout/${workout.id}`);
       }
@@ -90,13 +115,15 @@ export default function CreateWorkoutForm({
   }
   
   if (isBlocked && !isCoachOrAdmin) {
+    // Format the display text for maxAllowed
+    const displayLimit = maxAllowed === Infinity ? 'máximo' : maxAllowed;
     return (
       <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-md border border-amber-200 dark:border-amber-800">
         <h2 className="text-amber-700 dark:text-amber-400 font-medium text-lg mb-2">
           Límite de rutinas alcanzado
         </h2>
         <p className="text-amber-600 dark:text-amber-300">
-          Has alcanzado el límite de {maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.
+          Has alcanzado el límite de {displayLimit} rutinas personales. Para crear más, contacta con un entrenador.
         </p>
       </div>
     );
