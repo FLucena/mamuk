@@ -4,6 +4,7 @@ import React, { memo } from 'react';
 import { Calendar, ChevronRight, Edit, Copy, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useWorkoutBlocker } from '@/utils/workoutBlocker';
 
 // Define WorkoutListItem type for the component
 interface WorkoutListItem {
@@ -22,6 +23,7 @@ interface WorkoutListItem {
 interface WorkoutItemProps {
   workout: WorkoutListItem;
   isCoach?: boolean;
+  workoutLimitReached?: boolean;
   onClick?: () => void;
   onEditClick?: (e: React.MouseEvent, workout: WorkoutListItem) => void;
   onDuplicateClick?: (workout: WorkoutListItem) => void;
@@ -31,11 +33,41 @@ interface WorkoutItemProps {
 const WorkoutItem = memo(function WorkoutItem({ 
   workout, 
   isCoach = false,
+  workoutLimitReached = false,
   onClick,
   onEditClick,
   onDuplicateClick,
   onDeleteClick
 }: WorkoutItemProps) {
+  // Get workout blocker info
+  const { 
+    isBlocked, 
+    isCoachOrAdmin, 
+    maxAllowed, 
+    blockAction
+  } = useWorkoutBlocker();
+
+  // Use isBlocked from the Zustand store which is more reliable
+  // Still allow the props to override for backwards compatibility
+  const isDuplicateDisabled = (!isCoachOrAdmin && isBlocked) || (!isCoach && workoutLimitReached);
+  
+  // For better debugging, log relevant state in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('WorkoutItem - duplicate button state:', { 
+      name: workout.name,
+      isDuplicateDisabled,
+      isBlocked,
+      isCoachOrAdmin,
+      workoutLimitReached, 
+      isCoach
+    });
+  }
+
+  // Create tooltip text
+  const duplicateTooltip = isDuplicateDisabled
+    ? `Has alcanzado el límite de ${maxAllowed} rutinas personales`
+    : `Duplicar rutina ${workout.name}`;
+
   // Only convert if string, handle case where it might already be a Date
   const updatedAt = typeof workout.updatedAt === 'string' 
     ? new Date(workout.updatedAt) 
@@ -60,6 +92,13 @@ const WorkoutItem = memo(function WorkoutItem({
   // Handle duplicate button click
   const handleDuplicateClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // If disabled, show limit message and don't proceed
+    if (isDuplicateDisabled) {
+      blockAction(e);
+      return;
+    }
+    
     if (onDuplicateClick) {
       onDuplicateClick(workout);
     }
@@ -126,8 +165,15 @@ const WorkoutItem = memo(function WorkoutItem({
           {onDuplicateClick && (
             <button
               onClick={handleDuplicateClick}
-              className="inline-flex items-center justify-center p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              aria-label={`Duplicar rutina ${workout.name}`}
+              className={`inline-flex items-center justify-center p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                isDuplicateDisabled
+                  ? 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 cursor-pointer'
+              }`}
+              aria-label={duplicateTooltip}
+              title={duplicateTooltip}
+              disabled={isDuplicateDisabled}
+              data-blocked={isDuplicateDisabled}
             >
               <Copy className="w-5 h-5" />
             </button>

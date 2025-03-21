@@ -133,16 +133,6 @@ const DynamicErrorNotification = dynamic(() => import('@/components/ErrorNotific
 // Import ImagePreloader without dynamic to avoid webpack issues
 import ImagePreloader from '@/components/ImagePreloader';
 
-// Development-only components
-const DevComponents = dynamic(() => 
-  process.env.NODE_ENV === 'development' 
-    ? import('@/components/DevComponents').then((mod) => mod.default)
-    : Promise.resolve(() => null)
-, {
-  ssr: false,
-  loading: () => null
-});
-
 // Optimize performance monitoring
 const PerformanceComponents = dynamic(() => 
   import('@/components/performance').then((mod) => {
@@ -212,8 +202,8 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                     <Suspense fallback={null}>
                       <DynamicCookieConsent />
                       <DynamicErrorNotification />
-                      <PerformanceComponents criticalFonts={CRITICAL_FONTS} />
-                      {process.env.NODE_ENV === 'development' && <DevComponents />}
+                      {/* Only include PerformanceComponents when explicitly requested via URL param */}
+        
                       <ImagePreloader />
                     </Suspense>
                     

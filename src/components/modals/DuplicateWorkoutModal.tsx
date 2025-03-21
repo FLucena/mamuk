@@ -1,160 +1,148 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { Workout } from '@/types/models';
+import { useWorkoutBlocker } from '@/utils/workoutBlocker';
 
 interface DuplicateWorkoutModalProps {
-  isOpen: boolean;
+  workout: Workout;
+  onConfirm: (newName: string, newDescription?: string) => Promise<void>;
   onClose: () => void;
-  workoutId: string;
-  workoutName: string;
-  workoutDescription?: string;
-  onDuplicate: (newName: string, newDescription: string, workoutId: string) => Promise<any>;
+  loading?: boolean;
 }
 
 export default function DuplicateWorkoutModal({
-  isOpen,
+  workout,
+  onConfirm,
   onClose,
-  workoutId,
-  workoutName,
-  workoutDescription = '',
-  onDuplicate
+  loading = false
 }: DuplicateWorkoutModalProps) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [newName, setNewName] = useState(`${workoutName} (Copia)`);
-  const [newDescription, setNewDescription] = useState(workoutDescription);
+  const [newName, setNewName] = useState(`${workout.name} (Copia)`);
+  const [newDescription, setNewDescription] = useState(workout.description || '');
   const [error, setError] = useState<string | null>(null);
+  
+  // Use the workout blocker hook
+  const { isBlocked, isCoachOrAdmin, maxAllowed, isLoading } = useWorkoutBlocker();
 
-  // Reiniciar el nombre cuando cambia la rutina seleccionada
+  // Immediately close the modal if user has hit their limit
+  // This is a safety check in case the modal is somehow opened despite limits
   useEffect(() => {
-    if (isOpen) {
-      setNewName(`${workoutName} (Copia)`);
-      setNewDescription(workoutDescription);
-      setError('');
-    }
-  }, [isOpen, workoutName, workoutDescription]);
-
-  async function handleDuplicate() {
-    setLoading(true);
-    setError('');
-    
-    try {
-      if (!newName.trim()) {
-        setError('Por favor, ingresa un nombre para la rutina');
-        setLoading(false);
-        return;
-      }
-      
-      if (!workoutId) {
-        console.error('Error: workoutId no definido en DuplicateWorkoutModal', { workoutId });
-        setError('ID de rutina no definido');
-        setLoading(false);
-        return;
-      }
-      
-      await onDuplicate(newName.trim(), newDescription.trim(), workoutId);
+    if (!isCoachOrAdmin && !isLoading && isBlocked) {
+      toast.error(`Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
       onClose();
+    }
+  }, [isCoachOrAdmin, isLoading, isBlocked, maxAllowed, onClose]);
+
+  // Reset form when workout changes
+  useEffect(() => {
+    setNewName(`${workout.name} (Copia)`);
+    setNewDescription(workout.description || '');
+    setError(null);
+  }, [workout]);
+
+  const handleDuplicate = async () => {
+    if (!newName.trim()) {
+      setError('El nombre es requerido');
+      return;
+    }
+
+    // Check if the user can create more workouts using our blocker
+    if (!isCoachOrAdmin && !isLoading && isBlocked) {
+      setError(`Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
+      return;
+    }
+
+    try {
+      setError(null);
+      await onConfirm(newName.trim(), newDescription.trim() || undefined);
     } catch (error) {
       console.error('Error al duplicar la rutina:', error);
       setError(error instanceof Error ? error.message : 'Error al duplicar la rutina');
-    } finally {
-      setLoading(false);
+      toast.error('Error al duplicar la rutina');
     }
-  }
+  };
 
-  if (!isOpen) return null;
-
-  // Validación al renderizar
-  if (!workoutId && isOpen) {
-    console.error('Renderizando modal sin workoutId válido');
-  }
+  // Determine if the duplicate button should be disabled
+  const isDuplicateDisabled = loading || (!isCoachOrAdmin && !isLoading && isBlocked);
+  const duplicateButtonText = loading 
+    ? 'Duplicando...' 
+    : (!isCoachOrAdmin && !isLoading && isBlocked)
+      ? `Límite de ${maxAllowed} rutinas alcanzado`
+      : 'Duplicar';
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-auto overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md">
+        <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
             Duplicar Rutina
-          </h3>
+          </h2>
           <button 
             onClick={onClose}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            aria-label="Cerrar"
           >
-            <X size={20} />
+            <X className="w-5 h-5" />
           </button>
         </div>
-
+        
         <div className="p-4">
-          <p className="mb-4 text-gray-700 dark:text-gray-300">
-            Vas a duplicar la rutina "{workoutName}".
-            {!workoutId && (
-              <span className="text-red-500 font-bold"> ¡Atención! ID no disponible</span>
-            )}
-          </p>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Nombre de la nueva rutina
-            </label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              disabled={loading}
-              className="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-              placeholder="Ingresa un nombre para la rutina"
-              autoFocus
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Descripción
-            </label>
-            <textarea
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-              disabled={loading}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[100px]"
-              placeholder="Descripción de la rutina (opcional)"
-            />
-          </div>
-
           {error && (
-            <div className="mb-4 p-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md">
+            <div className="bg-red-50 text-red-700 p-3 rounded-md mb-4 dark:bg-red-900/30 dark:text-red-400">
               {error}
             </div>
           )}
-
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleDuplicate}
-              disabled={loading || !newName.trim() || !workoutId}
-              className="px-4 py-2 text-sm text-white bg-indigo-600 dark:bg-indigo-700 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <span className="animate-spin mr-2">⏳</span>
-                  Duplicando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle size={16} className="mr-2" />
-                  Duplicar
-                </>
-              )}
-            </button>
+          
+          <div className="mb-4">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Nombre
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              autoFocus
+            />
           </div>
+          
+          <div className="mb-4">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Descripción (opcional)
+            </label>
+            <textarea
+              id="description"
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-2 p-4 border-t dark:border-gray-700">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleDuplicate}
+            disabled={isDuplicateDisabled}
+            className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center gap-2 ${
+              isDuplicateDisabled
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600'
+            }`}
+          >
+            {duplicateButtonText}
+          </button>
         </div>
       </div>
     </div>

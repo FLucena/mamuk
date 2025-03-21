@@ -51,10 +51,19 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
   const isAdmin = userRoles.includes('admin');
   const isCoach = userRoles.includes('coach');
 
+  // Ensure the workout ID is properly set as a string
+  const workoutId = workoutDoc._id?.toString() || workoutDoc.id?.toString() || id;
+  
+  console.log('[WorkoutPage] Processing workout data:', {
+    rawId: workoutDoc._id,
+    processedId: workoutId,
+    hasId: !!workoutId
+  });
+
   // Serialize the workout data to ensure all MongoDB objects are converted to plain objects
   const workout = JSON.parse(JSON.stringify({
     ...workoutDoc,
-    id: workoutDoc._id?.toString() || workoutDoc._id,
+    id: workoutId, // Ensure ID is explicitly set as string
     userId: typeof workoutDoc.userId === 'object' && workoutDoc.userId !== null 
       ? String(workoutDoc.userId) 
       : workoutDoc.userId,

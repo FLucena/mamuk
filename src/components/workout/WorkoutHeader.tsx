@@ -1,8 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
+import WorkoutCreationBlocker from './WorkoutCreationBlocker';
 
 interface WorkoutHeaderProps {
   title: string;
@@ -30,13 +29,10 @@ const WorkoutHeader = memo(function WorkoutHeader({
           {title}
         </h1>
         {hasPermission && (
-          <Link
-            href="/workout/new"
-            className="inline-flex items-center justify-center px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded transition-colors w-full sm:w-auto"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            {newButtonText}
-          </Link>
+          <WorkoutCreationBlocker 
+            buttonText={newButtonText}
+            className="w-full sm:w-auto text-sm"
+          />
         )}
       </div>
       

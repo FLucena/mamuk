@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Workout, WorkoutDay } from '@/types/models';
-import DeleteWorkoutModal from './DeleteWorkoutModal';
+import DeleteWorkoutModal from '@/components/modals/DeleteWorkoutModal';
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCreatedAt } from '@/lib/utils/dates';
 
@@ -18,16 +18,41 @@ interface WorkoutCardProps {
 
 export default function WorkoutCard({ id, name, description, days, onArchive }: WorkoutCardProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
-    await onArchive(id);
-    setIsDeleteModalOpen(false);
+    setIsDeleting(true);
+    try {
+      await onArchive(id);
+    } catch (error) {
+      console.error("Error archiving workout:", error);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
+
+  // Create a workout object from the provided props
+  const workoutData: Workout = {
+    id,
+    name,
+    description: description || "",
+    days,
+    createdAt: new Date(id).toISOString(),
+    updatedAt: new Date().toISOString(),
+    userId: "", // This might need to be populated correctly based on your data structure
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDeleteModalOpen(true);
   };
 
   return (
     <>
       <Link href={`/workout/${id}`}>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow relative group">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div>
@@ -43,16 +68,25 @@ export default function WorkoutCard({ id, name, description, days, onArchive }: 
                 {Array.isArray(days) ? days.length : 0} {Array.isArray(days) ? days.length === 1 ? 'día' : 'días' : ''}
               </div>
             </div>
+            <button
+              onClick={handleDeleteClick}
+              className="absolute top-2 right-2 p-2 rounded-full bg-red-100 text-red-700 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+              aria-label="Eliminar rutina"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </CardContent>
         </Card>
       </Link>
 
-      <DeleteWorkoutModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        workoutName={name}
-      />
+      {isDeleteModalOpen && (
+        <DeleteWorkoutModal
+          workout={workoutData}
+          onConfirm={handleDelete}
+          onClose={() => setIsDeleteModalOpen(false)}
+          loading={isDeleting}
+        />
+      )}
     </>
   );
 } 

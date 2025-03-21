@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useLightSession } from '@/hooks/useOptimizedSession';
+import { Workout, WorkoutDay, Block, Exercise } from '@/types/models';
 
 // Import only the specific icons we need instead of the whole library
 import { RefreshCw, AlertCircle } from 'lucide-react';
@@ -28,40 +29,6 @@ const WorkoutList = dynamic(() => import('@/components/workout/WorkoutList'), {
   </div>,
   ssr: false // Disable SSR for this component to reduce server load
 });
-
-// Define the types matching what's in the WorkoutList component
-interface Exercise {
-  _id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  weight?: number;
-  notes?: string;
-  videoUrl?: string;
-}
-
-interface Block {
-  _id: string;
-  name: string;
-  exercises: Exercise[];
-}
-
-interface WorkoutDay {
-  _id: string;
-  name: string;
-  blocks: Block[];
-}
-
-interface Workout {
-  _id: string;
-  name: string;
-  description?: string;
-  days: WorkoutDay[];
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  id?: string;
-}
 
 // Update WorkoutContentProps interface
 interface WorkoutContentProps {
@@ -109,7 +76,9 @@ const WorkoutContent = memo(function WorkoutContent({
   ), [workoutLimitReached, isCustomer, userWorkoutCount, isCoach, isAdmin]);
 
   return (
-    <>
+    <div className="space-y-4">
+      
+      {/* Header with create button */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         {headerComponent}
         <button 
@@ -123,7 +92,11 @@ const WorkoutContent = memo(function WorkoutContent({
         </button>
       </div>
       
-      <WorkoutList workouts={workouts} isCoach={isCoach || isAdmin} />
+      <WorkoutList 
+        workouts={workouts} 
+        isCoach={isCoach || isAdmin} 
+        workoutLimitReached={workoutLimitReached} 
+      />
       
       {workoutLimitReached && (
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
@@ -132,7 +105,7 @@ const WorkoutContent = memo(function WorkoutContent({
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 });
 
@@ -172,22 +145,33 @@ export default function WorkoutPage() {
       const workoutsData = await workoutsRes.json();
       
       // Transform API response to match the expected Workout type
-      const transformedWorkouts: Workout[] = (workoutsData.workouts || []).map((workout: {
-        _id?: string;
-        id?: string;
-        name?: string;
-        description?: string;
-        days?: WorkoutDay[];
-        userId?: string;
-        createdAt?: string;
-        updatedAt?: string;
-      }) => ({
+      const transformedWorkouts: Workout[] = (workoutsData.workouts || []).map((workout: any) => ({
         _id: workout._id || workout.id || '',
         id: workout.id || workout._id || '',
         name: workout.name || '',
         description: workout.description || '',
-        days: workout.days || [],
+        days: (workout.days || []).map((day: any) => ({
+          _id: day._id || day.id || '',
+          id: day.id || day._id || '',
+          name: day.name || '',
+          blocks: (day.blocks || []).map((block: any) => ({
+            _id: block._id || block.id || '',
+            id: block.id || block._id || '',
+            name: block.name || '',
+            exercises: (block.exercises || []).map((exercise: any) => ({
+              _id: exercise._id || exercise.id || '',
+              id: exercise.id || exercise._id || '',
+              name: exercise.name || '',
+              sets: exercise.sets || 0,
+              reps: exercise.reps || 0,
+              weight: exercise.weight || 0,
+              notes: exercise.notes || '',
+              videoUrl: exercise.videoUrl || ''
+            }))
+          }))
+        })),
         userId: workout.userId || '',
+        createdBy: workout.createdBy || workout.userId || '',
         createdAt: workout.createdAt || new Date().toISOString(),
         updatedAt: workout.updatedAt || new Date().toISOString()
       }));
@@ -198,36 +182,30 @@ export default function WorkoutPage() {
       const userRoles = session?.user?.roles || [];
       const isAdminUser = userRoles.includes('admin');
       const isCoachUser = userRoles.includes('coach') || isAdminUser;
-      const isCustomerUser = userRoles.includes('customer');
+      const isCustomerUser = userRoles.includes('customer') && !isCoachUser;
       
+      setIsAdmin(isAdminUser);
       setIsCoach(isCoachUser);
       setIsCustomer(isCustomerUser);
-      setIsAdmin(isAdminUser);
-      
-      // For customers, get their workout count to show the limit
-      if (isCustomerUser && !isAdminUser && !isCoachUser) {
-        const countRes = await fetch(`/api/workout?count=user&t=${Date.now()}`, { signal });
-        if (countRes.ok) {
-          const countData = await countRes.json();
-          const count = countData.count || 0;
-          setUserWorkoutCount(count);
-          setWorkoutLimitReached(count >= 3);
-        } else {
-          throw new Error(`Error fetching workout count: ${countRes.status} ${countRes.statusText}`);
-        }
-      } else {
-        setWorkoutLimitReached(false);
+
+      // Count personal workouts (created by the user themselves)
+      if (isCustomerUser) {
+        const personalWorkouts = transformedWorkouts.filter(
+          workout => workout.createdBy === workout.userId
+        );
+        setUserWorkoutCount(personalWorkouts.length);
+        setWorkoutLimitReached(personalWorkouts.length >= 3);
       }
       
       setError(null);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load workouts. Please try again later.';
-      setError(errorMessage);
-      setWorkouts([]);
+    } catch (error) {
+      console.error('Error fetching workouts:', error);
+      setError('Error al cargar las rutinas');
+      toast.error('Error al cargar las rutinas');
     } finally {
       setIsDataLoading(false);
     }
-  }, [session]);
+  }, [session?.user?.roles]);
   
   useEffect(() => {
     if (session) {

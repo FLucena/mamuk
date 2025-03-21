@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, SetStateAction } from 'react';
+import { useState, useMemo, SetStateAction, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Exercise, Workout } from '@/types/models';
 import WorkoutDetailHeader from '@/components/workout/WorkoutDetailHeader';
@@ -53,9 +53,9 @@ export default function WorkoutClient({
   showVideosInline = true,
 }: WorkoutClientProps) {
   const router = useRouter();
-  
-  // Use a single state object for UI state to reduce re-renders
-  const [uiState, setUiState] = useState<UIState>({
+  const [workout, setWorkout] = useState<Workout>(initialWorkout);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [uiState, setUIState] = useState<UIState>({
     expandedDays: {},
     expandedBlocks: {},
     expandedExercises: {},
@@ -64,12 +64,32 @@ export default function WorkoutClient({
     isDeleting: false
   });
 
-  // Use useMemo for workout data to prevent unnecessary re-renders
-  const workout = useMemo(() => initialWorkout, [initialWorkout]);
+  // Make sure workout has proper ID when it changes
+  useEffect(() => {
+    if (initialWorkout.id !== workout.id || !workout.id) {
+      console.log('Updating workout with new data, ID:', initialWorkout.id);
+      setWorkout(initialWorkout);
+    }
+  }, [initialWorkout, workout.id]);
 
-  // Helper function to update UI state
+  // Log workout ID on mount for debugging
+  useEffect(() => {
+    console.log('WorkoutClient initialized with ID:', workout.id);
+    
+    // Validate the ID format
+    if (!workout.id || typeof workout.id !== 'string' || workout.id.trim() === '') {
+      console.error('Warning: Workout has invalid ID:', workout.id);
+    }
+  }, [workout.id]);
+
+  // Helper to refresh the page data if we encounter ID issues
+  const refreshWorkoutData = useCallback(() => {
+    console.log('Refreshing workout data due to ID issues');
+    router.refresh();
+  }, [router]);
+
   const updateUIState = (updates: Partial<UIState>) => {
-    setUiState(prev => ({ ...prev, ...updates }));
+    setUIState(prev => ({ ...prev, ...updates }));
   };
 
   const handleAddDay = async () => {
@@ -108,6 +128,22 @@ export default function WorkoutClient({
     updateUIState({ isLoading: true });
     
     try {
+      // Ensure the workout object has a valid ID before sending
+      if (!workout.id) {
+        console.error('Workout ID is missing in the client', { workout });
+        toast.error('Error: ID de rutina no disponible');
+        updateUIState({ isLoading: false });
+        refreshWorkoutData();
+        return;
+      }
+      
+      // Debug log to trace the workout object being sent
+      console.log('Sending workout to addBlock action:', {
+        id: workout.id,
+        name: workout.name,
+        dayCount: workout.days?.length
+      });
+      
       const result = await addBlock(workout, dayIndex);
       
       // Update expanded states in a single update
@@ -124,7 +160,14 @@ export default function WorkoutClient({
     } catch (error: unknown) {
       console.error('Error al agregar bloque:', error);
       const err = error as ErrorWithMessage;
-      toast.error(err.message || 'Error al agregar bloque');
+      
+      // Check for ID-related errors and refresh the page data if needed
+      if (err.message?.includes('Invalid workout ID')) {
+        toast.error('Error al agregar bloque: ID de rutina inválido. Refrescando datos...');
+        refreshWorkoutData();
+      } else {
+        toast.error(`Error al agregar bloque: ${err.message || 'Error desconocido'}`);
+      }
     } finally {
       updateUIState({ isLoading: false });
     }

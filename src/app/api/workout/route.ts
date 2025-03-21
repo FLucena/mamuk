@@ -7,6 +7,7 @@ import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { dbConnect } from '@/lib/db';
 import { Workout } from '@/lib/models/workout';
 import { optimizeResponse } from '@/lib/utils/compression';
+import { checkWorkoutLimit } from '@/app/workout/[id]/actions';
 
 // Force dynamic rendering for this route since it depends on user session
 export const dynamic = 'force-dynamic';
@@ -142,6 +143,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check workout limit before proceeding
+    try {
+      const limitCheck = await checkWorkoutLimit(session.user.id);
+      
+      // Regular users are limited to the maximum number of workouts
+      if (!limitCheck.canCreate) {
+        return NextResponse.json({ 
+          error: `Has alcanzado el límite de ${limitCheck.maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.` 
+        }, { status: 403 });
+      }
+    } catch (error) {
+      console.error('Error checking workout limit:', error);
+      // Continue with creation if the limit check fails for some reason
+    }
+
     const data = await request.json();
     
     // Validate request data
@@ -162,7 +178,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating workout:', error);
     return NextResponse.json(
-      { error: 'Error creating workout' },
+      { error: error instanceof Error ? error.message : 'Error creating workout' },
       { status: 500 }
     );
   }

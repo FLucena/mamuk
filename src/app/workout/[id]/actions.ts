@@ -12,7 +12,7 @@ import { ObjectId } from 'mongodb';
 import { sanitizeHtml, validateMongoId } from '@/lib/utils/security';
 import { Workout as WorkoutType, Exercise } from '@/types/models';
 import { exerciseList } from '@/data/exercises';
-import { BodyZone, bodyZones } from '@/lib/constants/bodyZones';
+import { BodyZone } from '@/lib/constants/bodyZones';
 import mongoose from 'mongoose';
 
 // First, add this interface near the top of the file
@@ -140,12 +140,21 @@ export async function addBlock(workout: WorkoutType, dayIndex: number) {
   try {
     const workoutId = workout.id;
 
-    if (!workoutId) {
+    // Improved ID validation
+    if (!workoutId || typeof workoutId !== 'string' || workoutId.trim() === '') {
+      console.error('Invalid workout ID - missing or empty:', { workoutId });
       throw new Error('Invalid workout ID');
     }
 
-    if (!validateMongoId(workoutId)) {
-      throw new Error('Invalid workout ID format');
+    // Try/catch the validation to provide better error details
+    try {
+      if (!validateMongoId(workoutId)) {
+        console.error('Invalid workout ID format:', { workoutId });
+        throw new Error('Invalid workout ID format');
+      }
+    } catch (validationError) {
+      console.error('Error validating workout ID:', { workoutId, error: validationError });
+      throw new Error(`Invalid workout ID: ${workoutId}`);
     }
 
     console.log('Searching for workout with criteria:', {
@@ -495,9 +504,14 @@ export async function deleteWorkout(workoutId: string, userId: string) {
     console.log('Workout deleted successfully:', workoutId);
     
     // Revalidate both the specific workout and the workouts list
-    revalidatePath(`workout-${workoutId}`);
-    revalidatePath('workouts-list');
+    revalidatePath('/workout');
+    revalidatePath(`/workout/${workoutId}`);
+    revalidatePath('/api/workout');
     
+    console.log('[Deletion] Revalidating paths:', {
+      paths: ['/workout', `/workout/${workoutId}`, '/api/workout']
+    });
+
     return { success: true };
   } catch (error) {
     console.error('Error deleting workout:', error);
@@ -537,17 +551,57 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       console.error('[SECURITY] Intento de duplicación sin sesión de usuario');
       throw new Error('No autorizado');
     }
+
+    // Check workout limit before proceeding
+    const limitCheck = await checkWorkoutLimit(session.user.id);
+    if (!limitCheck.canCreate) {
+      console.error('[Duplication] User has reached workout limit:', {
+        userId: session.user.id,
+        currentCount: limitCheck.currentCount,
+        maxAllowed: limitCheck.maxAllowed
+      });
+      throw new Error('Has alcanzado el límite de rutinas personales');
+    }
     
     // Log user information for debugging
-    console.log('[Duplication] User session info:', { 
+    console.log('[Duplication] Session info:', { 
       userId: session.user.id,
       userIdType: typeof session.user.id,
       email: session.user.email
+    });
+
+    // Find the user first to get their MongoDB ID
+    let userQuery;
+    if (Types.ObjectId.isValid(session.user.id)) {
+      userQuery = { _id: new Types.ObjectId(session.user.id) };
+    } else if (session.user.email) {
+      userQuery = { email: session.user.email };
+    } else {
+      userQuery = { sub: session.user.id };
+    }
+
+    console.log('[Duplication] Finding user with query:', { userQuery });
+    const user = await (User.findOne as any)(userQuery).lean();
+
+    if (!user) {
+      console.error('[Duplication] User not found:', { 
+        userId: session.user.id,
+        query: userQuery 
+      });
+      throw new Error('Usuario no encontrado');
+    }
+
+    console.log('[Duplication] User found:', {
+      userId: user._id.toString(),
+      roles: user.roles,
+      email: user.email,
+      sub: user.sub
     });
     
     // Verificar el rol del usuario
     const userRole = await getCurrentUserRole(session.user.email || '');
     const isAdmin = userRole === 'admin';
+    const isCoach = userRole === 'coach';
     
     // Obtener el workout original
     const originalWorkout = await (Workout.findById as any)(workoutId);
@@ -555,15 +609,71 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       console.error(`[SECURITY] Intento de duplicación de workout inexistente. ID: ${workoutId}`);
       throw new Error('Rutina no encontrada');
     }
+
+    console.log('[Duplication] Workout found:', {
+      workoutId: originalWorkout._id.toString(),
+      workoutName: originalWorkout.name,
+      workoutOwner: originalWorkout.userId.toString(),
+      assignedCustomers: originalWorkout.assignedCustomers?.length || 0,
+      assignedCoaches: originalWorkout.assignedCoaches?.length || 0
+    });
     
-    // Verificar que el usuario sea el propietario o un administrador
-    if (originalWorkout.userId.toString() !== session.user.id && !isAdmin) {
-      console.error(`[SECURITY] Intento de duplicación no autorizado. Usuario: ${session.user.id}, Propietario: ${originalWorkout.userId}`);
+    // Check if user is assigned to this workout
+    const isAssignedCustomer = originalWorkout.assignedCustomers && 
+      Array.isArray(originalWorkout.assignedCustomers) && 
+      originalWorkout.assignedCustomers.some((customerId: Types.ObjectId | string) => {
+        const customerIdStr = customerId instanceof Types.ObjectId ? customerId.toString() : customerId;
+        const isAssigned = customerIdStr === user._id.toString();
+        console.log('[Duplication] Checking customer assignment:', {
+          customerId: customerIdStr,
+          userId: user._id.toString(),
+          isAssigned
+        });
+        return isAssigned;
+      });
+
+    // Check if user is an assigned coach
+    const isAssignedCoach = originalWorkout.assignedCoaches && 
+      Array.isArray(originalWorkout.assignedCoaches) && 
+      originalWorkout.assignedCoaches.some((coachId: Types.ObjectId | string) => {
+        const coachIdStr = coachId instanceof Types.ObjectId ? coachId.toString() : coachId;
+        const isAssigned = coachIdStr === user._id.toString();
+        console.log('[Duplication] Checking coach assignment:', {
+          coachId: coachIdStr,
+          userId: user._id.toString(),
+          isAssigned
+        });
+        return isAssigned;
+      });
+
+    const isOwner = originalWorkout.userId.toString() === user._id.toString();
+
+    console.log('[Duplication] Permission check summary:', {
+      isAdmin,
+      isCoach,
+      isOwner,
+      isAssignedCustomer,
+      isAssignedCoach,
+      workoutOwner: originalWorkout.userId.toString(),
+      userId: user._id.toString()
+    });
+
+    // Verificar que el usuario tenga permisos para duplicar
+    if (!isAdmin && !isCoach && !isOwner && !isAssignedCustomer && !isAssignedCoach) {
+      console.error('[Duplication] Permission denied:', {
+        userId: user._id.toString(),
+        workoutId,
+        isAdmin,
+        isCoach,
+        isOwner,
+        isAssignedCustomer,
+        isAssignedCoach
+      });
       throw new Error('No autorizado para duplicar esta rutina');
     }
     
     // Sanitizar los datos antes de duplicar
-    const sanitizedName = sanitizeHtml(newName || originalWorkout.name);
+    const sanitizedName = sanitizeHtml(newName || `${originalWorkout.name} (Copia)`);
     const sanitizedDescription = sanitizeHtml(newDescription !== undefined ? newDescription : originalWorkout.description);
     
     // Crear el nuevo workout
@@ -627,28 +737,17 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       return newDay;
     });
     
-    // We need to find the user document to reference its _id
-    // This is to avoid the ObjectId casting error
-    console.log('[Duplication] Finding user document for:', session.user.id);
-    const userDoc = await (User.findOne as any)({ email: session.user.email });
-    
-    if (!userDoc) {
-      console.error('[Duplication] User not found in database:', session.user.email);
-      throw new Error('Usuario no encontrado en la base de datos');
-    }
-    
-    // Use the _id from the user document
-    console.log('[Duplication] Found user document with _id:', userDoc._id);
-    
     // Crear la nueva rutina
-    const newWorkout = new Workout({
+    const newWorkout = await (Workout.create as any)({
       ...workoutData,
-      name: newName ? sanitizedName : `${sanitizedName} (Copia)`,
+      name: sanitizedName,
       description: sanitizedDescription,
-      userId: userDoc._id,  // Use the MongoDB ObjectId from the user document
-      createdBy: userDoc._id, // Ensure createdBy is also a valid ObjectId
+      userId: user._id,  // Use the MongoDB ObjectId from the user document
+      createdBy: user._id, // Ensure createdBy is also a valid ObjectId
       createdAt: new Date(),
       updatedAt: new Date(),
+      assignedCustomers: [user._id], // Assign to the current user
+      assignedCoaches: [], // Clear assigned coaches
     });
     
     // Log the new workout before saving
@@ -658,51 +757,37 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       userId: newWorkout.userId
     });
     
-    // Guardar el nuevo workout
-    await newWorkout.save();
-    console.log('[Duplication] Workout saved successfully');
-    
     // Convertir el objeto Mongoose a un objeto plano para que sea serializable
-    try {
-      // Primero intentamos con toObject que es más seguro
-      const workoutObj = newWorkout.toObject ? newWorkout.toObject() : newWorkout;
-      
-      // Luego serializamos completamente para asegurar compatibilidad con Next.js
-      const serializedWorkout = JSON.parse(JSON.stringify(workoutObj));
-      
-      // Asegurarnos de que el ID esté disponible en ambos formatos para compatibilidad
-      if (serializedWorkout._id) {
-        serializedWorkout.id = typeof serializedWorkout._id === 'string' 
-          ? serializedWorkout._id 
-          : serializedWorkout._id.toString();
-      }
-      
-      console.log('[Duplication] Serialized workout result:', { 
-        id: serializedWorkout.id,
-        name: serializedWorkout.name
-      });
-      
-      return serializedWorkout;
-    } catch (serializationError) {
-      console.error('[ERROR] Error al serializar el workout:', serializationError);
-      
-      // Plan de respaldo: crear manualmente un objeto con solo los datos necesarios
-      const fallbackObject = {
-        id: newWorkout._id.toString(),
-        _id: newWorkout._id.toString(),
-        name: newWorkout.name,
-        description: newWorkout.description || '',
-        days: newWorkout.days || [],
-        userId: newWorkout.userId.toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      console.log('[Duplication] Using fallback serialization');
-      return fallbackObject;
+    const serializedWorkout = JSON.parse(JSON.stringify(newWorkout.toObject()));
+    
+    // Asegurarnos de que el ID esté disponible en ambos formatos
+    if (serializedWorkout._id) {
+      serializedWorkout.id = serializedWorkout._id.toString();
     }
+    
+    console.log('[Duplication] Serialized workout result:', { 
+      id: serializedWorkout.id,
+      name: serializedWorkout.name
+    });
+    
+    // Revalidate both the specific workout and the workouts list
+    revalidatePath('/workout');
+    revalidatePath(`/workout/${serializedWorkout.id}`);
+    revalidatePath('/api/workout');
+    
+    console.log('[Duplication] Revalidating paths:', {
+      paths: ['/workout', `/workout/${serializedWorkout.id}`, '/api/workout']
+    });
+
+    return serializedWorkout;
   } catch (error) {
-    console.error('[ERROR] Error al duplicar workout:', error);
+    console.error('[Duplication] Error:', {
+      workoutId,
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : 'Unknown error'
+    });
     throw error;
   }
 }
@@ -812,6 +897,15 @@ export async function assignWorkoutToUser(
     const finalResponse = JSON.parse(JSON.stringify(result));
     // Removed console.log
     
+    // Revalidate both the specific workout and the workouts list
+    revalidatePath('/workout');
+    revalidatePath(`/workout/${workoutId}`);
+    revalidatePath('/api/workout');
+    
+    console.log('[Assignment] Revalidating paths:', {
+      paths: ['/workout', `/workout/${workoutId}`, '/api/workout']
+    });
+
     return finalResponse;
     
   } catch (error) {
@@ -834,45 +928,6 @@ export async function assignWorkoutToUser(
     };
   } finally {
     session.endSession();
-  }
-}
-
-/**
- * Duplica una rutina existente y la asigna a un usuario específico
- * Esta función combina duplicateWorkout y assignWorkoutToUser
- * @param workoutId ID de la rutina a duplicar
- * @param targetUserId ID del usuario al que se asignará la rutina duplicada
- * @param newName Nombre opcional para la rutina duplicada
- * @param newDescription Nueva descripción para la rutina duplicada
- * @returns La nueva rutina duplicada y asignada
- */
-export async function duplicateAndAssignWorkout(
-  workoutId: string, 
-  data: { coachIds: string[]; customerIds: string[] }, 
-  newName?: string
-) {
-  try {
-    const duplicatedWorkout = await duplicateWorkout(workoutId, newName);
-    
-    // Return simplified response
-    return {
-      success: true,
-      id: duplicatedWorkout.id,
-      assignedCoaches: data.coachIds,
-      assignedCustomers: data.customerIds,
-      name: duplicatedWorkout.name,
-      error: null
-    };
-  } catch (error) {
-    console.error('Error duplicando y asignando rutina:', error);
-    return {
-      success: false,
-      id: workoutId,
-      assignedCoaches: [],
-      assignedCustomers: [],
-      name: '',
-      error: error instanceof Error ? error.message : 'Error desconocido'
-    };
   }
 }
 
@@ -1042,35 +1097,156 @@ export async function updateBlockName(
  * @returns La rutina actualizada
  */
 export async function updateWorkoutName(workoutId: string, newName: string, newDescription: string) {
+  console.log('[updateWorkoutName] Starting update:', {
+    workoutId,
+    newName,
+    newDescription,
+    timestamp: new Date().toISOString()
+  });
+
   if (!workoutId || !newName) {
+    console.error('[updateWorkoutName] Missing required fields:', {
+      hasWorkoutId: !!workoutId,
+      hasNewName: !!newName
+    });
     throw new Error('Workout ID and new name are required');
   }
 
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
+      console.error('[updateWorkoutName] No authenticated session');
       throw new Error('No autorizado');
     }
 
+    console.log('[updateWorkoutName] Session info:', {
+      userId: session.user.id,
+      userEmail: session.user.email
+    });
+
+    // Find the user first to get their MongoDB ID
+    let userQuery;
+    if (Types.ObjectId.isValid(session.user.id)) {
+      userQuery = { _id: new Types.ObjectId(session.user.id) };
+    } else if (session.user.email) {
+      userQuery = { email: session.user.email };
+    } else {
+      userQuery = { sub: session.user.id };
+    }
+
+    console.log('[updateWorkoutName] Finding user with query:', { userQuery });
+    const user = await (User.findOne as any)(userQuery).lean();
+
+    if (!user) {
+      console.error('[updateWorkoutName] User not found:', { 
+        userId: session.user.id,
+        query: userQuery 
+      });
+      throw new Error('Usuario no encontrado');
+    }
+
+    console.log('[updateWorkoutName] User found:', {
+      userId: user._id.toString(),
+      roles: user.roles,
+      email: user.email,
+      sub: user.sub
+    });
+
+    console.log('[updateWorkoutName] Finding workout:', { workoutId });
     const workout = await (Workout.findById as any)(workoutId);
     if (!workout) {
+      console.error('[updateWorkoutName] Workout not found:', { workoutId });
       throw new Error('Rutina no encontrada');
     }
+
+    console.log('[updateWorkoutName] Workout found:', {
+      workoutId: workout._id.toString(),
+      workoutName: workout.name,
+      workoutOwner: workout.userId.toString(),
+      assignedCustomers: workout.assignedCustomers?.length || 0,
+      assignedCoaches: workout.assignedCoaches?.length || 0
+    });
 
     // Verificar permisos
     const userRole = await getCurrentUserRole(session.user.id);
     const isAdmin = userRole === 'admin';
     const isCoach = userRole === 'coach';
-    const isOwner = workout.userId.toString() === session.user.id;
+    const isOwner = workout.userId.toString() === user._id.toString();
 
-    if (!isAdmin && !isCoach && !isOwner) {
+    console.log('[updateWorkoutName] Basic permission check:', {
+      userRole,
+      isAdmin,
+      isCoach,
+      isOwner,
+      userId: user._id.toString(),
+      workoutOwner: workout.userId.toString()
+    });
+
+    // Check if user is assigned to this workout
+    const isAssignedCustomer = workout.assignedCustomers && 
+      Array.isArray(workout.assignedCustomers) && 
+      workout.assignedCustomers.some((customerId: Types.ObjectId | string) => {
+        const customerIdStr = customerId instanceof Types.ObjectId ? customerId.toString() : customerId;
+        const isAssigned = customerIdStr === user._id.toString();
+        console.log('[updateWorkoutName] Checking customer assignment:', {
+          customerId: customerIdStr,
+          userId: user._id.toString(),
+          isAssigned
+        });
+        return isAssigned;
+      });
+
+    // Check if user is an assigned coach
+    const isAssignedCoach = workout.assignedCoaches && 
+      Array.isArray(workout.assignedCoaches) && 
+      workout.assignedCoaches.some((coachId: Types.ObjectId | string) => {
+        const coachIdStr = coachId instanceof Types.ObjectId ? coachId.toString() : coachId;
+        const isAssigned = coachIdStr === user._id.toString();
+        console.log('[updateWorkoutName] Checking coach assignment:', {
+          coachId: coachIdStr,
+          userId: user._id.toString(),
+          isAssigned
+        });
+        return isAssigned;
+      });
+
+    console.log('[updateWorkoutName] Permission check summary:', {
+      isAdmin,
+      isCoach,
+      isOwner,
+      isAssignedCustomer,
+      isAssignedCoach
+    });
+
+    if (!isAdmin && !isCoach && !isOwner && !isAssignedCustomer && !isAssignedCoach) {
+      console.error('[updateWorkoutName] Permission denied:', {
+        userId: user._id.toString(),
+        workoutId,
+        isAdmin,
+        isCoach,
+        isOwner,
+        isAssignedCustomer,
+        isAssignedCoach
+      });
       throw new Error('No tienes permiso para modificar esta rutina');
     }
 
     // Actualizar nombre y descripción
-    workout.name = newName;
-    workout.description = newDescription;
+    workout.name = sanitizeHtml(newName);
+    workout.description = sanitizeHtml(newDescription);
+    
+    console.log('[updateWorkoutName] Saving changes:', {
+      workoutId,
+      newName: workout.name,
+      newDescription: workout.description
+    });
+    
     await workout.save();
+
+    console.log('[updateWorkoutName] Update successful:', {
+      workoutId,
+      workoutName: workout.name
+    });
 
     // Serializar el objeto antes de devolverlo
     const serializedWorkout = JSON.parse(JSON.stringify(workout.toObject()));
@@ -1080,9 +1256,103 @@ export async function updateWorkoutName(workoutId: string, newName: string, newD
       serializedWorkout.id = serializedWorkout._id.toString();
     }
 
+    // Revalidate both the specific workout and the workouts list
+    revalidatePath('/workout');
+    revalidatePath(`/workout/${workoutId}`);
+    revalidatePath('/api/workout');
+    
+    console.log('[updateWorkoutName] Revalidating paths:', {
+      paths: ['/workout', `/workout/${workoutId}`, '/api/workout']
+    });
+
     return serializedWorkout;
   } catch (error) {
-    console.error('Error updating workout:', error);
+    console.error('[updateWorkoutName] Error:', {
+      workoutId,
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : 'Unknown error'
+    });
     throw error;
+  }
+}
+
+/**
+ * Checks if a user has reached their workout limit
+ * Regular users are limited to 3 workouts, admins and coaches have no limit
+ */
+export async function checkWorkoutLimit(userId: string): Promise<{ 
+  canCreate: boolean; 
+  currentCount: number;
+  maxAllowed: number;
+  userRole: string;
+}> {
+  console.log('[WorkoutLimit] Checking workout limit for user:', { userId });
+
+  try {
+    await dbConnect();
+
+    // Find the user first to get their MongoDB ID
+    let userQuery;
+    if (Types.ObjectId.isValid(userId)) {
+      userQuery = { _id: new Types.ObjectId(userId) };
+    } else if (userId.includes('@')) {
+      userQuery = { email: userId };
+    } else {
+      userQuery = { sub: userId };
+    }
+
+    console.log('[WorkoutLimit] Finding user with query:', { userQuery });
+    const user = await (User.findOne as any)(userQuery).lean();
+
+    if (!user) {
+      console.error('[WorkoutLimit] User not found:', { userId });
+      return { canCreate: false, currentCount: 0, maxAllowed: 0, userRole: 'unknown' };
+    }
+
+    // Get user role
+    const userRole = await getCurrentUserRole(userId);
+    const isCoachOrAdmin = userRole === 'admin' || userRole === 'coach';
+
+    // If user is admin or coach, they have no limit
+    if (isCoachOrAdmin) {
+      console.log('[WorkoutLimit] User is admin/coach, no limit applies:', {
+        userId,
+        userRole
+      });
+      return { 
+        canCreate: true, 
+        currentCount: 0, 
+        maxAllowed: Infinity,
+        userRole 
+      };
+    }
+
+    // Count active workouts created by the user
+    const workoutCount = await (Workout.countDocuments as any)({
+      userId: user._id.toString(),
+      createdBy: user._id.toString(),
+      status: 'active'
+    });
+
+    const maxAllowed = 3;
+    const canCreate = workoutCount < maxAllowed;
+
+    return {
+      canCreate,
+      currentCount: workoutCount,
+      maxAllowed,
+      userRole
+    };
+  } catch (error) {
+    console.error('[WorkoutLimit] Error checking workout limit:', {
+      userId,
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : 'Unknown error'
+    });
+    return { canCreate: false, currentCount: 0, maxAllowed: 0, userRole: 'unknown' };
   }
 } 

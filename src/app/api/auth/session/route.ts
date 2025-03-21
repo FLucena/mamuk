@@ -43,12 +43,8 @@ async function getUserRoles(email: string): Promise<Role[]> {
   const now = Date.now();
   
   if (cacheEntry && (now - cacheEntry.timestamp) < ROLES_CACHE_TTL) {
-    const cacheAge = Math.round((now - cacheEntry.timestamp) / 1000);
-    console.log(`[Session] Cache HIT: Roles for ${email} from cache (age: ${cacheAge}s)`);
     return cacheEntry.roles;
   }
-  
-  console.log(`[Session] Cache MISS: Fetching roles for ${email} from database`);
   
   // Fetch from database if not in cache or expired
   try {
@@ -172,14 +168,9 @@ export async function GET() {
     // Add ETag
     response.headers.set('ETag', etag);
     
-    const requestTime = performance.now() - requestStart;
-    console.log(`[Session] Response in ${requestTime.toFixed(2)}ms`);
-    
     return response;
   } catch (error) {
     console.error('Error fetching session:', error);
-    const requestTime = performance.now() - requestStart;
-    console.error(`[Session] Error after ${requestTime.toFixed(2)}ms:`, error);
     return createErrorResponse('Error fetching session', 500);
   }
 }

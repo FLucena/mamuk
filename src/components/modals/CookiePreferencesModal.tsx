@@ -1,43 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { CheckCircle, X } from 'lucide-react';
-import { Workout } from '@/types/models';
+import { useState } from 'react';
+import { Check, X } from 'lucide-react';
 
-interface EditDescriptionModalProps {
-  workout: Workout;
-  onConfirm: (description: string) => Promise<void>;
+interface CookiePreferencesModalProps {
+  onConfirm: (preferences: { analytics: boolean; marketing: boolean }) => Promise<void>;
   onClose: () => void;
   loading?: boolean;
 }
 
-export default function EditDescriptionModal({
-  workout,
+export default function CookiePreferencesModal({
   onConfirm,
   onClose,
   loading = false
-}: EditDescriptionModalProps) {
-  const [newDescription, setNewDescription] = useState(workout.description || '');
+}: CookiePreferencesModalProps) {
+  const [preferences, setPreferences] = useState({
+    analytics: true,
+    marketing: false
+  });
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when workout changes
-  useEffect(() => {
-    setNewDescription(workout.description || '');
-    setError(null);
-  }, [workout]);
-
-  const handleUpdate = async () => {
-    if (newDescription.trim() === (workout.description || '')) {
-      onClose();
-      return;
-    }
-
+  const handleConfirm = async () => {
     try {
       setError(null);
-      await onConfirm(newDescription.trim());
+      await onConfirm(preferences);
     } catch (error) {
-      console.error('Error al actualizar la descripción:', error);
-      setError(error instanceof Error ? error.message : 'Error al actualizar la descripción');
+      console.error('Error al guardar las preferencias:', error);
+      setError(error instanceof Error ? error.message : 'Error al guardar las preferencias');
     }
   };
 
@@ -46,7 +35,7 @@ export default function EditDescriptionModal({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Editar Descripción
+            Preferencias de Cookies
           </h2>
           <button 
             onClick={onClose}
@@ -57,20 +46,35 @@ export default function EditDescriptionModal({
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 space-y-4">
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Descripción
+            <label className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                checked={preferences.analytics}
+                onChange={(e) => setPreferences(prev => ({ ...prev, analytics: e.target.checked }))}
+                disabled={loading}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Cookies analíticas (nos ayudan a mejorar nuestro servicio)
+              </span>
             </label>
-            <textarea
-              id="description"
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-              rows={3}
-              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
-              placeholder="Descripción de la rutina"
-              disabled={loading}
-            />
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                checked={preferences.marketing}
+                onChange={(e) => setPreferences(prev => ({ ...prev, marketing: e.target.checked }))}
+                disabled={loading}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Cookies de marketing (nos permiten mostrar anuncios relevantes)
+              </span>
+            </label>
           </div>
 
           {error && (
@@ -89,8 +93,8 @@ export default function EditDescriptionModal({
             Cancelar
           </button>
           <button
-            onClick={handleUpdate}
-            disabled={loading || newDescription.trim() === (workout.description || '')}
+            onClick={handleConfirm}
+            disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {loading ? (
@@ -100,7 +104,7 @@ export default function EditDescriptionModal({
               </>
             ) : (
               <>
-                <CheckCircle className="w-4 h-4 mr-2" />
+                <Check className="w-4 h-4 mr-2" />
                 Guardar
               </>
             )}

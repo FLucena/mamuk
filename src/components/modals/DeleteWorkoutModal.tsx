@@ -3,100 +3,101 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { Workout } from '@/types/models';
 
-export interface DeleteWorkoutModalProps {
-  isOpen: boolean;
+interface DeleteWorkoutModalProps {
+  workout: Workout;
+  onConfirm: () => Promise<void>;
   onClose: () => void;
-  workoutId: string;
-  workoutName: string;
-  onDelete: (workoutId: string) => Promise<void>;
+  loading?: boolean;
 }
 
 export default function DeleteWorkoutModal({
-  isOpen,
+  workout,
+  onConfirm,
   onClose,
-  workoutId,
-  workoutName,
-  onDelete
+  loading = false
 }: DeleteWorkoutModalProps) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleDelete() {
-    if (!workoutId) {
-      setError('ID de rutina no válido');
+  // Ensure workout is valid
+  if (!workout) {
+    console.error('DeleteWorkoutModal: workout prop is missing');
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-4">
+          <p className="text-red-600">Error: Unable to load workout details.</p>
+          <button
+            onClick={onClose}
+            className="mt-4 px-4 py-2 text-sm font-medium bg-gray-200 rounded-md hover:bg-gray-300"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleDelete = async () => {
+    if (!onConfirm) {
+      console.error('DeleteWorkoutModal: onConfirm function is missing');
+      setError('Error: Unable to delete workout. Missing confirmation handler.');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      await onDelete(workoutId);
-      router.refresh();
-      onClose();
+      setError(null);
+      await onConfirm();
     } catch (error) {
       console.error('Error al eliminar la rutina:', error);
       setError(error instanceof Error ? error.message : 'Error al eliminar la rutina');
       toast.error('Error al eliminar la rutina');
-    } finally {
-      setLoading(false);
     }
-  }
-
-  if (!isOpen) return null;
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-auto overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Eliminar Rutina
-          </h3>
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+            disabled={loading}
           >
-            <X size={20} />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         <div className="p-4">
-          <p className="mb-4 text-gray-700 dark:text-gray-300">
-            ¿Estás seguro de que deseas eliminar la rutina <span className="font-semibold">"{workoutName}"</span>? Esta acción no se puede deshacer.
+          <p className="text-gray-600 dark:text-gray-300">
+            ¿Estás seguro de que quieres eliminar la rutina <strong>{workout?.name || 'Sin nombre'}</strong>? Esta acción no se puede deshacer.
           </p>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md">
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-md">
               {error}
             </div>
           )}
+        </div>
 
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={loading}
-              className="px-4 py-2 text-sm text-white bg-red-600 dark:bg-red-700 rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <span className="animate-spin mr-2">⏳</span>
-                  Eliminando...
-                </>
-              ) : (
-                'Eliminar'
-              )}
-            </button>
-          </div>
+        <div className="flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            disabled={loading}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+          >
+            {loading ? 'Eliminando...' : 'Eliminar'}
+          </button>
         </div>
       </div>
     </div>

@@ -1,18 +1,26 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
-interface DropdownProps {
-  trigger: React.ReactNode;
-  children: React.ReactNode;
-  align?: 'left' | 'right';
+interface SimpleDropdownProps {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
 }
 
-export function SimpleDropdown({ trigger, children, align = 'left' }: DropdownProps) {
+export default function SimpleDropdown({
+  label,
+  value,
+  options,
+  onChange,
+  disabled = false
+}: SimpleDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cerrar el menú cuando se hace clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -21,45 +29,46 @@ export function SimpleDropdown({ trigger, children, align = 'left' }: DropdownPr
     }
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleSelect = (option: string) => {
+    onChange(option);
+    setIsOpen(false);
+  };
+
   return (
-    <div className="relative inline-block" ref={dropdownRef}>
-      <div onClick={() => setIsOpen(!isOpen)}>
-        {trigger}
-      </div>
-      
+    <div ref={dropdownRef} className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={disabled}
+        className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+      >
+        <span>{value || label}</span>
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4 ml-2" />
+        ) : (
+          <ChevronDown className="w-4 h-4 ml-2" />
+        )}
+      </button>
+
       {isOpen && (
-        <div 
-          className={`absolute z-10 mt-2 w-48 rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 ${
-            align === 'right' ? 'right-0' : 'left-0'
-          }`}
-        >
-          <div className="py-1">
-            {children}
-          </div>
+        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+          {options.map((option) => (
+            <button
+              key={option}
+              onClick={() => handleSelect(option)}
+              className={`w-full px-4 py-2 text-left text-sm ${
+                option === value
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
         </div>
       )}
     </div>
-  );
-}
-
-interface DropdownItemProps {
-  onClick?: () => void;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function SimpleDropdownItem({ onClick, children, className = '' }: DropdownItemProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${className}`}
-    >
-      {children}
-    </button>
   );
 } 

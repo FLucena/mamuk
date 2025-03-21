@@ -1,10 +1,10 @@
 import { dbConnect } from '@/lib/db';
 import { Workout } from '@/lib/models/workout';
 import { Workout as WorkoutType, WorkoutDay, Block, Exercise } from '@/types/models';
-import { Types } from 'mongoose';
+import { Types, Document } from 'mongoose';
 import { sanitizeHtml, sanitizeVideoUrl, validateMongoId, validateIds } from '@/lib/utils/security';
 import { ObjectId } from 'mongodb';
-import User from '../models/user';
+import User, { IUser } from '../models/user';
 import Coach from '../models/coach';
 import { exerciseList } from '@/data/exercises';
 import { randomUUID } from 'crypto';
@@ -12,6 +12,9 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getCurrentUserRole } from '@/lib/utils/permissions';
 import { ensureCoachExists } from './coach';
+import { getTypedModel } from '@/lib/utils/mongoose';
+import { WorkoutAssignment } from '@/lib/models/workoutAssignment';
+import { checkWorkoutLimit } from '@/app/workout/[id]/actions';
 
 interface MongoDoc {
   _id: Types.ObjectId;
@@ -150,10 +153,6 @@ export function mapWorkoutToResponse(doc: MongoWorkout): WorkoutType {
 export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
   await dbConnect();
   
-  // Track execution time
-  const timerLabel = `getWorkouts_${Date.now()}`;
-  console.time(timerLabel);
-  
   try {
     // Handle different possible userId formats
     let currentUser = null;
@@ -257,100 +256,177 @@ export async function getWorkouts(userId: string): Promise<WorkoutType[]> {
     console.error('Error fetching workouts:', error);
     // Return empty array instead of throwing error
     return [];
-  } finally {
-    // Always end the timer exactly once, regardless of the code path
-    console.timeEnd(timerLabel);
   }
 }
 
-export async function getWorkout(id: string, userId?: string) {
+export async function getWorkout(workoutId: string, userId: string): Promise<WorkoutType | null> {
+  console.log('[getWorkout] Starting workout retrieval:', {
+    workoutId,
+    userId,
+    timestamp: new Date().toISOString()
+  });
+
   try {
-    validateIds(id);
-    
     await dbConnect();
-    
-    // Buscar el workout
-    const workout = await (Workout.findById as any)(id).lean() as MongoWorkout;
+
+    // Use type assertion for Mongoose model methods
+    const TypedWorkout = Workout as any;
+    const TypedUser = User as any;
+
+    console.log('[getWorkout] Finding workout:', { workoutId });
+    const workout = await TypedWorkout.findById(workoutId);
     
     if (!workout) {
-      console.error(`[INFO] Workout no encontrado. ID: ${id}`);
+      console.log('[getWorkout] Workout not found:', { workoutId });
+      return null;
+    }
+
+    console.log('[getWorkout] Workout found:', {
+      workoutId: workout._id.toString(),
+      workoutName: workout.name,
+      workoutOwner: workout.userId.toString(),
+      assignedCustomers: workout.assignedCustomers?.length || 0,
+      assignedCoaches: workout.assignedCoaches?.length || 0
+    });
+
+    // Find the user by their MongoDB ID, OAuth sub, or email
+    let userQuery;
+    if (Types.ObjectId.isValid(userId)) {
+      userQuery = { _id: new Types.ObjectId(userId) };
+    } else if (userId.includes('@')) {
+      userQuery = { email: userId };
+    } else {
+      userQuery = { sub: userId };
+    }
+
+    console.log('[getWorkout] Finding user with query:', { userQuery });
+
+    const user = await TypedUser.findOne(userQuery).lean();
+
+    if (!user) {
+      console.log('[getWorkout] User not found:', { userId, query: userQuery });
+      return null;
+    }
+
+    console.log('[getWorkout] User found:', {
+      userId: user._id.toString(),
+      roles: user.roles,
+      email: user.email,
+      sub: user.sub
+    });
+
+    // Get the user's MongoDB ID and role
+    const userMongoId = user._id.toString();
+    const userRole = user.roles?.includes('admin') ? 'admin' : 
+                    user.roles?.includes('coach') ? 'coach' : 'customer';
+    const isAdmin = userRole === 'admin';
+    
+    console.log('[getWorkout] User role check:', {
+      userMongoId,
+      userRole,
+      isAdmin
+    });
+
+    // Si es admin, permitir acceso inmediatamente
+    if (isAdmin) {
+      console.log('[getWorkout] Admin access granted:', { userId });
+      return mapWorkoutToResponse(workout);
+    }
+    
+    const isCoach = userRole === 'coach';
+    
+    // Verificar si el usuario está asignado a este workout
+    const isAssignedCustomer = workout.assignedCustomers && 
+      Array.isArray(workout.assignedCustomers) && 
+      workout.assignedCustomers.some((customerId: Types.ObjectId | string) => {
+        const customerIdStr = customerId instanceof Types.ObjectId ? customerId.toString() : customerId;
+        const isAssigned = customerIdStr === userMongoId;
+        console.log('[getWorkout] Checking customer assignment:', {
+          customerId: customerIdStr,
+          userMongoId,
+          isAssigned
+        });
+        return isAssigned;
+      });
+    
+    // Verificar si el usuario es un coach asignado a este workout
+    const isAssignedCoach = workout.assignedCoaches && 
+      Array.isArray(workout.assignedCoaches) && 
+      workout.assignedCoaches.some((coachId: Types.ObjectId | string) => {
+        const coachIdStr = coachId instanceof Types.ObjectId ? coachId.toString() : coachId;
+        const isAssigned = coachIdStr === userMongoId;
+        console.log('[getWorkout] Checking coach assignment:', {
+          coachId: coachIdStr,
+          userMongoId,
+          isAssigned
+        });
+        return isAssigned;
+      });
+
+    const isOwner = workout.userId.toString() === userMongoId;
+    
+    console.log('[getWorkout] Permission check summary:', {
+      isOwner,
+      isCoach,
+      isAssignedCustomer,
+      isAssignedCoach,
+      workoutOwner: workout.userId.toString(),
+      userMongoId
+    });
+
+    // Check if user is a coach of the workout owner
+    let isCoachOfOwner = false;
+    if (isCoach) {
+      isCoachOfOwner = await isUserCoach(userMongoId, workout.userId.toString());
+      console.log('[getWorkout] Coach relationship check:', {
+        isCoachOfOwner,
+        coachId: userMongoId,
+        studentId: workout.userId.toString()
+      });
+    }
+    
+    // Permitir acceso si:
+    // 1. El usuario es el propietario
+    // 2. El usuario es coach y es el coach del propietario
+    // 3. El usuario es un cliente asignado a este workout
+    // 4. El usuario es un coach asignado a este workout
+    if (
+      !isOwner && 
+      !(isCoach && isCoachOfOwner) &&
+      !isAssignedCustomer &&
+      !isAssignedCoach
+    ) {
+      console.error('[getWorkout] Access denied:', {
+        userId,
+        workoutId,
+        isOwner,
+        isCoach,
+        isCoachOfOwner,
+        isAssignedCustomer,
+        isAssignedCoach
+      });
       return null;
     }
     
-    // Si se proporcionó un userId, verificar que tenga acceso
-    if (userId) {
-      // Obtener el rol del usuario
-      const userRole = await getCurrentUserRole(userId);
-      const isAdmin = userRole === 'admin';
-      
-      // Si es admin, permitir acceso inmediatamente
-      if (isAdmin) {
-        console.log(`[DEBUG] Usuario ${userId} es admin, permitiendo acceso a workout ${id}`);
-        const transformedWorkout = {
-          ...workout,
-          id: workout._id.toString(),
-          userId: workout.userId.toString()
-        };
-        return transformedWorkout;
-      }
-      
-      const isCoach = userRole === 'coach';
-      
-      console.log(`[DEBUG] Verificando permisos para usuario ${userId}:`, {
-        userRole,
-        isAdmin,
-        isCoach,
-        workoutUserId: workout.userId.toString(),
-        isOwner: workout.userId.toString() === userId
-      });
-      
-      // Verificar si el usuario está asignado a este workout
-      const isAssignedCustomer = workout.assignedCustomers && 
-        Array.isArray(workout.assignedCustomers) && 
-        workout.assignedCustomers.some(customerId => 
-          customerId.toString() === userId
-        );
-      
-      // Verificar si el usuario es un coach asignado a este workout
-      const isAssignedCoach = workout.assignedCoaches && 
-        Array.isArray(workout.assignedCoaches) && 
-        workout.assignedCoaches.some(coachId => 
-          coachId.toString() === userId
-        );
-      
-      console.log(`[DEBUG] Asignaciones:`, {
-        isAssignedCustomer,
-        isAssignedCoach,
-        assignedCustomers: workout.assignedCustomers || [],
-        assignedCoaches: workout.assignedCoaches || []
-      });
-      
-      // Permitir acceso si:
-      // 1. El usuario es el propietario
-      // 2. El usuario es coach y es el coach del propietario
-      // 3. El usuario es un cliente asignado a este workout
-      // 4. El usuario es un coach asignado a este workout
-      if (
-        workout.userId.toString() !== userId && 
-        !(isCoach && await isUserCoach(userId, workout.userId.toString())) &&
-        !isAssignedCustomer &&
-        !isAssignedCoach
-      ) {
-        console.error(`[SECURITY] Usuario ${userId} intentó acceder a workout ${id} sin permisos`);
-        return null;
-      }
-    }
-    
-    // Transformar el workout para la respuesta
-    const transformedWorkout = {
-      ...workout,
-      id: workout._id.toString(),
-      userId: workout.userId.toString()
-    };
-    
-    return transformedWorkout;
+    console.log('[getWorkout] Access granted:', {
+      userId,
+      workoutId,
+      accessReason: isOwner ? 'owner' : 
+                   isCoachOfOwner ? 'coach of owner' :
+                   isAssignedCustomer ? 'assigned customer' :
+                   isAssignedCoach ? 'assigned coach' : 'unknown'
+    });
+
+    return mapWorkoutToResponse(workout);
   } catch (error) {
-    console.error(`[ERROR] Error al obtener workout ${id}:`, error);
+    console.error('[getWorkout] Error:', {
+      workoutId,
+      userId,
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : 'Unknown error'
+    });
     throw error;
   }
 }
@@ -390,68 +466,52 @@ async function isUserCoach(coachUserId: string, studentUserId: string): Promise<
 
 export async function createWorkout(data: Partial<WorkoutType>, userId: string, creatorId?: string): Promise<WorkoutType> {
   if (!userId) throw new Error('Se requiere ID de usuario');
-
+  
   await dbConnect();
-
-  // Get the user to determine their role
-  const user = await (User.findById as any)(userId).select('roles');
-  if (!user) {
-    throw new Error('Usuario no encontrado');
-  }
-
-  // Si se proporciona un creatorId, verificar que sea un coach o admin
-  let isCreatedByCoach = false;
-  if (creatorId && creatorId !== userId) {
-    const creator = await (User.findById as any)(creatorId).select('roles');
-    if (!creator) {
-      throw new Error('Creador no encontrado');
-    }
-    
-    isCreatedByCoach = creator.roles.includes('coach') || creator.roles.includes('admin');
-    
-    if (!isCreatedByCoach) {
-      throw new Error('Solo entrenadores y administradores pueden crear rutinas para otros usuarios');
-    }
-  }
-
-  // Determine if the creator is a coach or admin
-  const isCoachOrAdmin = user.roles && Array.isArray(user.roles) 
-    ? (user.roles.includes('coach') || user.roles.includes('admin'))
-    : (user.roles.includes('coach') || user.roles.includes('admin'));
-
-  // For customers, check if they've reached their limit of 3 workouts
+  
+  // Get user role to determine permissions
+  const userRole = await getCurrentUserRole(userId);
+  const isCoachOrAdmin = userRole === 'admin' || userRole === 'coach';
+  
+  // Check if creation is by a coach for a customer
+  const isCreatedByCoach = creatorId && creatorId !== userId;
+  
+  // Only check limit if the user is not a coach/admin AND they're creating their own workout
   if (!isCoachOrAdmin && !isCreatedByCoach) {
-    const workoutCount = await (Workout.countDocuments as any)({
-      userId,
-      createdBy: userId,
-      status: 'active'
-    });
-
-    if (workoutCount >= 3) {
-      throw new Error('Has alcanzado el límite de 3 rutinas personales');
+    // Check workout limit before proceeding
+    const limitCheck = await checkWorkoutLimit(userId);
+    if (!limitCheck.canCreate) {
+      throw new Error(`Has alcanzado el límite de ${limitCheck.maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
     }
   }
-
-  const defaultDays = Array.from({ length: 3 }, (_, dayIndex) => ({
-    id: randomUUID(),
-    name: `Día ${dayIndex + 1}`,
-    blocks: Array.from({ length: 4 }, (_, blockIndex) => ({
+  
+  // Generate default days for the workout if none provided
+  const defaultDays = data.days || (() => {
+    return [{
       id: randomUUID(),
-      name: `Bloque ${blockIndex + 1}`,
-      exercises: getRandomExercises(3)
-    }))
-  }));
+      name: 'Día 1',
+      exercises: getRandomExercises(3),
+    }, {
+      id: randomUUID(),
+      name: 'Día 2',
+      exercises: getRandomExercises(3),
+    }, {
+      id: randomUUID(),
+      name: 'Día 3',
+      exercises: getRandomExercises(3),
+    }];
+  })();
 
   const sanitizedData = {
     ...data,
     userId: Types.ObjectId.isValid(userId) ? userId : new Types.ObjectId(userId).toString(),
-    createdBy: creatorId || userId, // Set the createdBy field to track who created the workout
+    createdBy: creatorId || userId,
     name: data.name ? sanitizeHtml(data.name) : 'Rutina de Volumen',
     description: data.description ? sanitizeHtml(data.description) : 'Ganar masa muscular',
     days: defaultDays,
     status: 'active',
-    isCoachCreated: isCoachOrAdmin || isCreatedByCoach, // Track if the workout was created by a coach or admin
-    assignedCustomers: [userId] // Asignar automáticamente al usuario para el que se creó
+    isCoachCreated: isCoachOrAdmin || isCreatedByCoach,
+    assignedCustomers: [new Types.ObjectId(userId)]
   };
 
   const doc = await (Workout.create as any)(sanitizedData);
@@ -646,9 +706,10 @@ export async function getWorkoutById(id: string, userId?: string): Promise<Worko
     // Verificar si el usuario está asignado a este workout
     const isAssignedCustomer = workout.assignedCustomers && 
       Array.isArray(workout.assignedCustomers) && 
-      workout.assignedCustomers.some((customerId: any) => 
-        customerId.toString() === userId
-      );
+      workout.assignedCustomers.some((customerId: Types.ObjectId | string) => {
+        const customerIdStr = customerId instanceof Types.ObjectId ? customerId.toString() : customerId;
+        return customerIdStr === userId;
+      });
     
     // Verificar si el usuario es un coach asignado a este workout
     const isAssignedCoach = workout.assignedCoaches && 

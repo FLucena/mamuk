@@ -7,6 +7,7 @@ import { ErrorWithMessage } from '@/types/common';
 import User from '@/lib/models/user';
 import { dbConnect } from '@/lib/db';
 import { IUser } from '@/lib/models/user';
+import { Workout } from '@/lib/models/workout';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,14 +18,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { message: 'No autorizado' },
         { status: 401 }
-      );
-    }
-    
-    // Check if user has permission to create workouts
-    if (!session.user.roles.some(role => ['admin', 'coach'].includes(role))) {
-      return NextResponse.json(
-        { message: 'No tienes permisos para crear rutinas' },
-        { status: 403 }
       );
     }
     
@@ -49,6 +42,23 @@ export async function POST(request: NextRequest) {
         { message: 'Usuario no encontrado' },
         { status: 404 }
       );
+    }
+
+    // Check if user is a customer and has reached their workout limit
+    const isCustomer = user.roles.includes('customer') && !user.roles.some(role => ['admin', 'coach'].includes(role));
+    if (isCustomer) {
+      const workoutCount = await (Workout.countDocuments as any)({
+        userId: user._id,
+        createdBy: user._id, // Only count workouts created by the user themselves
+        status: 'active'
+      });
+
+      if (workoutCount >= 3) {
+        return NextResponse.json(
+          { message: 'Has alcanzado el límite de 3 rutinas personales' },
+          { status: 403 }
+        );
+      }
     }
     
     // Create default workout structure

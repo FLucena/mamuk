@@ -11,20 +11,6 @@ import { JsonValue, JsonObject } from '@/types/common';
  */
 export function useLightSession() {
   const session = useSession();
-  const hasLoggedPerformance = useRef(false);
-  
-  useEffect(() => {
-    // Record session request completion for performance monitoring
-    if (session.status !== 'loading' && !hasLoggedPerformance.current) {
-      hasLoggedPerformance.current = true;
-      const cachedTimestamp = sessionCache.getRequestTimestamp();
-      if (cachedTimestamp) {
-        const loadTime = performance.now() - cachedTimestamp;
-        console.info(`[Session] Loaded in ${loadTime.toFixed(2)}ms (${session.status})`);
-      }
-    }
-  }, [session.status]);
-  
   return session;
 }
 

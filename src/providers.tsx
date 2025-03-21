@@ -4,6 +4,7 @@ import { Session } from 'next-auth';
 import { ThemeProvider } from 'next-themes';
 import { ReactNode } from 'react';
 import SessionProvider from '@/components/SessionProvider';
+import { WorkoutLimitProvider } from './providers/WorkoutLimitProvider';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -19,7 +20,9 @@ export function Providers({ children, session = null }: ProvidersProps) {
         enableSystem={true}
         disableTransitionOnChange
       >
-        {children}
+        <WorkoutLimitProvider>
+          {children}
+        </WorkoutLimitProvider>
       </ThemeProvider>
     </SessionProvider>
   );

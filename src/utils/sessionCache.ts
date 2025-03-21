@@ -73,7 +73,6 @@ class SessionCache {
     
     // Only preload if we don't already have a cached session
     if (!this.cache && !this.pendingPromise) {
-      console.info('[SessionCache] Preloading session data');
       this.getSession().catch(err => {
         console.error('[SessionCache] Preload error:', err);
       });
@@ -175,14 +174,6 @@ class SessionCache {
       }
       if (this.stats.fastestRequest === null || requestTime < this.stats.fastestRequest) {
         this.stats.fastestRequest = requestTime;
-      }
-      
-      // Log performance info
-      console.info(`[SessionCache] Session loaded in ${requestTime.toFixed(2)}ms`);
-      
-      // Log detailed stats every 5 requests
-      if (this.stats.requestCount % 5 === 0) {
-        this.logStats();
       }
     }
   }
@@ -321,27 +312,6 @@ class SessionCache {
    */
   getStats(): CacheStats {
     return { ...this.stats };
-  }
-  
-  /**
-   * Log cache statistics
-   */
-  logStats(): void {
-    const avgTime = this.stats.requestCount > 0 
-      ? this.stats.totalTime / this.stats.requestCount 
-      : 0;
-    
-    console.info('[SessionCache] Stats:', {
-      hits: this.stats.hits,
-      misses: this.stats.misses,
-      errors: this.stats.errors,
-      backgroundRefreshes: this.stats.backgroundRefreshes,
-      hitRate: `${this.stats.requestCount > 0 ? Math.round((this.stats.hits / this.stats.requestCount) * 100) : 0}%`,
-      avgTime: `${avgTime.toFixed(2)}ms`,
-      slowest: `${this.stats.slowestRequest.toFixed(2)}ms`,
-      fastest: this.stats.fastestRequest ? `${this.stats.fastestRequest.toFixed(2)}ms` : 'N/A',
-      cacheAge: this.lastUpdated > 0 ? `${((Date.now() - this.lastUpdated) / 1000).toFixed(1)}s` : 'N/A'
-    });
   }
   
   /**
