@@ -1288,7 +1288,6 @@ export async function checkWorkoutLimit(userId: string): Promise<{
   maxAllowed: number;
   userRole: string;
 }> {
-  console.log('[WorkoutLimit] Checking workout limit for user:', { userId });
 
   try {
     await dbConnect();

@@ -99,12 +99,6 @@ const NavbarContent = memo(function NavbarContent() {
           show: !!session?.user
         },
         {
-          href: '/achievements',
-          label: 'Logros',
-          icon: Award,
-          show: !!session?.user
-        },
-        {
           href: '/coach',
           label: 'Entrenador',
           icon: Users,

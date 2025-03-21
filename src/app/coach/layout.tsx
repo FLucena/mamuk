@@ -46,6 +46,13 @@ export default async function CoachLayout({
                 >
                   Mis Clientes
                 </Link>
+                <Link
+                  href="/coach/awards"
+                  className="px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white flex items-center"
+                >
+                  <span>Reconocimientos</span>
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs rounded-full">Nuevo</span>
+                </Link>
               </div>
             </div>
           </div>

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Workout } from '@/types/models';
-import { useWorkoutBlocker } from '@/utils/workoutBlocker';
+import { useWorkoutLimitStore } from '@/store/workoutLimitStore';
+import { useSession } from 'next-auth/react';
 
 interface DuplicateWorkoutModalProps {
   workout: Workout;
@@ -19,27 +20,58 @@ export default function DuplicateWorkoutModal({
   onClose,
   loading = false
 }: DuplicateWorkoutModalProps) {
-  const [newName, setNewName] = useState(`${workout.name} (Copia)`);
-  const [newDescription, setNewDescription] = useState(workout.description || '');
+  const { data: session } = useSession();
+  
+  // Get data directly from the enhanced store which includes blocker functionality
+  const { 
+    isBlocked,
+    isCoachOrAdmin,
+    formattedMaxAllowed: maxAllowed,
+    isLoading,
+    saveRoleToLocalStorage
+  } = useWorkoutLimitStore();
+
+  // Add defensive checks for workout properties
+  const workoutName = workout?.name || 'Rutina';
+  const workoutDescription = workout?.description || '';
+  
+  const [newName, setNewName] = useState(`${workoutName} (Copia)`);
+  const [newDescription, setNewDescription] = useState(workoutDescription);
   const [error, setError] = useState<string | null>(null);
   
-  // Use the workout blocker hook
-  const { isBlocked, isCoachOrAdmin, maxAllowed, isLoading } = useWorkoutBlocker();
-
+  // Save user roles to localStorage when session changes
+  useEffect(() => {
+    if (session?.user?.roles) {
+      saveRoleToLocalStorage(session.user.roles);
+    }
+  }, [session?.user?.roles, saveRoleToLocalStorage]);
+  
+  // Debug log of values
+  console.log('DuplicateWorkoutModal values:', {
+    isCoachOrAdmin,
+    maxAllowed,
+    isBlocked,
+    isLoading,
+    sessionRoles: session?.user?.roles
+  });
+  
   // Immediately close the modal if user has hit their limit
   // This is a safety check in case the modal is somehow opened despite limits
   useEffect(() => {
     if (!isCoachOrAdmin && !isLoading && isBlocked) {
-      toast.error(`Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
+      const displayLimit = maxAllowed === Infinity ? 'máximo' : maxAllowed;
+      toast.error(`Has alcanzado el límite de ${displayLimit} rutinas personales. Para crear más, contacta con un entrenador.`);
       onClose();
     }
   }, [isCoachOrAdmin, isLoading, isBlocked, maxAllowed, onClose]);
 
   // Reset form when workout changes
   useEffect(() => {
-    setNewName(`${workout.name} (Copia)`);
-    setNewDescription(workout.description || '');
-    setError(null);
+    if (workout) {
+      setNewName(`${workout.name || 'Rutina'} (Copia)`);
+      setNewDescription(workout.description || '');
+      setError(null);
+    }
   }, [workout]);
 
   const handleDuplicate = async () => {
@@ -48,9 +80,10 @@ export default function DuplicateWorkoutModal({
       return;
     }
 
-    // Check if the user can create more workouts using our blocker
+    // Check if the user can create more workouts
     if (!isCoachOrAdmin && !isLoading && isBlocked) {
-      setError(`Has alcanzado el límite de ${maxAllowed} rutinas personales. Para crear más, contacta con un entrenador.`);
+      const displayLimit = maxAllowed === Infinity ? 'máximo' : maxAllowed;
+      setError(`Has alcanzado el límite de ${displayLimit} rutinas personales. Para crear más, contacta con un entrenador.`);
       return;
     }
 
@@ -69,7 +102,7 @@ export default function DuplicateWorkoutModal({
   const duplicateButtonText = loading 
     ? 'Duplicando...' 
     : (!isCoachOrAdmin && !isLoading && isBlocked)
-      ? `Límite de ${maxAllowed} rutinas alcanzado`
+      ? `Límite de ${maxAllowed === Infinity ? 'rutinas' : maxAllowed} alcanzado`
       : 'Duplicar';
 
   return (

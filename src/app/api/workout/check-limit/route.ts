@@ -20,7 +20,6 @@ export async function POST(request: Request) {
       );
     }
     
-    console.log('[API] Checking workout limit for user:', userId);
     const result = await checkWorkoutLimit(userId);
     
     return NextResponse.json(result);

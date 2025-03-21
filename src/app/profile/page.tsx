@@ -109,7 +109,7 @@ export default function ProfilePage() {
                   <select
                     value={theme}
                     onChange={(e) => setTheme(e.target.value)}
-                    className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
                   >
                     <option value="light">Claro</option>
                     <option value="dark">Oscuro</option>

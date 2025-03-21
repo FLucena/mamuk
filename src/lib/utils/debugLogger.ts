@@ -18,28 +18,10 @@ export const debugLog = (options: LogOptions) => {
   const styles = error 
     ? 'background: #FEE2E2; color: #DC2626; padding: 2px 4px; border-radius: 2px;'
     : 'background: #DBEAFE; color: #1E40AF; padding: 2px 4px; border-radius: 2px;';
-  
-  console.group(`%c${title || 'API Debug Log'}`, styles);
-  
-  if (data) {
-    console.log('Data:', data);
-  }
-  
-  if (session) {
-    console.log('Session:', {
-      authenticated: !!session,
-      user: session?.user ? {
-        id: session.user.id,
-        roles: session.user.roles,
-      } : null
-    });
-  }
-  
+    
   if (error) {
     console.error('Error:', data);
   }
-  
-  console.groupEnd();
 };
 
 export const logApiCall = async (url: string, options?: RequestInit, title?: string) => {
