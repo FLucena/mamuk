@@ -5,11 +5,12 @@ import { useSession } from 'next-auth/react';
 import UserList from '@/components/admin/UserList';
 import { Types } from 'mongoose';
 import type { Viewport } from 'next';
-import { redirect } from 'next/navigation';
+import { redirect, useRouter } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { User } from '@/lib/types/user';
 import { sortRoles } from '@/lib/utils/roles';
+import { RefreshCw } from 'lucide-react';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -24,10 +25,25 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const router = useRouter();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Función para refrescar los datos
   const refreshData = () => {
     setLastRefresh(Date.now());
+  };
+
+  // Function to handle refresh
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    
+    // Refresh the current route
+    router.refresh();
+    
+    // Reset the refreshing state after a short delay
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -189,13 +205,17 @@ export default function UsersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">
-          Gestionar Usuarios
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Aquí puedes ver y gestionar los usuarios de la plataforma.
-        </p>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">User Management</h1>
+        
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="inline-flex items-center justify-center rounded-md p-2 text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Refresh users"
+        >
+          <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       <UserList users={users} onRefresh={refreshData} />
