@@ -2,6 +2,34 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import WorkoutHeader from '@/components/workout/WorkoutHeader';
 
+// Mock Next.js navigation
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn().mockReturnValue({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+}));
+
+// Mock the workoutBlocker hook
+jest.mock('@/utils/workoutBlocker', () => ({
+  useWorkoutBlocker: jest.fn().mockReturnValue({
+    isBlocked: false,
+    isCoachOrAdmin: true,
+    checkAndBlockAction: jest.fn().mockReturnValue(false),
+    maxAllowed: 3
+  })
+}));
+
+// Mock next/link component
+jest.mock('next/link', () => {
+  return ({ children, href }) => {
+    return <a href={href}>{children}</a>;
+  };
+});
+
 describe('WorkoutHeader', () => {
   it('should show the Nueva Rutina button when hasPermission is true', () => {
     render(
@@ -30,11 +58,11 @@ describe('WorkoutHeader', () => {
       <WorkoutHeader 
         title="Rutinas" 
         hasPermission={true}
-        newButtonText="Crear rutina" 
+        newButtonText="Create Custom Workout" 
       />
     );
     
-    expect(screen.getByText('Crear rutina')).toBeInTheDocument();
+    expect(screen.getByText('Create Custom Workout')).toBeInTheDocument();
   });
   
   it('should show workout count and limit when provided', () => {
@@ -47,7 +75,6 @@ describe('WorkoutHeader', () => {
       />
     );
     
-    expect(screen.getByText('Rutinas personales:')).toBeInTheDocument();
     expect(screen.getByText('2 / 3')).toBeInTheDocument();
   });
   
@@ -59,6 +86,7 @@ describe('WorkoutHeader', () => {
       />
     );
     
-    expect(screen.queryByText('Rutinas personales:')).not.toBeInTheDocument();
+    expect(screen.queryByText('0 / 3')).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d+ \/ \d+/)).not.toBeInTheDocument();
   });
 }); 

@@ -8,6 +8,16 @@ jest.mock('next-auth', () => ({
   getServerSession: jest.fn()
 }))
 
+// Mock checkWorkoutLimit
+jest.mock('@/app/workout/[id]/actions', () => ({
+  checkWorkoutLimit: jest.fn().mockResolvedValue({
+    canCreate: true,
+    currentCount: 1,
+    maxAllowed: 3,
+    userRole: 'customer'
+  })
+}))
+
 // Mock User model
 jest.mock('@/lib/models/user', () => ({
   __esModule: true,
@@ -42,6 +52,19 @@ jest.mock('next/server', () => {
 // Mock auth options
 jest.mock('@/lib/auth', () => ({
   authOptions: {}
+}))
+
+// Mock rate-limit utility
+jest.mock('@/lib/utils/rate-limit', () => ({
+  checkRateLimit: jest.fn().mockReturnValue(null)
+}))
+
+// Mock optimization utility
+jest.mock('@/lib/utils/compression', () => ({
+  optimizeResponse: jest.fn().mockImplementation((data, _, status) => ({
+    body: data,
+    status
+  }))
 }))
 
 describe('/api/workout API', () => {
@@ -83,7 +106,11 @@ describe('/api/workout API', () => {
 
   it('POST creates new workout', async () => {
     const mockSession = { 
-      user: { id: 'user-id', email: 'test@example.com' } 
+      user: { 
+        id: 'user-id', 
+        email: 'test@example.com',
+        role: 'customer' 
+      } 
     }
     getServerSession.mockResolvedValue(mockSession)
     

@@ -53,30 +53,30 @@ export default async function CustomerWorkoutsPage({ params }: CustomerWorkoutsP
 
   // Adaptar los workouts al formato esperado por WorkoutList
   const workouts = workoutsData.map(workout => ({
-    _id: workout.id || '',
+    id: workout.id || '',
     name: workout.name,
     description: workout.description,
     days: workout.days.map(day => ({
-      _id: day.id || '',
+      id: day.id || '',
       name: day.name,
       blocks: day.blocks.map(block => ({
-        _id: block.id || '',
+        id: block.id || '',
         name: block.name,
         exercises: block.exercises.map(exercise => ({
-          _id: exercise.id || '',
+          id: exercise.id || '',
           name: exercise.name,
           sets: exercise.sets,
           reps: exercise.reps,
           weight: exercise.weight,
-          notes: exercise.notes,
-          videoUrl: exercise.videoUrl
+          notes: exercise.notes || '',
+          videoUrl: exercise.videoUrl || '',
+          tags: exercise.tags || []
         }))
       }))
     })),
     userId: workout.userId,
     createdAt: workout.createdAt,
-    updatedAt: workout.updatedAt,
-    id: workout.id
+    updatedAt: workout.updatedAt
   }));
 
   return (
@@ -100,6 +100,7 @@ export default async function CustomerWorkoutsPage({ params }: CustomerWorkoutsP
       </div>
 
       <WorkoutList workouts={workouts} isCoach={true} />
+      
     </div>
   );
 } 

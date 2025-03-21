@@ -10,6 +10,27 @@ jest.mock('next/link', () => {
   };
 });
 
+// Mock Next.js navigation
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn().mockReturnValue({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+}));
+
+// Mock the workoutBlocker hook
+jest.mock('@/utils/workoutBlocker', () => ({
+  useWorkoutBlocker: jest.fn().mockReturnValue({
+    isBlocked: false,
+    isCoachOrAdmin: true,
+    checkAndBlockAction: jest.fn().mockReturnValue(false),
+    maxAllowed: 3
+  })
+}));
+
 describe('Workout Permissions', () => {
   it('should show Nueva Rutina button when hasPermission is true', () => {
     render(

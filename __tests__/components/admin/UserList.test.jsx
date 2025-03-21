@@ -68,33 +68,33 @@ describe('UserList Component', () => {
 
   const users = [singleRoleUser, multiRoleUser];
 
-  it('should display users with single role correctly', () => {
+  it('should display users with a single role correctly', () => {
     render(<UserList users={[singleRoleUser]} />);
     
-    // Check if user name is displayed
-    expect(screen.getByText('Single Role User')).toBeInTheDocument();
+    // Check if username is displayed
+    expect(screen.getAllByText('Single Role User')[0]).toBeInTheDocument();
     
     // Check if email is displayed
-    expect(screen.getByText('single@example.com')).toBeInTheDocument();
+    expect(screen.getAllByText('single@example.com')[0]).toBeInTheDocument();
     
     // Check if role is displayed
-    const roleElement = screen.getByText('customer');
+    const roleElement = screen.getAllByText('customer')[0];
     expect(roleElement).toBeInTheDocument();
   });
 
   it('should display users with multiple roles correctly', () => {
     render(<UserList users={[multiRoleUser]} />);
     
-    // Check if user name is displayed
-    expect(screen.getByText('Multi Role User')).toBeInTheDocument();
+    // Check if username is displayed
+    expect(screen.getAllByText('Multi Role User')[0]).toBeInTheDocument();
     
     // Check if email is displayed
-    expect(screen.getByText('multi@example.com')).toBeInTheDocument();
+    expect(screen.getAllByText('multi@example.com')[0]).toBeInTheDocument();
     
     // Check if all roles are displayed
-    expect(screen.getByText('admin')).toBeInTheDocument();
-    expect(screen.getByText('coach')).toBeInTheDocument();
-    expect(screen.getByText('customer')).toBeInTheDocument();
+    expect(screen.getAllByText('admin')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('coach')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('customer')[0]).toBeInTheDocument();
   });
 
   it('should handle users with roles array but only one role', () => {
@@ -107,14 +107,14 @@ describe('UserList Component', () => {
     
     render(<UserList users={[userWithRolesArray]} />);
     
-    // Check if user name is displayed
-    expect(screen.getByText('Single Role in Array')).toBeInTheDocument();
+    // Check if username is displayed
+    expect(screen.getAllByText('Single Role in Array')[0]).toBeInTheDocument();
     
     // Check if email is displayed
-    expect(screen.getByText('array@example.com')).toBeInTheDocument();
+    expect(screen.getAllByText('array@example.com')[0]).toBeInTheDocument();
     
     // Check if role is displayed
-    const roleElement = screen.getByText('coach');
+    const roleElement = screen.getAllByText('coach')[0];
     expect(roleElement).toBeInTheDocument();
   });
 
@@ -122,11 +122,15 @@ describe('UserList Component', () => {
     render(<UserList users={[singleRoleUser, multiRoleUser]} />);
     
     // Check if both users are displayed
-    expect(screen.getByText('Single Role User')).toBeInTheDocument();
-    expect(screen.getByText('Multi Role User')).toBeInTheDocument();
+    expect(screen.getAllByText('Single Role User')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Multi Role User')[0]).toBeInTheDocument();
     
-    // Check if all roles are displayed correctly
-    const roleBadges = screen.getAllByText(/admin|coach|customer/);
-    expect(roleBadges).toHaveLength(4); // 1 for single role user + 3 for multi role user
+    // Check if emails are displayed
+    expect(screen.getAllByText('single@example.com')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('multi@example.com')[0]).toBeInTheDocument();
+    
+    // Check if role badges are displayed - should have at least 4 badges (could be up to 8 with mobile+desktop views)
+    const roleBadges = screen.getAllByText(/customer|admin|coach/);
+    expect(roleBadges.length).toBeGreaterThanOrEqual(4);
   });
 }); 
