@@ -124,18 +124,6 @@ const WorkoutCard = memo(function WorkoutCard({
   
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm will-change-transform">
-      {/* Debug banner */}
-      {process.env.NODE_ENV !== 'production' && (
-        <div className="mb-2 p-1 text-xs bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-200 rounded border border-pink-300 dark:border-pink-800">
-          <p className="font-semibold">🔍 Card Debug:</p>
-          <p>isDuplicateDisabled: {String(isDuplicateDisabled)}</p>
-          <p>isCoach: {String(isCoach)}</p>
-          <p>isCoachOrAdmin: {String(isCoachOrAdmin)}</p>
-          <p>isBlocked: {String(isBlocked)}</p>
-          <p>workoutLimitReached: {String(workoutLimitReached)}</p>
-          <p>From store - maxAllowed: {displayLimit}</p>
-        </div>
-      )}
       
       <div className="flex flex-col md:flex-row md:justify-between md:items-center">
         <div className="flex-1">
@@ -566,23 +554,6 @@ const WorkoutList = memo(function WorkoutList({
 
   return (
     <div className="relative space-y-4" data-testid="workout-list-container">
-      {/* Debug banner */}
-      {process.env.NODE_ENV !== 'production' && (
-        <div className="mb-4 p-2 text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded border border-blue-300 dark:border-blue-800">
-          <p className="font-medium">🐛 WorkoutList Debug:</p>
-          <div className="text-xs space-y-1 mt-1">
-            <p>workoutLimitReached prop: {String(workoutLimitReached)}</p>
-            <p>isCoach prop: {String(isCoach)}</p>
-            <p>useWorkoutLimit hook values:</p>
-            <p>- canCreate: {String(formattedMaxAllowed > 0)}</p>
-            <p>- currentCount: {currentCount}</p>
-            <p>- maxAllowed: {formattedMaxAllowed}</p>
-            <p>- userRole: {String(isCoach)}</p>
-            <p>- isLoading: {String(isLimitLoading)}</p>
-            <p>Rendered at: {new Date().toLocaleTimeString()}</p>
-          </div>
-        </div>
-      )}
       
       {workouts.length === 0 ? emptyState : (
         <div className="grid grid-cols-1 gap-4">

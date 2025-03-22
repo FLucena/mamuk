@@ -9,5 +9,6 @@
         "Usuarios"
     ],
     "cSpell.enabled": false,
-    "search.useIgnoreFiles": false
+    "search.useIgnoreFiles": true,
+    "search.useParentIgnoreFiles": true
 }

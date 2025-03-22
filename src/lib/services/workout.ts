@@ -15,6 +15,8 @@ import { ensureCoachExists } from './coach';
 import { getTypedModel } from '@/lib/utils/mongoose';
 import { WorkoutAssignment } from '@/lib/models/workoutAssignment';
 import { checkWorkoutLimit } from '@/app/workout/[id]/actions';
+import { workoutValidationSchema } from '@/lib/schemas/workout';
+import { z } from 'zod';
 
 interface MongoDoc {
   _id: Types.ObjectId;
@@ -267,6 +269,18 @@ export async function getWorkout(workoutId: string, userId: string): Promise<Wor
   });
 
   try {
+    // Handle special 'create' case
+    if (!workoutId || workoutId === 'create') {
+      console.log('[getWorkout] Special case - create new workout:', { workoutId });
+      return null;
+    }
+
+    // Validate ObjectId format
+    if (!Types.ObjectId.isValid(workoutId)) {
+      console.log('[getWorkout] Invalid ObjectId format:', { workoutId });
+      return null;
+    }
+
     await dbConnect();
 
     // Use type assertion for Mongoose model methods
@@ -298,8 +312,6 @@ export async function getWorkout(workoutId: string, userId: string): Promise<Wor
     } else {
       userQuery = { sub: userId };
     }
-
-    console.log('[getWorkout] Finding user with query:', { userQuery });
 
     const user = await TypedUser.findOne(userQuery).lean();
 
@@ -464,7 +476,7 @@ async function isUserCoach(coachUserId: string, studentUserId: string): Promise<
   }
 }
 
-export async function createWorkout(data: Partial<WorkoutType>, userId: string, creatorId?: string): Promise<WorkoutType> {
+export async function createWorkout(data: z.infer<typeof workoutValidationSchema>, userId: string, creatorId?: string): Promise<WorkoutType> {
   if (!userId) throw new Error('Se requiere ID de usuario');
   
   await dbConnect();
@@ -486,21 +498,27 @@ export async function createWorkout(data: Partial<WorkoutType>, userId: string, 
   }
   
   // Generate default days for the workout if none provided
-  const defaultDays = data.days || (() => {
-    return [{
+  const defaultDays = data.days || Array.from({ length: 3 }, (_, dayIndex) => ({
+    id: randomUUID(),
+    name: `Día ${dayIndex + 1}`,
+    blocks: Array.from({ length: 4 }, (_, blockIndex) => ({
       id: randomUUID(),
-      name: 'Día 1',
-      exercises: getRandomExercises(3),
-    }, {
-      id: randomUUID(),
-      name: 'Día 2',
-      exercises: getRandomExercises(3),
-    }, {
-      id: randomUUID(),
-      name: 'Día 3',
-      exercises: getRandomExercises(3),
-    }];
-  })();
+      name: `Bloque ${blockIndex + 1}`,
+      exercises: Array.from({ length: 3 }, () => {
+        const randomExercise = exerciseList[Math.floor(Math.random() * exerciseList.length)];
+        return {
+          id: randomUUID(),
+          name: randomExercise?.name || `Ejercicio ${Math.floor(Math.random() * 100)}`,
+          sets: 3,
+          reps: 12,
+          weight: 0,
+          videoUrl: randomExercise?.videoUrl || '',
+          notes: randomExercise?.notes || '',
+          tags: []
+        };
+      })
+    }))
+  }));
 
   const sanitizedData = {
     ...data,

@@ -62,9 +62,9 @@ export async function fetchWorkoutById(id: string): Promise<Workout | null> {
 /**
  * Creates a new workout
  * @param workoutData Workout data
- * @returns Promise with created workout
+ * @returns Promise with created workout or error
  */
-export async function createWorkout(workoutData: Partial<Workout>): Promise<Workout | null> {
+export async function createWorkout(workoutData: Partial<Workout>): Promise<{ workout: Workout | null; error?: string }> {
   try {
     const response = await fetch('/api/workout', {
       method: 'POST',
@@ -74,15 +74,22 @@ export async function createWorkout(workoutData: Partial<Workout>): Promise<Work
       body: JSON.stringify(workoutData),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to create workout');
+      return { 
+        workout: null, 
+        error: data.error || data.message || 'Failed to create workout' 
+      };
     }
 
-    return await response.json();
+    return { workout: data };
   } catch (error) {
     console.error('Error creating workout:', error);
-    return null;
+    return { 
+      workout: null, 
+      error: error instanceof Error ? error.message : 'Failed to create workout' 
+    };
   }
 }
 

@@ -7,16 +7,22 @@ import { getWorkout } from '@/lib/services/workout';
 import WorkoutClient from '@/components/workout/WorkoutClient';
 import * as actions from './actions';
 import { Types } from 'mongoose';
-import { Workout } from '@/lib/models/workout';
+import { Workout as MongoWorkout } from '@/lib/models/workout';
 import { dbConnect } from '@/lib/db';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { getCurrentUserRole, getCurrentUserRoles } from '@/lib/utils/permissions';
 import SchemaOrg from '@/components/SchemaOrg';
-import { generateWorkoutSchema } from '@/lib/utils/schema';
+import { generateWorkoutSchema as generateWorkoutSEOSchema } from '@/lib/utils/schema';
 import { Metadata } from 'next';
 import { generateMetadata as generatePageMetadata } from '@/lib/utils/metadata';
 import { SITE_URL } from '@/lib/constants/site';
+import { exerciseList } from '@/data/exercises';
+import { randomUUID } from 'crypto';
+import { createWorkout as createWorkoutAPI } from '@/lib/services/workout';
+import { z } from 'zod';
+import { workoutSchema } from '@/lib/schemas/workout';
+import type { Workout, WorkoutDay, Block, Exercise } from '@/types/models';
 
 interface WorkoutPageProps {
   params: Promise<{
@@ -40,13 +46,70 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
 
   const { id } = await params;
   
+  // Handle create case
+  if (id === 'create') {
+    // Get user roles to check permissions
+    const userRoles = await getCurrentUserRoles(session.user.id);
+    const isAdmin = userRoles.includes('admin');
+    const isCoach = userRoles.includes('coach');
+    
+    // Create a new workout in the database
+    const defaultWorkout = {
+      name: 'Nueva Rutina',
+      description: '',
+      days: Array.from({ length: 3 }, (_, dayIndex) => ({
+        id: new Types.ObjectId().toString(),
+        name: `Día ${dayIndex + 1}`,
+        blocks: Array.from({ length: 4 }, (_, blockIndex) => ({
+          id: new Types.ObjectId().toString(),
+          name: `Bloque ${blockIndex + 1}`,
+          exercises: Array.from({ length: 3 }, () => {
+            const randomExercise = exerciseList[Math.floor(Math.random() * exerciseList.length)];
+            return {
+              id: new Types.ObjectId().toString(),
+              name: randomExercise?.name || `Ejercicio ${Math.floor(Math.random() * 100)}`,
+              sets: 3,
+              reps: 12,
+              weight: 0,
+              videoUrl: randomExercise?.videoUrl || '',
+              notes: randomExercise?.notes || '',
+              tags: []
+            };
+          })
+        }))
+      })),
+      status: 'active' as const
+    };
+
+    try {
+      // Create the workout using the service function
+      const workout = await createWorkoutAPI(defaultWorkout, session.user.id);
+      if (!workout) {
+        console.error('Error creating workout: No workout returned');
+        redirect('/workout');
+      }
+
+      // Redirect to the newly created workout
+      redirect(`/workout/${workout.id}`);
+    } catch (error) {
+      console.error('Error creating workout:', error);
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('\n');
+        console.error('Validation errors:', errorMessages);
+      }
+      // If there's an error (like reaching the workout limit), redirect to the workouts list
+      redirect('/workout');
+    }
+  }
+  
   const workoutDoc = await getWorkout(id, session.user.id) as any;
   
   if (!workoutDoc) {
     redirect('/workout');
   }
 
-  // Obtener los roles del usuario
+  // Get user roles
   const userRoles = await getCurrentUserRoles(session.user.id);
   const isAdmin = userRoles.includes('admin');
   const isCoach = userRoles.includes('coach');
@@ -115,12 +178,12 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
   }));
 
   // Generar esquema para SEO
-  const workoutSchema = generateWorkoutSchema(workout);
+  const workoutSEOSchema = generateWorkoutSEOSchema(workout);
 
   return (
     <>
       {/* Esquema JSON-LD para SEO */}
-      <SchemaOrg schema={workoutSchema} />
+      <SchemaOrg schema={workoutSEOSchema} />
       
       <WorkoutClient
         workout={workout}
@@ -148,7 +211,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     console.log(`[DEBUG] Generando metadatos para workout ${params.id}`);
     
     await dbConnect();
-    const workout = await (Workout.findById as any)(params.id).lean();
+    const workout = await (MongoWorkout.findById as any)(params.id).lean();
     
     if (!workout) {
       console.log(`[DEBUG] Workout no encontrado para metadatos: ${params.id}`);

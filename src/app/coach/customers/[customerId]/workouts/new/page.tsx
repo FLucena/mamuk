@@ -52,78 +52,63 @@ export default async function NewWorkoutPage({ params }: NewWorkoutPageProps) {
       description,
       days: [
         {
-          id: 'dia1',
           name: 'Día 1',
           blocks: [
             {
-              id: 'bloque1',
               name: 'Bloque 1',
               exercises: [],
             },
             {
-              id: 'bloque2',
               name: 'Bloque 2',
               exercises: [],
             },
             {
-              id: 'bloque3',
               name: 'Bloque 3',
               exercises: [],
             },
             {
-              id: 'bloque4',
               name: 'Bloque 4',
               exercises: [],
             },
           ],
         },
         {
-          id: 'dia2',
           name: 'Día 2',
           blocks: [
             {
-              id: 'bloque5',
               name: 'Bloque 1',
               exercises: [],
             },
             {
-              id: 'bloque6',
               name: 'Bloque 2',
               exercises: [],
             },
             {
-              id: 'bloque7',
               name: 'Bloque 3',
               exercises: [],
             },
             {
-              id: 'bloque8',
               name: 'Bloque 4',
               exercises: [],
             },
           ],
         },
         {
-          id: 'dia3',
           name: 'Día 3',
           blocks: [
             {
-              id: 'bloque9',
               name: 'Bloque 1',
               exercises: [],
             },
             {
-              id: 'bloque10',
               name: 'Bloque 2',
               exercises: [],
             },
             {
-              id: 'bloque11',
               name: 'Bloque 3',
               exercises: [],
             },
             {
-              id: 'bloque12',
               name: 'Bloque 4',
               exercises: [],
             },

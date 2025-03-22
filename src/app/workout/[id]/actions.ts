@@ -580,7 +580,6 @@ export async function duplicateWorkout(workoutId: string, newName?: string, newD
       userQuery = { sub: session.user.id };
     }
 
-    console.log('[Duplication] Finding user with query:', { userQuery });
     const user = await (User.findOne as any)(userQuery).lean();
 
     if (!user) {
@@ -1134,7 +1133,6 @@ export async function updateWorkoutName(workoutId: string, newName: string, newD
       userQuery = { sub: session.user.id };
     }
 
-    console.log('[updateWorkoutName] Finding user with query:', { userQuery });
     const user = await (User.findOne as any)(userQuery).lean();
 
     if (!user) {
@@ -1302,7 +1300,6 @@ export async function checkWorkoutLimit(userId: string): Promise<{
       userQuery = { sub: userId };
     }
 
-    console.log('[WorkoutLimit] Finding user with query:', { userQuery });
     const user = await (User.findOne as any)(userQuery).lean();
 
     if (!user) {

@@ -26,6 +26,7 @@ interface WorkoutClientProps {
   showVideosInline?: boolean;
   isAdmin?: boolean;
   isCoach?: boolean;
+  isNew?: boolean;
 }
 
 interface UIState {
@@ -51,6 +52,9 @@ export default function WorkoutClient({
   updateBlockName,
   userId,
   showVideosInline = true,
+  isAdmin = false,
+  isCoach = false,
+  isNew = false,
 }: WorkoutClientProps) {
   const router = useRouter();
   const [workout, setWorkout] = useState<Workout>(initialWorkout);
@@ -407,34 +411,36 @@ export default function WorkoutClient({
           />
           
           <div className="container max-w-5xl mx-auto px-4 py-6">
-            <div className="flex justify-between items-center mb-8">
-              <div className="flex gap-2">
+            {!isNew && (
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex gap-2">
+                  <button
+                    onClick={expandAll}
+                    className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-md transition-colors"
+                  >
+                    Expandir todo
+                  </button>
+                  <button
+                    onClick={collapseAll}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md transition-colors"
+                  >
+                    Colapsar todo
+                  </button>
+                </div>
+                
                 <button
-                  onClick={expandAll}
-                  className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-md transition-colors"
+                  onClick={handleDeleteWorkout}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-md transition-colors flex items-center"
+                  aria-label="Eliminar rutina"
+                  disabled={uiState.isDeleting}
                 >
-                  Expandir todo
-                </button>
-                <button
-                  onClick={collapseAll}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md transition-colors"
-                >
-                  Colapsar todo
+                  <Trash className="w-4 h-4 mr-1.5" />
+                  Eliminar
                 </button>
               </div>
-              
-              <button
-                onClick={handleDeleteWorkout}
-                className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-md transition-colors flex items-center"
-                aria-label="Eliminar rutina"
-                disabled={uiState.isDeleting}
-              >
-                <Trash className="w-4 h-4 mr-1.5" />
-                Eliminar
-              </button>
-            </div>
+            )}
             
-            {workout.days && workout.days.length > 0 ? (
+            {workout.days.length > 0 ? (
               <div className="space-y-6">
                 {workout.days.map((day, dayIndex) => (
                   <WorkoutDayComponent
@@ -474,7 +480,9 @@ export default function WorkoutClient({
               </div>
             ) : (
               <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">No hay días en esta rutina</p>
+                <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
+                  {isNew ? 'Comienza creando el primer día de tu rutina' : 'No hay días en esta rutina'}
+                </p>
                 {addDay && (
                   <button
                     onClick={() => handleAddDay()}
@@ -488,7 +496,7 @@ export default function WorkoutClient({
               </div>
             )}
             
-            {workout.days && workout.days.length > 0 && addDay && (
+            {workout.days.length > 0 && (
               <div className="mt-8 text-center">
                 <button
                   onClick={() => handleAddDay()}

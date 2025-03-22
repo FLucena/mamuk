@@ -8,6 +8,7 @@ import { dbConnect } from '@/lib/db';
 import { Workout } from '@/lib/models/workout';
 import { optimizeResponse } from '@/lib/utils/compression';
 import { checkWorkoutLimit } from '@/app/workout/[id]/actions';
+import { workoutValidationSchema } from '@/lib/schemas/workout';
 
 // Force dynamic rendering for this route since it depends on user session
 export const dynamic = 'force-dynamic';
@@ -15,24 +16,6 @@ export const dynamic = 'force-dynamic';
 // Add cache control headers to prevent caching
 export const fetchCache = 'force-no-store';
 export const revalidate = 0;
-
-// Schema for workout creation validation
-const workoutSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  exercises: z.array(
-    z.object({
-      name: z.string().min(1, "Exercise name is required"),
-      sets: z.number().int().positive().optional(),
-      reps: z.number().int().positive().optional(),
-      weight: z.number().positive().optional(),
-      duration: z.number().positive().optional(),
-      notes: z.string().optional(),
-    })
-  ).optional(),
-  isPublic: z.boolean().optional().default(false),
-  tags: z.array(z.string()).optional(),
-});
 
 // GET /api/workout - Get all workouts for the current user
 export async function GET(request: NextRequest) {
@@ -161,7 +144,7 @@ export async function POST(request: NextRequest) {
     const data = await request.json();
     
     // Validate request data
-    const validationResult = workoutSchema.safeParse(data);
+    const validationResult = workoutValidationSchema.safeParse(data);
     if (!validationResult.success) {
       return NextResponse.json(
         { 
