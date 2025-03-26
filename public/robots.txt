@@ -1,0 +1,34 @@
+# Mamuk - Robots.txt
+# This file tells search engines which pages of your site they can crawl
+
+# Allow all search engines to access all content
+User-agent: *
+Allow: /
+
+# Disallow admin and authentication pages
+Disallow: /admin/
+Disallow: /api/auth/
+Disallow: /api/private/
+
+# Disallow development and test routes
+Disallow: /test/
+Disallow: /dev/
+
+# Googlebot specific rules
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Googlebot-Image specific rules
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /public/images/
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.webp$
+Allow: /*.svg$
+
+# Sitemap location (use absolute URL)
+Sitemap: https://mamuk.com.ar/sitemap.xml 

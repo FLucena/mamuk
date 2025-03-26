@@ -1,0 +1,371 @@
+export interface Translations {
+  [key: string]: {
+    [key: string]: string;
+  };
+}
+
+// Our translations
+export const translations: Translations = {
+  en: {
+    // App title
+    'app_title': 'Mamuk Fitness',
+    
+    // Navigation
+    'nav_dashboard': 'Dashboard',
+    'nav_workouts': 'Workouts',
+    'nav_exercises': 'Exercise Library',
+    'nav_achievements': 'Achievements',
+    'nav_users': 'Users',
+    
+    // User Menu
+    'open_user_menu': 'Open user menu',
+    'open_main_menu': 'Open main menu',
+    'your_profile': 'Your Profile',
+    'settings': 'Settings',
+    'sign_out': 'Sign out',
+    'switch_light_mode': 'Switch to Light Mode',
+    'switch_dark_mode': 'Switch to Dark Mode',
+
+    // Generic UI
+    'welcome_back': 'Welcome back',
+    'fitness_enthusiast': 'Fitness Enthusiast',
+    'journey_overview': "Here's an overview of your fitness journey",
+    'start_new_workout': 'Start New Workout',
+    'view_all': 'View all',
+    
+    // Stats Cards
+    'total_workouts': 'Total Workouts',
+    'view_all_workouts': 'View all workouts',
+    'current_streak': 'Current Streak',
+    'day': 'day',
+    'days': 'days',
+    'keep_it_up': 'Keep it up!',
+    'calories_burned': 'Calories Burned',
+    'this_week': 'this week',
+    'workouts_completed': 'Workouts Completed',
+    'completion_rate': 'Completion Rate',
+    
+    // Sections
+    'recent_workouts': 'Recent Workouts',
+    'no_recent_workouts': 'No recent workouts found',
+    'get_started': "Let's get started",
+    'create_workout': 'Create a workout',
+    'weekly_progress': 'Weekly Progress',
+    'completed_count': 'workouts completed',
+    'target': 'target',
+    'of_weekly_goal': 'of weekly goal',
+    'achievements': 'Achievements',
+    'view_all_achievements': 'View all achievements',
+    'recently_earned': 'Recently Earned',
+    
+    // Workout Status
+    'status_active': 'Active',
+    'status_completed': 'Completed',
+    
+    // Exercise-related
+    'exercises': 'exercises',
+    'day_singular': 'day',
+    'day_plural': 'days',
+    
+    // Achievements page
+    'track_your_fitness_milestones': 'Track your fitness milestones and accomplishments',
+    'achieved_on': 'Achieved on',
+    
+    // Workouts page
+    'new_workout': 'New Workout',
+    'no_workouts_found': 'No workouts found. Create your first workout!',
+    'block_singular': 'block',
+    'block_plural': 'blocks',
+    'exercise_singular': 'exercise',
+    'updated': 'Updated',
+    
+    // Exercise Library page
+    'add_custom_exercise': 'Add Custom Exercise',
+    'search_exercises': 'Search exercises...',
+    'filters': 'Filters',
+    'category': 'Category',
+    'all': 'All',
+    'muscle_group': 'Muscle Group',
+    'muscle_groups': 'Muscle Groups',
+    'no_exercises_found': 'No exercises found with the current filters.',
+    'clear_filters': 'Clear Filters',
+    'custom': 'Custom',
+    'no_description': 'No description available.',
+    'more': 'more',
+    'view_details': 'View Details',
+    'close': 'Close',
+    'description': 'Description',
+    'instructions': 'Instructions',
+    'default_sets': 'Default Sets',
+    'default_reps': 'Default Reps',
+    'default_weight': 'Default Weight',
+    'use_in_workout': 'Use in Workout',
+    'exercise_name': 'Exercise Name',
+    'exercise_name_placeholder': 'e.g., Cable Tricep Extension',
+    'default_weight_kg': 'Default Weight (kg)',
+    'leave_blank_bodyweight': 'Leave blank for bodyweight',
+    'description_placeholder': 'Brief description of the exercise',
+    'instructions_placeholder': 'Step-by-step instructions on how to perform the exercise',
+    'cancel': 'Cancel',
+    'add_exercise': 'Add Exercise',
+    'exercise_name_required': 'Exercise name is required',
+    'select_muscle_group': 'Please select at least one muscle group',
+    
+    // Exercise categories
+    'strength': 'Strength',
+    'cardio': 'Cardio',
+    'flexibility': 'Flexibility',
+    'balance': 'Balance',
+    'other': 'Other',
+    
+    // Muscle groups
+    'chest': 'Chest',
+    'back': 'Back',
+    'shoulders': 'Shoulders',
+    'biceps': 'Biceps',
+    'triceps': 'Triceps',
+    'quadriceps': 'Quadriceps',
+    'hamstrings': 'Hamstrings',
+    'glutes': 'Glutes',
+    'calves': 'Calves',
+    'core': 'Core',
+    'lower back': 'Lower Back',
+    'heart': 'Heart',
+    'hip flexors': 'Hip Flexors',
+    'ankles': 'Ankles',
+    'legs': 'Legs',
+    
+    // Footer
+    'language': 'Language',
+    'english': 'English',
+    'spanish': 'Spanish',
+    
+    // WorkoutForm page
+    'edit_workout': 'Edit Workout',
+    'workout_title': 'Workout Title',
+    'workout_title_placeholder': 'e.g., Full Body Workout',
+    'workout_description_placeholder': 'Describe your workout routine',
+    'workout_days': 'Workout Days',
+    'add_day': 'Add Day',
+    'no_workout_days': 'No workout days added yet. Click "Add Day" to get started.',
+    'day_name_placeholder': 'Day Name',
+    'collapse_day': 'Collapse day',
+    'expand_day': 'Expand day',
+    'remove_day': 'Remove day',
+    'workout_blocks': 'Workout Blocks',
+    'add_block': 'Add Block',
+    'no_blocks': 'No blocks added to this day yet.',
+    'block_name_placeholder': 'Block Name',
+    'randomize_exercises': 'Randomize exercises',
+    'collapse_block': 'Collapse block',
+    'expand_block': 'Expand block',
+    'remove_block': 'Remove block',
+    'browse_library': 'Browse Library',
+    'no_exercises': 'No exercises added to this block yet.',
+    'exercise': 'Exercise',
+    'sets': 'Sets',
+    'reps': 'Reps',
+    'weight_kg_optional': 'Weight (kg, optional)',
+    'notes_optional': 'Notes (optional)',
+    'notes_placeholder': 'Any special instructions or form tips',
+    'saving': 'Saving...',
+    'save_changes': 'Save Changes',
+    'workout_title_required': 'Workout title is required',
+    'workout_description_required': 'Workout description is required',
+    'at_least_one_day_required': 'At least one workout day is required',
+    'day_name_required': 'All workout days must have a name',
+    'day_must_have_block': 'Day must have at least one block',
+    'block_name_required': 'All blocks must have a name',
+    'block_must_have_exercise': 'Block must have at least one exercise',
+    'sets_must_be_positive': 'Sets must be greater than 0',
+    'reps_must_be_positive': 'Reps must be greater than 0',
+    'login_required': 'You must be logged in to create or edit workouts',
+    'save_workout_failed': 'Failed to save workout. Please try again.',
+    
+    // New translation keys
+    'video_demonstration': 'Video Demonstration',
+    'default_values': 'Default Values',
+    'similar_exercises': 'Similar Exercises',
+  },
+  es: {
+    // App title
+    'app_title': 'Mamuk Fitness',
+    
+    // Navigation
+    'nav_dashboard': 'Tablero',
+    'nav_workouts': 'Entrenamientos',
+    'nav_exercises': 'Biblioteca de Ejercicios',
+    'nav_achievements': 'Logros',
+    'nav_users': 'Usuarios',
+    
+    // User Menu
+    'open_user_menu': 'Abrir menú de usuario',
+    'open_main_menu': 'Abrir menú principal',
+    'your_profile': 'Tu Perfil',
+    'settings': 'Configuración',
+    'sign_out': 'Cerrar sesión',
+    'switch_light_mode': 'Cambiar a Modo Claro',
+    'switch_dark_mode': 'Cambiar a Modo Oscuro',
+
+    // Generic UI
+    'welcome_back': 'Bienvenido de nuevo',
+    'fitness_enthusiast': 'Entusiasta del Fitness',
+    'journey_overview': 'Aquí tienes un resumen de tu viaje fitness',
+    'start_new_workout': 'Iniciar Nuevo Entrenamiento',
+    'view_all': 'Ver todo',
+    
+    // Stats Cards
+    'total_workouts': 'Entrenamientos Totales',
+    'view_all_workouts': 'Ver todos los entrenamientos',
+    'current_streak': 'Racha Actual',
+    'day': 'día',
+    'days': 'días',
+    'keep_it_up': '¡Sigue así!',
+    'calories_burned': 'Calorías Quemadas',
+    'this_week': 'esta semana',
+    'workouts_completed': 'Entrenamientos Completados',
+    'completion_rate': 'Tasa de Finalización',
+    
+    // Sections
+    'recent_workouts': 'Entrenamientos Recientes',
+    'no_recent_workouts': 'No se encontraron entrenamientos recientes',
+    'get_started': 'Comencemos',
+    'create_workout': 'Crear un entrenamiento',
+    'weekly_progress': 'Progreso Semanal',
+    'completed_count': 'entrenamientos completados',
+    'target': 'objetivo',
+    'of_weekly_goal': 'del objetivo semanal',
+    'achievements': 'Logros',
+    'view_all_achievements': 'Ver todos los logros',
+    'recently_earned': 'Obtenidos Recientemente',
+    
+    // Workout Status
+    'status_active': 'Activo',
+    'status_completed': 'Completado',
+    
+    // Exercise-related
+    'exercises': 'ejercicios',
+    'day_singular': 'día',
+    'day_plural': 'días',
+    
+    // Achievements page
+    'track_your_fitness_milestones': 'Registra tus hitos y logros de fitness',
+    'achieved_on': 'Logrado el',
+    
+    // Workouts page
+    'new_workout': 'Nuevo Entrenamiento',
+    'no_workouts_found': '¡No hay entrenamientos! Crea tu primer entrenamiento.',
+    'block_singular': 'bloque',
+    'block_plural': 'bloques',
+    'exercise_singular': 'ejercicio',
+    'updated': 'Actualizado',
+    
+    // Exercise Library page
+    'add_custom_exercise': 'Añadir Ejercicio Personalizado',
+    'search_exercises': 'Buscar ejercicios...',
+    'filters': 'Filtros',
+    'category': 'Categoría',
+    'all': 'Todos',
+    'muscle_group': 'Grupo Muscular',
+    'muscle_groups': 'Grupos Musculares',
+    'no_exercises_found': 'No se encontraron ejercicios con los filtros actuales.',
+    'clear_filters': 'Limpiar Filtros',
+    'custom': 'Personalizado',
+    'no_description': 'Sin descripción disponible.',
+    'more': 'más',
+    'view_details': 'Ver Detalles',
+    'close': 'Cerrar',
+    'description': 'Descripción',
+    'instructions': 'Instrucciones',
+    'default_sets': 'Series Predeterminadas',
+    'default_reps': 'Repeticiones Predeterminadas',
+    'default_weight': 'Peso Predeterminado',
+    'use_in_workout': 'Usar en Entrenamiento',
+    'exercise_name': 'Nombre del Ejercicio',
+    'exercise_name_placeholder': 'ej., Extensión de Tríceps con Cable',
+    'default_weight_kg': 'Peso Predeterminado (kg)',
+    'leave_blank_bodyweight': 'Dejar en blanco para peso corporal',
+    'description_placeholder': 'Breve descripción del ejercicio',
+    'instructions_placeholder': 'Instrucciones paso a paso sobre cómo realizar el ejercicio',
+    'cancel': 'Cancelar',
+    'add_exercise': 'Añadir Ejercicio',
+    'exercise_name_required': 'El nombre del ejercicio es obligatorio',
+    'select_muscle_group': 'Selecciona al menos un grupo muscular',
+    
+    // Exercise categories
+    'strength': 'Fuerza',
+    'cardio': 'Cardio',
+    'flexibility': 'Flexibilidad',
+    'balance': 'Equilibrio',
+    'other': 'Otro',
+    
+    // Muscle groups
+    'chest': 'Pecho',
+    'back': 'Espalda',
+    'shoulders': 'Hombros',
+    'biceps': 'Bíceps',
+    'triceps': 'Tríceps',
+    'quadriceps': 'Cuádriceps',
+    'hamstrings': 'Isquiotibiales',
+    'glutes': 'Glúteos',
+    'calves': 'Pantorrillas',
+    'core': 'Core',
+    'lower back': 'Lumbar',
+    'heart': 'Corazón',
+    'hip flexors': 'Flexores de Cadera',
+    'ankles': 'Tobillos',
+    'legs': 'Piernas',
+    
+    // Footer
+    'language': 'Idioma',
+    'english': 'Inglés',
+    'spanish': 'Español',
+    
+    // WorkoutForm page
+    'edit_workout': 'Editar Entrenamiento',
+    'workout_title': 'Título del Entrenamiento',
+    'workout_title_placeholder': 'ej., Entrenamiento de Cuerpo Completo',
+    'workout_description_placeholder': 'Describe tu rutina de entrenamiento',
+    'workout_days': 'Días de Entrenamiento',
+    'add_day': 'Añadir Día',
+    'no_workout_days': 'No hay días de entrenamiento añadidos. Haz clic en "Añadir Día" para comenzar.',
+    'day_name_placeholder': 'Nombre del Día',
+    'collapse_day': 'Contraer día',
+    'expand_day': 'Expandir día',
+    'remove_day': 'Eliminar día',
+    'workout_blocks': 'Bloques de Entrenamiento',
+    'add_block': 'Añadir Bloque',
+    'no_blocks': 'No hay bloques añadidos a este día todavía.',
+    'block_name_placeholder': 'Nombre del Bloque',
+    'randomize_exercises': 'Aleatorizar ejercicios',
+    'collapse_block': 'Contraer bloque',
+    'expand_block': 'Expandir bloque',
+    'remove_block': 'Eliminar bloque',
+    'browse_library': 'Explorar Biblioteca',
+    'no_exercises': 'No hay ejercicios añadidos a este bloque todavía.',
+    'exercise': 'Ejercicio',
+    'sets': 'Series',
+    'reps': 'Repeticiones',
+    'weight_kg_optional': 'Peso (kg, opcional)',
+    'notes_optional': 'Notas (opcional)',
+    'notes_placeholder': 'Cualquier instrucción especial o consejos de forma',
+    'saving': 'Guardando...',
+    'save_changes': 'Guardar Cambios',
+    'workout_title_required': 'El título del entrenamiento es obligatorio',
+    'workout_description_required': 'La descripción del entrenamiento es obligatoria',
+    'at_least_one_day_required': 'Se requiere al menos un día de entrenamiento',
+    'day_name_required': 'Todos los días de entrenamiento deben tener un nombre',
+    'day_must_have_block': 'El día debe tener al menos un bloque',
+    'block_name_required': 'Todos los bloques deben tener un nombre',
+    'block_must_have_exercise': 'El bloque debe tener al menos un ejercicio',
+    'sets_must_be_positive': 'Las series deben ser mayores que 0',
+    'reps_must_be_positive': 'Las repeticiones deben ser mayores que 0',
+    'login_required': 'Debes iniciar sesión para crear o editar entrenamientos',
+    'save_workout_failed': 'No se pudo guardar el entrenamiento. Por favor, inténtalo de nuevo.',
+    
+    // New translation keys
+    'video_demonstration': 'Demostración en Video',
+    'default_values': 'Valores Predeterminados',
+    'similar_exercises': 'Ejercicios Similares',
+  }
+}; 
