@@ -20,6 +20,7 @@
     "test:integration": "jest src/tests/integration",
     "test:mongodb": "ts-node src/tests/db-test.ts",
     "test:mongodb:crud": "ts-node src/tests/db-crud-test.ts",
+    "test:api": "node --experimental-specifier-resolution=node api/auth/google/test.js",
     "install:all": "npm install",
     "dev:all": "concurrently \"npm run server:dev\" \"npm run dev\"",
     "postinstall": "node --eval \"try{require('fs').unlinkSync('./node_modules/.bin/ts-node')}catch(e){}\""

@@ -165,6 +165,7 @@ UserSchema.statics.findOrCreateGoogleUser = async function(profile) {
   return user;
 };
 
+// Use mongoose.models to prevent model recompilation in serverless environments
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 export default User; 

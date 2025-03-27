@@ -1,0 +1,12 @@
+{
+  "name": "mamuk-api",
+  "version": "1.0.0",
+  "type": "module",
+  "imports": {
+    "#shared/*": "./shared/*",
+    "#models/*": "./shared/models/*", 
+    "#utils/*": "./shared/utils/*",
+    "#config/*": "./shared/config/*",
+    "#middleware/*": "./shared/middleware/*"
+  }
+} 

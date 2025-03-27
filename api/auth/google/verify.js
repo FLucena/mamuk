@@ -1,35 +1,8 @@
 import { OAuth2Client } from 'google-auth-library';
-import jwt from 'jsonwebtoken';
-import User from '../../models/User';
-import mongoose from 'mongoose';
-
-// Connect to MongoDB
-const connectDB = async () => {
-  if (mongoose.connection.readyState === 1) return; // Already connected
-  
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB connected in serverless function');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to database');
-  }
-};
-
-// Generate JWT token
-const generateToken = (user) => {
-  const payload = {
-    id: user._id,
-    email: user.email || '',
-    role: user.role || 'user'
-  };
-  
-  return jwt.sign(
-    payload,
-    process.env.JWT_SECRET || 'default_jwt_secret',
-    { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-  );
-};
+import User from '../../shared/models/User.js';
+import { connectDB } from '../../shared/utils/database.js';
+import { generateToken } from '../../shared/utils/auth.js';
+import config from '../../shared/config/index.js';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -48,10 +21,10 @@ export default async function handler(req, res) {
     await connectDB();
     
     // Verify the Google token
-    const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+    const client = new OAuth2Client(config.auth.google.clientId);
     const ticket = await client.verifyIdToken({
       idToken: token,
-      audience: process.env.VITE_GOOGLE_CLIENT_ID
+      audience: config.auth.google.clientId
     });
     
     const payload = ticket.getPayload();
@@ -99,7 +72,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       token: jwtToken,
-      expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+      expiresIn: config.auth.jwtExpiresIn,
       _id: user._id,
       email: user.email,
       name: user.name,
