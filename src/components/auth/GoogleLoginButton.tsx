@@ -112,7 +112,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ className = '' })
     googleInitialized.current = true;
     
     // Debug client ID value at initialization time
-    const clientId = import.meta.env.GOOGLE_CLIENT_ID;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
     
     if (!clientId) {
       console.error('Google client ID is not defined in environment variables');
