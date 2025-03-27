@@ -1,6 +1,6 @@
-# Mamuk Fitness Application
+# Mamuk - Fitness App
 
-Mamuk Fitness is a full-stack application designed to help users track workouts, create custom exercise routines, monitor progress, and connect with fitness coaches.
+A full-stack React and Express application for fitness tracking and workouts.
 
 ## Features
 
@@ -48,95 +48,74 @@ Mamuk Fitness is a full-stack application designed to help users track workouts,
    NODE_ENV=development
    ```
 
-## Running the Application
+## Vercel Deployment Instructions
 
-### Development Mode
+This application uses a hybrid architecture with:
+- Frontend: React with Vite
+- Backend: Express.js API with MongoDB
 
-To run both the backend server and frontend client concurrently:
+### Environment Variables
+
+Make sure to set these environment variables in Vercel:
 
 ```
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=your_jwt_secret
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+```
+
+### Deployment Architecture
+
+When deploying to Vercel:
+
+1. The static frontend is served directly by Vercel
+2. API endpoints are implemented as Vercel serverless functions in the `/api` directory
+3. The Express server is not used directly in production
+
+### Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run both frontend and backend
 npm run dev:all
+
+# Run just the frontend
+npm run dev
+
+# Run just the backend
+npm run server:dev
 ```
 
-Or run them separately:
+### Building for Production
 
-- Backend server only:
-  ```
-  npm run server:dev
-  ```
-
-- Frontend client only:
-  ```
-  npm run dev
-  ```
-
-### Production Build
-
-1. Build the application:
-   ```
-   npm run build
-   ```
-
-2. Start the production server:
-   ```
-   npm start
-   ```
+```bash
+# Build both frontend and backend
+npm run build
+```
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/users/register` - Register a new user
-- `POST /api/users/login` - Login a user
 
-### User Management
-- `GET /api/users/profile` - Get current user profile
-- `PUT /api/users/profile` - Update user profile
-- `GET /api/users` - Get all users (admin only)
-- `GET /api/users/:id` - Get user by ID (admin only)
+- `POST /api/auth/google/verify` - Verify Google token and create user
+- `POST /api/auth/google/callback` - Handle Google OAuth callback
 
-### Exercises
-- `GET /api/exercises` - Get all exercises
-- `GET /api/exercises/:id` - Get exercise by ID
-- `POST /api/exercises` - Create a new exercise
-- `PUT /api/exercises/:id` - Update an exercise
-- `DELETE /api/exercises/:id` - Delete an exercise
-- `GET /api/exercises/muscle-groups` - Get all muscle groups
-- `GET /api/exercises/equipment` - Get all equipment
+### User
 
-### Workouts
-- `GET /api/workouts` - Get all workouts
-- `GET /api/workouts/:id` - Get workout by ID
-- `POST /api/workouts` - Create a new workout
-- `PUT /api/workouts/:id` - Update a workout
-- `DELETE /api/workouts/:id` - Delete a workout
-- `PUT /api/workouts/:id/toggle-completion` - Toggle workout completion status
+- `GET /api/users/profile` - Get user profile (requires authentication)
 
-### Workout Sessions
-- `GET /api/workout-sessions` - Get all workout sessions
-- `GET /api/workout-sessions/:id` - Get workout session by ID
-- `POST /api/workout-sessions/start` - Start a new workout session
-- `PUT /api/workout-sessions/:id` - Update a workout session
-- `PUT /api/workout-sessions/:id/complete` - Complete a workout session
-- `PUT /api/workout-sessions/:id/toggle-set` - Toggle completion of a set
-- `PUT /api/workout-sessions/:id/log-set` - Log weight and reps for a set
-- `DELETE /api/workout-sessions/:id` - Delete a workout session
+### Health Check
 
-### Progress Tracking
-- `GET /api/progress` - Get all progress entries
-- `GET /api/progress/:id` - Get progress entry by ID
-- `POST /api/progress` - Create a new progress entry
-- `PUT /api/progress/:id` - Update a progress entry
-- `DELETE /api/progress/:id` - Delete a progress entry
-- `GET /api/progress/latest` - Get latest progress entry
-- `GET /api/progress/stats` - Get progress statistics
+- `GET /api/healthcheck` - Check API health
 
-### Coaching
-- `GET /api/coaching` - Get all coaching relationships
-- `GET /api/coaching/:id` - Get coaching relationship by ID
-- `POST /api/coaching/invite` - Request a new coaching relationship
-- `PUT /api/coaching/:id/respond` - Respond to a coaching request
-- `PUT /api/coaching/:id/terminate` - Terminate a coaching relationship
-- `PUT /api/coaching/:id/notes` - Update coaching relationship notes
+## Important Notes
+
+1. The `/api` directory contains Vercel serverless functions that mirror the Express routes
+2. For local development, the Express server is still used
+3. In production, API requests are handled by Vercel's serverless functions
 
 ## Testing
 

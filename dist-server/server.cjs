@@ -74,7 +74,7 @@ const google_auth_library_1 = require("google-auth-library");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const connect_mongo_1 = __importDefault(require("connect-mongo"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const User_1 = __importStar(require("./models/User"));
+const User_1 = __importStar(require("./models/User.cjs"));
 // Load environment variables if not already loaded
 const envPath = path_1.default.resolve(process.cwd(), '.env.local');
 dotenv_1.default.config({ path: envPath });
@@ -555,5 +555,94 @@ app.use('/api/workouts', (req, res, next) => {
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+});
+// Error handling middleware for API routes
+// 404 Handler - For API routes that don't exist
+app.use('/api/*', (req, res) => {
+    res.status(404).json({
+        error: 'Not Found',
+        message: `Cannot ${req.method} ${req.originalUrl}`,
+        status: 404
+    });
+});
+// Serve static files for client-side routes in production
+if (process.env.NODE_ENV === 'production') {
+    // Serve static files from the React build directory
+    const clientBuildPath = path_1.default.join(__dirname, '../dist');
+    app.use(express_1.default.static(clientBuildPath));
+    // For any other request, send the React app's index.html
+    // This allows client-side routing to work
+    app.get('*', (req, res) => {
+        res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
+    });
+}
+else {
+    // In development, provide a simple fallback for non-API routes
+    app.use('*', (req, res) => {
+        if (!req.originalUrl.startsWith('/api')) {
+            res.status(404).send(`
+        <html>
+          <head>
+            <title>API Server - Development Mode</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; max-width: 700px; margin: 0 auto; }
+              h1 { color: #333; }
+              pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow: auto; }
+              .note { background: #fffde7; border-left: 4px solid #ffd600; padding: 15px; margin: 20px 0; }
+            </style>
+          </head>
+          <body>
+            <h1>API Server - Development Mode</h1>
+            <div class="note">
+              <p><strong>Note:</strong> This is the API server running in development mode. 
+              It doesn't serve the frontend application.</p>
+              <p>To access the frontend, please use the Vite development server at: 
+              <a href="http://localhost:5173">http://localhost:5173</a></p>
+            </div>
+            <p>Request to non-existent route: <code>${req.method} ${req.originalUrl}</code></p>
+            <p>Available API endpoints:</p>
+            <pre>
+GET  /api/healthcheck
+GET  /api/auth/google
+GET  /api/auth/google/callback
+POST /api/auth/google/callback
+POST /api/auth/google/verify
+GET  /api/auth/google/success
+GET  /api/auth/google/failure
+GET  /api/users/profile
+GET  /api/workouts
+POST /api/workouts
+GET  /api/workouts/:id
+PUT  /api/workouts/:id
+DELETE /api/workouts/:id
+            </pre>
+          </body>
+        </html>
+      `);
+        }
+        else {
+            res.status(404).json({
+                error: 'Not Found',
+                message: `Cannot ${req.method} ${req.originalUrl}`,
+                status: 404
+            });
+        }
+    });
+}
+// General error handler - Must be the last middleware
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    // Determine if we've already started sending a response
+    if (res.headersSent) {
+        return next(err);
+    }
+    // Send a JSON error response
+    res.status(500).json({
+        error: 'Server Error',
+        message: process.env.NODE_ENV === 'production'
+            ? 'An unexpected error occurred'
+            : err.message,
+        status: 500
+    });
 });
 //# sourceMappingURL=server.js.map

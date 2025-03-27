@@ -3,7 +3,7 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "module": "CommonJS",
-    "moduleResolution": "Node",
+    "moduleResolution": "Node10",
     "outDir": "./dist-server",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

@@ -48,7 +48,7 @@ exports.Workout = Workout_1.default;
 const Progress_1 = require("./Progress.cjs");
 Object.defineProperty(exports, "WorkoutSession", { enumerable: true, get: function () { return Progress_1.WorkoutSession; } });
 Object.defineProperty(exports, "BodyMeasurement", { enumerable: true, get: function () { return Progress_1.BodyMeasurement; } });
-const CoachingRelationship_1 = __importDefault(require("./CoachingRelationship"));
+const CoachingRelationship_1 = __importDefault(require("./CoachingRelationship.cjs"));
 exports.CoachingRelationship = CoachingRelationship_1.default;
 // Export default object with all models
 exports.default = {

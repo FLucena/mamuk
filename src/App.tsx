@@ -60,6 +60,7 @@ const Settings = lazy(() => import('./pages/profile/Settings'));
 const Achievements = lazy(() => import('./pages/achievements/Achievements'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const ExerciseLibrary = lazy(() => import('./pages/exercises/ExerciseLibrary'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Error Boundary to catch and handle errors
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -193,6 +194,13 @@ function App() {
                     </Suspense>
                   } />
                 </Route>
+
+                {/* 404 Route - Must be the last route */}
+                <Route path="*" element={
+                  <Suspense fallback={<PageLoading />}>
+                    <NotFound />
+                  </Suspense>
+                } />
               </Routes>
             </ErrorBoundary>
           </Router>
