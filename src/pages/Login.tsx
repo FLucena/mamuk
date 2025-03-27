@@ -20,7 +20,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login({ email, password });
       navigate('/');
     } catch {
       setError('Invalid email or password. Please try again.');
@@ -31,14 +31,6 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-            Mamuk Fitness
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
-            Your personal workout management platform
-          </p>
-        </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow-lg sm:rounded-lg sm:px-10 border border-gray-100 dark:border-gray-700">

@@ -15,7 +15,8 @@ const tokenService = {
    * Get the JWT token from localStorage
    */
   getToken: (): string | null => {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    return token;
   },
 
   /**

@@ -124,7 +124,7 @@ function App() {
                       <Register />
                     </Suspense>
                   } />
-                  <Route path="/auth/google/callback" element={
+                  <Route path="/auth-callback" element={
                     <Suspense fallback={<PageLoading />}>
                       <GoogleAuthCallback />
                     </Suspense>

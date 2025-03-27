@@ -228,10 +228,16 @@ const WorkoutForm = ({ mode, selectedExerciseId }: WorkoutFormProps) => {
     e.preventDefault();
     setError(null);
     
+    console.log('Submitting workout form, user:', user);
+    
     if (!user) {
+      console.error('User is not authenticated when creating workout');
       setError(t('login_required'));
       return;
     }
+    
+    console.log('User role when creating workout:', user.role);
+    console.log('User ID when creating workout:', user._id);
     
     if (!validateForm()) {
       return;
@@ -242,6 +248,7 @@ const WorkoutForm = ({ mode, selectedExerciseId }: WorkoutFormProps) => {
     try {
       if (mode === 'create') {
         // Create a new workout
+        console.log('Creating new workout with user ID:', user._id);
         await createWorkout({
           title: formData.title,
           description: formData.description,

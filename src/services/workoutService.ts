@@ -1,3 +1,4 @@
+import axios, { AxiosError } from 'axios';
 import api from './api';
 
 // Types
@@ -92,8 +93,22 @@ export const workoutService = {
   
   // Create a new workout
   createWorkout: async (workoutData: Workout): Promise<Workout> => {
-    const response = await api.post('/workouts', workoutData);
-    return response.data;
+    console.log('Creating workout with data:', JSON.stringify(workoutData));
+    try {
+      const response = await api.post('/workouts', workoutData);
+      console.log('Workout creation successful, response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating workout:', error);
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+        if (axiosError.response) {
+          console.error('Error response data:', axiosError.response.data);
+          console.error('Error response status:', axiosError.response.status);
+        }
+      }
+      throw error;
+    }
   },
   
   // Update a workout
@@ -167,4 +182,4 @@ export const workoutService = {
   }
 };
 
-export default workoutService; 
+export default workoutService;

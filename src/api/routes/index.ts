@@ -2,6 +2,7 @@ import * as express from 'express';
 import mongoose from 'mongoose';
 import { createAuthRouter } from './authRoutes';
 import workoutSessionRoutes from './workoutSessionRoutes';
+import workoutRoutes from './workoutRoutes';
 import { User } from '../../models';
 import type { PassportStatic } from 'passport';
 
@@ -11,6 +12,7 @@ export const createApiRouter = (passport: PassportStatic) => {
 
   // Mount routes
   router.use('/auth', createAuthRouter(passport));
+  router.use('/workouts', workoutRoutes);
   router.use('/workout-sessions', workoutSessionRoutes);
 
   // API info route

@@ -78,6 +78,8 @@ export const authService = {
     // Store tokens
     if (data.token) {
       tokenService.setToken(data.token, data.expiresIn);
+    } else {
+      console.warn('No token received from login response');
     }
     
     if (data.refreshToken) {
@@ -86,8 +88,6 @@ export const authService = {
     
     // Store user data without sensitive info
     const userToStore = { ...data };
-    delete userToStore.token;
-    delete userToStore.refreshToken;
     localStorage.setItem('mamuk_user', JSON.stringify(userToStore));
     
     // Initialize token refresh mechanism
@@ -115,7 +115,9 @@ export const authService = {
     if (!userStr) return null;
     
     try {
-      return JSON.parse(userStr);
+      const userData = JSON.parse(userStr);
+      
+      return userData;
     } catch (error) {
       console.error('Error parsing user data from localStorage:', error);
       return null;
@@ -160,7 +162,8 @@ export const authService = {
   // Check if user has specific role
   hasRole: (role: string): boolean => {
     const user = authService.getCurrentUser();
-    return user !== null && user.role === role;
+    const hasRole = user !== null && user.role === role;
+    return hasRole;
   }
 };
 

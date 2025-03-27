@@ -9,6 +9,7 @@ const path = require('path');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const mongoose = require('mongoose');
+const { OAuth2Client } = require('google-auth-library');
 
 // MongoDB connection URI
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mamuk';
@@ -46,13 +47,21 @@ const configurePassport = () => {
 
   // Get the server URL based on environment
   const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
+  
+  // Fix client ID issue by getting it directly - logging to debug
+  const clientID = process.env.VITE_GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.VITE_GOOGLE_CLIENT_SECRET;
+  
+  if (!clientID || !clientSecret) {
+    console.error('Google OAuth credentials missing! Authentication will fail.');
+  }
 
   // Google OAuth Strategy
   passport.use(
     new GoogleStrategy(
       {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        clientID: clientID,
+        clientSecret: clientSecret,
         callbackURL: `${SERVER_URL}/api/auth/google/callback`,
         scope: ['profile', 'email']
       },
@@ -148,6 +157,34 @@ const generateToken = (user) => {
   );
 };
 
+// JWT Authentication middleware
+const authenticate = (req, res, next) => {
+  // Get token from header
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Add user info to request
+    req.user = {
+      userId: decoded.id,
+      email: decoded.email,
+      role: decoded.role || 'customer'
+    };
+    
+    next();
+  } catch (error) {
+    console.error('Token verification failed:', error.message);
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
+};
+
 // Google Auth Controller
 const googleAuthController = {
   googleCallback: (req, res) => {
@@ -184,8 +221,179 @@ app.get('/api/auth/google/callback',
   googleAuthController.googleCallback
 );
 
+// Add a POST endpoint for handling the token from the frontend
+app.post('/api/auth/google/callback', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    try {
+      // Verify the token with Google OAuth2
+      const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+      
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.VITE_GOOGLE_CLIENT_ID
+      });
+      
+      const payload = ticket.getPayload();
+      
+      if (!payload) {
+        return res.status(401).json({ error: 'Invalid Google token' });
+      }
+      
+      // Find or create the user based on the Google ID
+      let user = await User.findOne({ 'google.id': payload.sub });
+      
+      if (!user) {
+        // If not found by Google ID, check if a user exists with the same email
+        const existingUserByEmail = await User.findOne({ email: payload.email });
+        
+        if (existingUserByEmail) {
+          // Update existing user with Google details
+          user = existingUserByEmail;
+          // Add Google authentication to the existing user
+          user.google = {
+            id: payload.sub,
+            email: payload.email,
+            name: payload.name, 
+            picture: payload.picture
+          };
+          user.profilePicture = user.profilePicture || payload.picture;
+          
+          // Ensure authProvider is updated if needed
+          if (!user.authProvider) {
+            user.authProvider = 'google';
+          }
+          
+          await user.save();
+        } else {
+          // Create new user if not found
+          user = new User({
+            name: payload.name,
+            email: payload.email,
+            authProvider: 'google', // Set auth provider to google
+            google: {
+              id: payload.sub,
+              email: payload.email,
+              name: payload.name,
+              picture: payload.picture
+            },
+            profilePicture: payload.picture,
+            role: 'customer', // Default role for new users
+            emailVerified: payload.email_verified
+          });
+          
+          await user.save();
+        }
+      } else {
+        // Update existing user's Google data
+        user.google.email = payload.email;
+        user.google.name = payload.name;
+        user.google.picture = payload.picture;
+        user.profilePicture = user.profilePicture || payload.picture;
+        
+        // Ensure authProvider is set correctly
+        if (!user.authProvider) {
+          user.authProvider = 'google';
+        }
+        
+        await user.save();
+      }
+      
+      // Generate a real JWT token
+      const jwtToken = generateToken(user);
+      
+      // Return the user data with the token
+      const userData = {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role || 'customer',
+        profilePicture: user.profilePicture,
+        token: jwtToken
+      };
+      
+      return res.status(200).json(userData);
+    } catch (verificationError) {
+      console.error('Google token verification error:', verificationError);
+      return res.status(401).json({ 
+        error: 'Failed to verify Google token',
+        details: verificationError.message
+      });
+    }
+  } catch (error) {
+    console.error('Error processing Google authentication:');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Check for specific error types
+    if (error.name === 'ValidationError') {
+      console.error('MongoDB validation error:', error.errors);
+      return res.status(400).json({ 
+        error: 'User validation failed',
+        details: Object.keys(error.errors).map(field => ({
+          field,
+          message: error.errors[field].message
+        }))
+      });
+    }
+    
+    if (error.name === 'MongoServerError' && error.code === 11000) {
+      console.error('MongoDB duplicate key error:', error.keyValue);
+      return res.status(409).json({ 
+        error: 'User already exists',
+        details: `Duplicate value for ${Object.keys(error.keyValue)[0]}`
+      });
+    }
+    
+    return res.status(500).json({ 
+      error: 'Authentication failed',
+      message: error.message
+    });
+  }
+});
+
 app.get('/api/auth/google/success', googleAuthController.googleSuccess);
 app.get('/api/auth/google/failure', googleAuthController.googleFailure);
+
+// User Profile endpoint
+app.get('/api/users/profile', authenticate, async (req, res) => {
+  try {
+    
+    const user = await User.findById(req.user.userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Return user data (excluding sensitive info)
+    return res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role || 'customer',
+      profilePicture: user.profilePicture,
+      bio: user.bio,
+      dateOfBirth: user.dateOfBirth,
+      gender: user.gender,
+      height: user.height,
+      weight: user.weight,
+      fitnessGoals: user.fitnessGoals,
+      healthConditions: user.healthConditions,
+      createdAt: user.createdAt
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return res.status(500).json({ message: 'Server error while fetching profile' });
+  }
+});
+
+// Mount workout routes
+app.use('/api/workouts', require('./api/routes/workoutRoutes'));
 
 // Start server
 app.listen(PORT, () => {

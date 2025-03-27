@@ -15,6 +15,7 @@ const api = axios.create({
 // Request interceptor to add auth token to requests
 api.interceptors.request.use(
   async (config) => {
+    
     // Check if token is expiring soon and refresh if needed
     if (tokenService.isTokenExpiringSoon()) {
       try {
@@ -29,6 +30,8 @@ api.interceptors.request.use(
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn('No auth token available for request to:', config.url);
     }
     
     return config;
