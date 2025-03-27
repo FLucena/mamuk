@@ -105,9 +105,34 @@ connectDB();
 // Initialize passport
 const passportInstance = configurePassport();
 
+// Setup allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://localhost:5173',
+  'http://localhost:5000',
+  'https://localhost:5000',
+  'https://www.mamuk.com.ar'
+];
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    
+    // Allow all localhost origins regardless of protocol
+    if (origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    // Check against static allowed origins for non-localhost
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    
+    return callback(null, true);
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -353,6 +378,71 @@ app.post('/api/auth/google/callback', async (req, res) => {
     return res.status(500).json({ 
       error: 'Authentication failed',
       message: error.message
+    });
+  }
+});
+
+// Add the Google verify endpoint
+app.post('/api/auth/google/verify', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Google token is required' });
+    }
+    
+    // Verify the Google token
+    const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.VITE_GOOGLE_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+    
+    if (!payload || !payload.email) {
+      return res.status(400).json({ success: false, message: 'Invalid Google token' });
+    }
+    
+    // Find or create user
+    let user = await User.findOne({ email: payload.email });
+    
+    if (!user) {
+      // Create a new user
+      user = new User({
+        name: payload.name,
+        email: payload.email,
+        role: 'user',
+        google: {
+          id: payload.sub,
+          email: payload.email,
+          name: payload.name,
+          picture: payload.picture
+        }
+      });
+      
+      await user.save();
+    }
+    
+    // Generate JWT token
+    const jwtToken = generateToken(user);
+    
+    // Return user data and token
+    return res.status(200).json({
+      success: true,
+      token: jwtToken,
+      expiresIn: JWT_EXPIRES_IN,
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role || 'user',
+      profilePicture: user.google?.picture || ''
+    });
+  } catch (error) {
+    console.error('Google token verification error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Failed to verify Google token' 
     });
   }
 });

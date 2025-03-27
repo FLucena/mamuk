@@ -23,6 +23,7 @@ export const createAuthRouter = (passport: PassportStatic) => {
     passport.authenticate('google', { failureRedirect: '/login' }),
     googleAuthController.googleCallback
   );
+  router.post('/google/verify', googleAuthController.verifyGoogleToken);
   router.get('/google/success', googleAuthController.googleSuccess);
   router.get('/google/failure', googleAuthController.googleFailure);
 

@@ -19,9 +19,34 @@ connectDB();
 // Initialize passport
 const passport = configurePassport();
 
+// Setup allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://localhost:5173',
+  'http://localhost:5000',
+  'https://localhost:5000',
+  'https://www.mamuk.com.ar'
+];
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://localhost:5173',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    
+    // Allow all localhost origins regardless of protocol
+    if (origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    // Check against static allowed origins for non-localhost
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    
+    return callback(null, true);
+  },
   credentials: true
 }));
 app.use(express.json());

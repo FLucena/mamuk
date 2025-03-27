@@ -8,8 +8,8 @@ export const googleAuthService = {
   handleGoogleSignIn: async (googleToken: string): Promise<UserData> => {
     
     try {
-      // Send the token to our backend - removing /api prefix as api service likely already has it
-      const apiUrl = '/auth/google/callback';
+      // Send the token to our backend - using a dedicated endpoint for the token verification
+      const apiUrl = '/auth/google/verify';
       
       const response = await api.post(apiUrl, { token: googleToken });
       const userData = response.data;
