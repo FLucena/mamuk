@@ -49,8 +49,8 @@ const configurePassport = () => {
   const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
   
   // Fix client ID issue by getting it directly - logging to debug
-  const clientID = process.env.VITE_GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.VITE_GOOGLE_CLIENT_SECRET;
+  const clientID = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
   if (!clientID || !clientSecret) {
     console.error('Google OAuth credentials missing! Authentication will fail.');
@@ -232,11 +232,11 @@ app.post('/api/auth/google/callback', async (req, res) => {
     
     try {
       // Verify the token with Google OAuth2
-      const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+      const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
       
       const ticket = await client.verifyIdToken({
         idToken: token,
-        audience: process.env.VITE_GOOGLE_CLIENT_ID
+        audience: process.env.GOOGLE_CLIENT_ID
       });
       
       const payload = ticket.getPayload();
