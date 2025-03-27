@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../../types/express';
 import Workout, { IWorkout } from '../../models/Workout';
 
 /**

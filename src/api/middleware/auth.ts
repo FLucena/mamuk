@@ -1,20 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import User from '../../models/User';
-
-// Extend Request interface to include user information
-export interface AuthRequest extends Request {
-  user?: {
-    userId: string;
-    role: string;
-  };
-}
+import { AuthRequest } from '../../types/express';
 
 /**
  * Authentication middleware
  * Verifies JWT token and adds user to request object
  */
-export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Get token from Authorization header
     const authHeader = req.header('Authorization');
@@ -31,7 +24,10 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
     
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret') as jwt.JwtPayload;
+    const decoded = jwt.verify(
+      token, 
+      process.env.JWT_SECRET || 'default_secret'
+    ) as jwt.JwtPayload;
     
     if (!decoded.id) {
       return res.status(401).json({ message: 'Invalid token' });
@@ -45,7 +41,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
     
     // Add user to request
-    req.user = {
+    (req as AuthRequest).user = {
       userId: user._id.toString(),
       role: user.role || 'user'
     };

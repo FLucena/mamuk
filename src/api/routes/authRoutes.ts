@@ -8,6 +8,7 @@ import {
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { googleAuthController } from '../controllers/googleAuthController';
+import { withAuth, asHandler } from '../middleware/middleware-helpers';
 
 // Export a function that creates and returns the router with the provided passport instance
 export const createAuthRouter = (passport: PassportStatic) => {
@@ -28,8 +29,8 @@ export const createAuthRouter = (passport: PassportStatic) => {
   router.get('/google/failure', googleAuthController.googleFailure);
 
   // Protected routes - require authentication
-  router.get('/profile', authenticate, getCurrentUser);
-  router.put('/profile', authenticate, updateUserProfile);
+  router.get('/profile', asHandler(authenticate), withAuth(getCurrentUser));
+  router.put('/profile', asHandler(authenticate), withAuth(updateUserProfile));
 
   return router;
 };

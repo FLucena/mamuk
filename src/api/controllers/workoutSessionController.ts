@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../../types/express';
 // These models would need to be created, but for now let's just stub them
 const WorkoutSession = { findOne: () => Promise.resolve(null), findById: () => Promise.resolve(null), create: () => Promise.resolve({}) };
 const Workout = { findById: () => Promise.resolve(null) };

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import User from '../../models/User';
 import { UserRole } from '../../models/User';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../../types/express';
 
 // Environment variable for JWT secret (would be in .env file)
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-for-development';
@@ -11,17 +11,15 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 /**
  * Generate JWT token for user
  */
-const generateToken = (user: any): string => {
+const generateToken = (user: { _id: string; email: string; role?: string }): string => {
   return jwt.sign(
     {
       userId: user._id,
       email: user.email,
-      role: user.role
+      role: user.role || 'user'
     },
     JWT_SECRET,
-    {
-      expiresIn: JWT_EXPIRES_IN
-    }
+    { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
   );
 };
 
