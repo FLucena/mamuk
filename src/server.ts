@@ -4,7 +4,7 @@ import cors from 'cors';
 import session from 'express-session';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import connectDB from './config/db';
+import connectDB from './lib/db';
 import createApiRouter from './api/routes/index';
 import configurePassport from './config/passport';
 import MongoStore from 'connect-mongo';

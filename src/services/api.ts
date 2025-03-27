@@ -2,7 +2,7 @@ import axios from 'axios';
 import tokenService from './tokenService';
 
 // Set base API URL
-const baseURL = process.env.VITE_API_URL || 'https://localhost:5000/api';
+const baseURL = import.meta.env.VITE_API_URL || 'https://localhost:5000/api';
 
 // Create Axios instance
 const api = axios.create({
