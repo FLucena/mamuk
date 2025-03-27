@@ -43,19 +43,11 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ className = '' })
   const handleGoogleResponse = useCallback(async (response: GoogleCredentialResponse) => {
     if (response.credential) {
       try {
-        console.log('Google credential received, authenticating...', {
-          credentialLength: response.credential.length,
-          select_by: response.select_by,
-        });
         
         // Use our new googleAuthService to handle the authentication
-        const userData = await googleAuthService.handleGoogleSignIn(response.credential);
+        await googleAuthService.handleGoogleSignIn(response.credential);
         
-        console.log('Google authentication successful:', { 
-          userId: userData._id,
-          hasToken: !!userData.token,
-          role: userData.role
-        });
+
         
         // Use a small timeout to ensure the auth state is updated
         // before attempting navigation
@@ -112,7 +104,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ className = '' })
     googleInitialized.current = true;
     
     // Debug client ID value at initialization time
-    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     
     if (!clientId) {
       console.error('Google client ID is not defined in environment variables');
@@ -120,10 +112,6 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ className = '' })
       return;
     }
     
-    console.log('Initializing Google client with client ID', { 
-      clientIdLength: clientId.length,
-      clientIdStart: clientId.substring(0, 6) + '...'
-    });
     
     try {
       window.google.accounts.id.initialize({
@@ -134,7 +122,6 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ className = '' })
         use_fedcm_for_prompt: true
       } as GoogleInitOptions);
       
-      console.log('Google client initialized successfully');
     } catch (initError) {
       console.error('Failed to initialize Google client:', initError);
       setError('Failed to initialize Google sign-in. Please reload the page.');
@@ -149,7 +136,6 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ className = '' })
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      console.log('Google API client script loaded');
       initializeGoogleClient();
     };
     script.onerror = () => {

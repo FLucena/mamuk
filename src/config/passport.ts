@@ -15,7 +15,7 @@ const configurePassport = () => {
   passport.use(
     new GoogleStrategy(
       {
-        clientID: process.env.GOOGLE_CLIENT_ID || '',
+        clientID: process.env.VITE_GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
         callbackURL: `${SERVER_URL}/api/auth/google/callback`,
         scope: ['profile', 'email'],
