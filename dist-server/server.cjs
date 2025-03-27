@@ -74,7 +74,7 @@ const google_auth_library_1 = require("google-auth-library");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const connect_mongo_1 = __importDefault(require("connect-mongo"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const User_1 = __importStar(require("./models/User.cjs"));
+const User_1 = __importStar(require("./models/User"));
 // Load environment variables if not already loaded
 const envPath = path_1.default.resolve(process.cwd(), '.env.local');
 dotenv_1.default.config({ path: envPath });
