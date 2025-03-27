@@ -1,6 +1,6 @@
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import User from '../../../src/models/User';
+import User from '../../models/User';
 import mongoose from 'mongoose';
 
 // Connect to MongoDB
