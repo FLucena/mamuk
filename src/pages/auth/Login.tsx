@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../store/authStore';
 
 const Login = () => {
@@ -8,8 +8,25 @@ const Login = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, error: authError, clearError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Parse return URL from query parameters
+  const searchParams = new URLSearchParams(location.search);
+  const returnUrl = searchParams.get('returnUrl') || '/';
+  
+  // Clear any previous auth errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+  
+  // Set error from auth store if it exists
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,11 +40,13 @@ const Login = () => {
     setError('');
     
     try {
-      await login(email, password);
-      navigate('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to login');
+      await login({ email, password });
+      
+      // Redirect to the return URL or default to home
+      navigate(decodeURIComponent(returnUrl));
     } finally {
+      // If there was an error, the auth store will have it
+      // and we just need to ensure isLoading is reset
       setIsLoading(false);
     }
   };
@@ -59,11 +78,8 @@ const Login = () => {
             value={email}
             onChange={handleEmailChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white"
-            placeholder="user@example.com"
+            placeholder="you@example.com"
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Demo users: user@example.com, coach@example.com, admin@example.com (all use password: "password")
-          </p>
         </div>
         
         <div>

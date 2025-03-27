@@ -1,126 +1,176 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import authService, { RegisterData, LoginData, ProfileUpdateData } from '../services/authService';
 
-export type UserRole = 'user' | 'coach' | 'admin';
+export type UserRole = 'customer' | 'coach' | 'admin';
 
 export interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   role: UserRole;
+  profilePicture?: string;
+  bio?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  fitnessGoals?: string[];
+  healthConditions?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  token?: string;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+  login: (credentials: LoginData) => Promise<void>;
+  register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
-  updateUser: (user: Partial<User>) => void;
+  updateUser: (userData: ProfileUpdateData) => Promise<void>;
+  refreshUserData: () => Promise<void>;
+  clearError: () => void;
 }
-
-// For demo purposes, we'll use a mock API
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'user@example.com',
-    role: 'user',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'coach@example.com',
-    role: 'coach',
-  },
-  {
-    id: '3',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-  },
-];
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isAuthenticated: false,
       user: null,
       token: null,
+      isLoading: false,
+      error: null,
       
-      login: async (email: string, password: string) => {
-        // Simulate API call
-        return new Promise<void>((resolve, reject) => {
-          setTimeout(() => {
-            // Find user by email
-            const user = mockUsers.find((u) => u.email === email);
-            
-            if (user && password === 'password') { // For demo purposes
-              set({
-                isAuthenticated: true,
-                user,
-                token: 'mock-jwt-token',
-              });
-              resolve();
-            } else {
-              reject(new Error('Invalid email or password'));
-            }
-          }, 1000); // Simulate network delay
-        });
+      login: async (credentials: LoginData) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          // Call the auth service login method
+          const userData = await authService.login(credentials);
+          
+          set({
+            isAuthenticated: true,
+            user: userData as unknown as User,
+            token: userData.token || null,
+            isLoading: false
+          });
+        } catch (error) {
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error 
+              ? error.message 
+              : 'Failed to login. Please try again.'
+          });
+          throw error;
+        }
       },
       
-      register: async (name: string, email: string) => {
-        // Simulate API call
-        return new Promise<void>((resolve, reject) => {
-          setTimeout(() => {
-            // Check if user already exists
-            const existingUser = mockUsers.find((u) => u.email === email);
-            
-            if (existingUser) {
-              reject(new Error('Email already in use'));
-            } else {
-              // Create new user (in a real app, this would be done on the server)
-              // Note: password is not stored in the mock user object for security reasons
-              // In a real app, we would hash the password before storing it
-              const newUser: User = {
-                id: `${mockUsers.length + 1}`,
-                name,
-                email,
-                role: 'user', // Default role
-              };
-              
-              // In a real app, we would add this user to the database
-              // For our mock, we'll just log it
-              console.log('Registered new user:', newUser);
-              
-              set({
-                isAuthenticated: true,
-                user: newUser,
-                token: 'mock-jwt-token',
-              });
-              resolve();
-            }
-          }, 1000); // Simulate network delay
-        });
+      register: async (userData: RegisterData) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          // Call the auth service register method
+          const newUser = await authService.register(userData);
+          
+          set({
+            isAuthenticated: true,
+            user: newUser as unknown as User,
+            token: newUser.token || null,
+            isLoading: false
+          });
+        } catch (error) {
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error 
+              ? error.message 
+              : 'Failed to register. Please try again.'
+          });
+          throw error;
+        }
       },
       
       logout: () => {
+        // Call the auth service logout method
+        authService.logout();
+        
         set({
           isAuthenticated: false,
           user: null,
-          token: null,
+          token: null
         });
       },
       
-      updateUser: (userData: Partial<User>) => {
-        set((state) => ({
-          user: state.user ? { ...state.user, ...userData } : null,
-        }));
+      updateUser: async (userData: ProfileUpdateData) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          // Call the auth service updateProfile method
+          const updatedUser = await authService.updateProfile(userData);
+          
+          set({
+            user: updatedUser as unknown as User,
+            isLoading: false
+          });
+        } catch (error) {
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error 
+              ? error.message 
+              : 'Failed to update profile. Please try again.'
+          });
+          throw error;
+        }
       },
+      
+      refreshUserData: async () => {
+        try {
+          // Only refresh if we're authenticated
+          if (!get().isAuthenticated) return;
+          
+          set({ isLoading: true });
+          
+          // Get fresh user data from the API
+          const userData = await authService.getProfile();
+          
+          set({
+            user: userData as unknown as User,
+            isLoading: false
+          });
+        } catch (error) {
+          // If we can't get the profile, user token might be invalid
+          if (error instanceof Error && error.message.includes('401')) {
+            authService.logout();
+            set({
+              isAuthenticated: false,
+              user: null,
+              token: null,
+              isLoading: false
+            });
+          } else {
+            set({ 
+              isLoading: false,
+              error: error instanceof Error 
+                ? error.message 
+                : 'Failed to refresh user data.'
+            });
+          }
+        }
+      },
+      
+      clearError: () => set({ error: null })
     }),
     {
       name: 'mamuk-auth-storage',
+      // Only persist these properties
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
+        token: state.token
+      })
     }
   )
 ); 

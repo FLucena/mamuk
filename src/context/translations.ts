@@ -160,6 +160,7 @@ export const translations: Translations = {
     'collapse_block': 'Collapse block',
     'expand_block': 'Expand block',
     'remove_block': 'Remove block',
+    'exercise_library': 'Exercise Library',
     'browse_library': 'Browse Library',
     'no_exercises': 'No exercises added to this block yet.',
     'exercise': 'Exercise',
@@ -186,6 +187,10 @@ export const translations: Translations = {
     'video_demonstration': 'Video Demonstration',
     'default_values': 'Default Values',
     'similar_exercises': 'Similar Exercises',
+    'blank_workout': 'Blank Workout',
+    'use_template': 'Use Template (3 days)',
+    'template_description': 'A structured workout with 3 days, 4 blocks per day, and varied exercises',
+    'blank_workout_description': 'Start with an empty workout and build from scratch',
   },
   es: {
     // App title
@@ -341,6 +346,7 @@ export const translations: Translations = {
     'collapse_block': 'Contraer bloque',
     'expand_block': 'Expandir bloque',
     'remove_block': 'Eliminar bloque',
+    'exercise_library': 'Biblioteca',
     'browse_library': 'Explorar Biblioteca',
     'no_exercises': 'No hay ejercicios añadidos a este bloque todavía.',
     'exercise': 'Ejercicio',
@@ -367,5 +373,9 @@ export const translations: Translations = {
     'video_demonstration': 'Demostración en Video',
     'default_values': 'Valores Predeterminados',
     'similar_exercises': 'Ejercicios Similares',
+    'blank_workout': 'Entrenamiento en Blanco',
+    'use_template': 'Usar Plantilla (3 días)',
+    'template_description': 'Un entrenamiento estructurado con 3 días, 4 bloques por día y ejercicios variados',
+    'blank_workout_description': 'Comienza con un entrenamiento vacío y constrúyelo desde cero',
   }
 }; 

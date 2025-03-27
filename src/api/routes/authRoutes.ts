@@ -1,0 +1,37 @@
+import * as express from 'express';
+import type { PassportStatic } from 'passport';
+import {
+  registerUser,
+  loginUser,
+  getCurrentUser,
+  updateUserProfile
+} from '../controllers/authController';
+import { authenticate } from '../middleware/auth';
+import { googleAuthController } from '../controllers/googleAuthController';
+
+// Export a function that creates and returns the router with the provided passport instance
+export const createAuthRouter = (passport: PassportStatic) => {
+  const router = express.Router();
+
+  // Public routes
+  router.post('/register', registerUser);
+  router.post('/login', loginUser);
+
+  // Google Authentication routes
+  router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+  router.get('/google/callback', 
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    googleAuthController.googleCallback
+  );
+  router.get('/google/success', googleAuthController.googleSuccess);
+  router.get('/google/failure', googleAuthController.googleFailure);
+
+  // Protected routes - require authentication
+  router.get('/profile', authenticate, getCurrentUser);
+  router.put('/profile', authenticate, updateUserProfile);
+
+  return router;
+};
+
+// For backward compatibility
+export default createAuthRouter; 

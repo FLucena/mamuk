@@ -246,7 +246,7 @@ const WorkoutForm = ({ mode, selectedExerciseId }: WorkoutFormProps) => {
           title: formData.title,
           description: formData.description,
           days: formData.days,
-          createdBy: user.id
+          createdBy: user._id
         });
         
         navigate('/workouts');

@@ -30,10 +30,10 @@ const Workouts = () => {
       return true;
     } else if (user.role === 'coach') {
       // Coaches can see workouts they created or were assigned to them
-      return workout.createdBy === user.id || workout.assignedTo?.includes(user.id);
+      return workout.createdBy === user._id || workout.assignedTo?.includes(user._id);
     } else {
       // Regular users can see their own workouts or workouts assigned to them
-      return workout.createdBy === user.id || workout.assignedTo?.includes(user.id);
+      return workout.createdBy === user._id || workout.assignedTo?.includes(user._id);
     }
   });
   

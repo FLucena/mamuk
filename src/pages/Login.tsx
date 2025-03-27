@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/authStore';
 import { AtSymbolIcon, LockClosedIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import IconWrapper from '../components/IconWrapper';
+import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 import clsx from 'clsx';
 
 const Login = () => {
@@ -164,7 +165,9 @@ const Login = () => {
               </div>
 
               <div className="mt-6">
-                <div className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">
+                <GoogleLoginButton />
+
+                <div className="text-sm text-gray-600 dark:text-gray-400 text-center mt-4 mb-4">
                   <span>Demo users: </span>
                   <span className="font-semibold text-indigo-600 dark:text-indigo-400">user@example.com</span>,{' '}
                   <span className="font-semibold text-indigo-600 dark:text-indigo-400">coach@example.com</span>,{' '}

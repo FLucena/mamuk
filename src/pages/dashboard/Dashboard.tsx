@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/authStore';
 import { useWorkoutStore, Workout } from '../../store/workoutStore';
 import { 
@@ -11,7 +11,10 @@ import {
   Heart,
   CheckCheck,
   Dumbbell,
-  Award
+  Award,
+  ChevronDown,
+  FileText,
+  Layout
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { 
@@ -21,6 +24,7 @@ import {
 } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { useLanguage } from '../../context/useLanguage';
+import { useExerciseLibrary } from '../../store/exerciseStore';
 
 // Type for achievements
 interface Achievement {
@@ -44,18 +48,26 @@ interface UserData {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { workouts, fetchWorkouts } = useWorkoutStore();
+  const { workouts, fetchWorkouts, createWorkout } = useWorkoutStore();
+  const { exercises, fetchExercises } = useExerciseLibrary();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [workoutsByDay, setWorkoutsByDay] = useState<{ [key: string]: Workout[] }>({});
   const [streakDays, setStreakDays] = useState(0);
   const [caloriesBurned, setCaloriesBurned] = useState(0);
   const [weeklyGoal] = useState(5); // Mock weekly workout goal
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [showWorkoutOptions, setShowWorkoutOptions] = useState(false);
+  const workoutOptionsRef = useRef<HTMLDivElement>(null);
+  
+  // Separate state and ref for empty state dropdown
+  const [showEmptyStateOptions, setShowEmptyStateOptions] = useState(false);
+  const emptyStateOptionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadData = async () => {
-      await fetchWorkouts();
+      await Promise.all([fetchWorkouts(), fetchExercises()]);
       
       // Mock user data
       setUserData({
@@ -74,7 +86,121 @@ const Dashboard = () => {
     };
     
     loadData();
-  }, [fetchWorkouts, user]);
+  }, [fetchWorkouts, fetchExercises, user]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (workoutOptionsRef.current && !workoutOptionsRef.current.contains(event.target as Node)) {
+        setShowWorkoutOptions(false);
+      }
+      
+      if (emptyStateOptionsRef.current && !emptyStateOptionsRef.current.contains(event.target as Node)) {
+        setShowEmptyStateOptions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Helper function to generate unique IDs
+  const generateId = () => {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+  };
+
+  // Handle creating a blank workout
+  const handleCreateBlankWorkout = async () => {
+    try {
+      // Create a minimal workout with just one day and one empty block
+      const blankWorkout = {
+        title: t('new_workout'),
+        description: '',
+        createdBy: user?._id || 'anonymous',
+        days: [
+          {
+            id: `day-${generateId()}`,
+            name: `${t('day')} 1`,
+            isExpanded: true,
+            blocks: [
+              {
+                id: `block-${generateId()}`,
+                name: `${t('block_singular')} 1`,
+                isExpanded: true,
+                exercises: []
+              }
+            ]
+          }
+        ]
+      };
+
+      const newWorkout = await createWorkout(blankWorkout);
+      navigate(`/workouts/${newWorkout.id}`);
+    } catch (error) {
+      console.error('Failed to create blank workout:', error);
+      alert(t('save_workout_failed'));
+    }
+    
+    // Close both dropdowns - the user could have clicked from either one
+    setShowWorkoutOptions(false);
+    setShowEmptyStateOptions(false);
+  };
+
+  // Handle creating a template workout
+  const handleCreateTemplateWorkout = async () => {
+    if (exercises.length === 0) {
+      alert(t('no_exercises_found'));
+      return;
+    }
+
+    try {
+      // Create a template with 3 days, 4 blocks per day, and 3 random exercises per block
+      const templateWorkout = {
+        title: t('new_workout'),
+        description: t('template_description'),
+        createdBy: user?._id || 'anonymous',
+        days: Array(3).fill(null).map((_, dayIndex) => ({
+          id: `day-${generateId()}`,
+          name: `${t('day')} ${dayIndex + 1}`,
+          isExpanded: true,
+          blocks: Array(4).fill(null).map((_, blockIndex) => {
+            // Create random exercise selections
+            const randomExercises = [...exercises]
+              .sort(() => 0.5 - Math.random())
+              .slice(0, 3)
+              .map(exercise => ({
+                id: `exercise-${generateId()}`,
+                exerciseId: exercise.id,
+                name: exercise.name,
+                sets: exercise.defaultSets || 3,
+                reps: exercise.defaultReps || 10,
+                weight: exercise.defaultWeight,
+                notes: ''
+              }));
+
+            return {
+              id: `block-${generateId()}`,
+              name: `${t('block_singular')} ${blockIndex + 1}`,
+              isExpanded: true,
+              exercises: randomExercises
+            };
+          })
+        }))
+      };
+
+      const newWorkout = await createWorkout(templateWorkout);
+      navigate(`/workouts/${newWorkout.id}`);
+    } catch (error) {
+      console.error('Failed to create template workout:', error);
+      alert(t('save_workout_failed'));
+    }
+    
+    // Close both dropdowns - the user could have clicked from either one
+    setShowWorkoutOptions(false);
+    setShowEmptyStateOptions(false);
+  };
 
   // Filter workouts based on user role - moved inside useEffect to prevent infinite loop
   useEffect(() => {
@@ -88,10 +214,10 @@ const Dashboard = () => {
           return true;
         } else if (user.role === 'coach') {
           // Coaches can see workouts they created or were assigned to them
-          return workout.createdBy === user.id || workout.assignedTo?.includes(user.id);
+          return workout.createdBy === user._id || workout.assignedTo?.includes(user._id);
         } else {
           // Regular users can see their own workouts or workouts assigned to them
-          return workout.createdBy === user.id || workout.assignedTo?.includes(user.id);
+          return workout.createdBy === user._id || workout.assignedTo?.includes(user._id);
         }
       });
       
@@ -160,10 +286,10 @@ const Dashboard = () => {
       return true;
     } else if (user.role === 'coach') {
       // Coaches can see workouts they created or were assigned to them
-      return workout.createdBy === user.id || workout.assignedTo?.includes(user.id);
+      return workout.createdBy === user._id || workout.assignedTo?.includes(user._id);
     } else {
       // Regular users can see their own workouts or workouts assigned to them
-      return workout.createdBy === user.id || workout.assignedTo?.includes(user.id);
+      return workout.createdBy === user._id || workout.assignedTo?.includes(user._id);
     }
   });
   
@@ -195,10 +321,50 @@ const Dashboard = () => {
             {t('journey_overview')}
           </p>
         </div>
-        <Button size="lg" className="mt-4 sm:mt-0 flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          {t('start_new_workout')}
-        </Button>
+        <div className="relative mt-4 sm:mt-0" ref={workoutOptionsRef}>
+          <Button 
+            size="lg" 
+            className="flex items-center gap-2"
+            onClick={() => setShowWorkoutOptions(!showWorkoutOptions)}
+          >
+            <Plus className="h-4 w-4" />
+            {t('start_new_workout')}
+            <ChevronDown className={`h-4 w-4 transition-transform ${showWorkoutOptions ? 'rotate-180' : ''}`} />
+          </Button>
+          
+          {showWorkoutOptions && (
+            <div className="absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-10 overflow-hidden">
+              <div className="py-1" role="menu" aria-orientation="vertical">
+                <button
+                  className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700"
+                  onClick={handleCreateBlankWorkout}
+                  role="menuitem"
+                >
+                  <div className="flex-shrink-0 mr-3">
+                    <FileText className="h-5 w-5 text-indigo-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{t('blank_workout')}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('blank_workout_description')}</p>
+                  </div>
+                </button>
+                <button
+                  className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  onClick={handleCreateTemplateWorkout}
+                  role="menuitem"
+                >
+                  <div className="flex-shrink-0 mr-3">
+                    <Layout className="h-5 w-5 text-indigo-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{t('use_template')}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('template_description')}</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Stats Cards Grid */}
@@ -338,10 +504,49 @@ const Dashboard = () => {
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
                   {t('get_started')}
                 </p>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('create_workout')}
-                </Button>
+                <div className="relative" ref={emptyStateOptionsRef}>
+                  <Button 
+                    onClick={() => setShowEmptyStateOptions(!showEmptyStateOptions)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {t('create_workout')}
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showEmptyStateOptions ? 'rotate-180' : ''}`} />
+                  </Button>
+                  
+                  {showEmptyStateOptions && (
+                    <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-64 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-10 overflow-hidden">
+                      <div className="py-1" role="menu" aria-orientation="vertical">
+                        <button
+                          className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700"
+                          onClick={handleCreateBlankWorkout}
+                          role="menuitem"
+                        >
+                          <div className="flex-shrink-0 mr-3">
+                            <FileText className="h-5 w-5 text-indigo-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{t('blank_workout')}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('blank_workout_description')}</p>
+                          </div>
+                        </button>
+                        <button
+                          className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={handleCreateTemplateWorkout}
+                          role="menuitem"
+                        >
+                          <div className="flex-shrink-0 mr-3">
+                            <Layout className="h-5 w-5 text-indigo-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{t('use_template')}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('template_description')}</p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </Card>
           )}

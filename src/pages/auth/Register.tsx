@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../store/authStore';
 
 const Register = () => {
@@ -10,8 +10,25 @@ const Register = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { register } = useAuth();
+  const { register, error: authError, clearError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Parse return URL from query parameters if present
+  const searchParams = new URLSearchParams(location.search);
+  const returnUrl = searchParams.get('returnUrl') || '/';
+  
+  // Clear any previous auth errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+  
+  // Set error from auth store if it exists
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,11 +53,13 @@ const Register = () => {
     setError('');
     
     try {
-      await register(name, email, password);
-      navigate('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to register');
+      await register({ name, email, password });
+      
+      // Redirect to the return URL or default to home
+      navigate(decodeURIComponent(returnUrl));
     } finally {
+      // If there was an error, the auth store will have it
+      // and we just need to ensure isLoading is reset
       setIsLoading(false);
     }
   };

@@ -1,7 +1,7 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
-import { User as UserIcon, Sun, Moon, Menu as MenuIcon, X, LogOut, Settings } from 'lucide-react';
+import { User as UserIcon, Sun, Moon, LogOut, Settings } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { NavigationItem } from '../../utils/navigation';
 import { useTheme } from '../../context/ThemeProvider';
@@ -20,22 +20,55 @@ const HorizontalNavbar = ({
   const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   return (
     <nav className="navbar">
       <div className="navbar-container">
         <div className="flex h-16 justify-between items-center">
           {/* Logo and brand */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="navbar-logo">
-              <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-white">
+              <span className="text-xl font-bold text-gray-900 dark:text-white">
                 {t('app_title')}
               </span>
             </Link>
           </div>
 
           {/* Desktop Navigation Links */}
-          <div className="navbar-links flex flex-row gap-3">
+          <div className="hidden md:flex md:items-center md:space-x-4">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href || 
                 (item.href !== '/' && location.pathname.startsWith(item.href));
@@ -67,7 +100,7 @@ const HorizontalNavbar = ({
           </div>
 
           {/* Right side items - Mobile Menu Button, Theme Toggle, Profile */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
@@ -147,30 +180,60 @@ const HorizontalNavbar = ({
             </Menu>
 
             {/* Mobile menu button */}
-            <div className="flex md:hidden">
+            <div className="md:hidden">
               <button
                 type="button"
-                className="w-10 h-10 inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="relative flex items-center justify-center w-10 h-10 p-2 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label={t('open_main_menu')}
+                aria-label={mobileMenuOpen ? t('close_main_menu') : t('open_main_menu')}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-menu"
                 tabIndex={0}
               >
-                <span className="sr-only">{t('open_main_menu')}</span>
-                {mobileMenuOpen ? (
-                  <X className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <MenuIcon className="block h-6 w-6" aria-hidden="true" />
-                )}
+                <span className="sr-only">{mobileMenuOpen ? t('close_main_menu') : t('open_main_menu')}</span>
+                <div className="flex flex-col justify-center w-5 h-5 space-y-1.5">
+                  <span 
+                    className={cn(
+                      "block h-0.5 rounded-full bg-current transition-all duration-300 ease-in-out",
+                      mobileMenuOpen ? "w-5 -rotate-45 translate-y-2" : "w-5"
+                    )} 
+                  />
+                  <span 
+                    className={cn(
+                      "block h-0.5 rounded-full bg-current transition-all duration-300 ease-in-out",
+                      mobileMenuOpen ? "w-0 opacity-0" : "w-5 opacity-100"
+                    )}
+                  />
+                  <span 
+                    className={cn(
+                      "block h-0.5 rounded-full bg-current transition-all duration-300 ease-in-out",
+                      mobileMenuOpen ? "w-5 rotate-45 -translate-y-2" : "w-5"
+                    )} 
+                  />
+                </div>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="space-y-2 px-4 py-3 bg-white dark:bg-gray-800 shadow-lg">
+      {/* Mobile menu - Animated slide-in panel */}
+      <Transition
+        show={mobileMenuOpen}
+        as={Fragment}
+        enter="transition ease-out duration-300"
+        enterFrom="opacity-0 -translate-y-4"
+        enterTo="opacity-100 translate-y-0"
+        leave="transition ease-in duration-200"
+        leaveFrom="opacity-100 translate-y-0"
+        leaveTo="opacity-0 -translate-y-4"
+      >
+        <div 
+          id="mobile-menu" 
+          ref={mobileMenuRef}
+          className="md:hidden absolute left-0 right-0 z-20 bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700"
+        >
+          <div className="space-y-1 px-4 py-3">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href || 
                 (item.href !== '/' && location.pathname.startsWith(item.href));
@@ -186,7 +249,7 @@ const HorizontalNavbar = ({
                       ? "navbar-link-active"
                       : "navbar-link-inactive"
                   )}
-                  onClick={() => setMobileMenuOpen(false)}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <div className={cn(
                     "mr-3 flex items-center justify-center h-6 w-6",
@@ -202,6 +265,15 @@ const HorizontalNavbar = ({
             })}
           </div>
         </div>
+      </Transition>
+      
+      {/* Backdrop for mobile menu */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-10 md:hidden"
+          aria-hidden="true" 
+          onClick={() => setMobileMenuOpen(false)}
+        />
       )}
     </nav>
   );
