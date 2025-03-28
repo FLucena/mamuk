@@ -140,9 +140,16 @@ export const useAuth = create<AuthState>()(
             user: userData as unknown as User,
             isLoading: false
           });
-        } catch (error) {
-          // If we can't get the profile, user token might be invalid
-          if (error instanceof Error && error.message.includes('401')) {
+        } catch (error: any) {
+          console.error('Error refreshing user data:', error);
+          
+          // Handle different error types
+          if (error?.response?.status === 404) {
+            set({ 
+              isLoading: false,
+              error: 'API endpoint not found. Please check the configuration.'
+            });
+          } else if (error?.response?.status === 401) {
             authService.logout();
             set({
               isAuthenticated: false,
@@ -155,7 +162,7 @@ export const useAuth = create<AuthState>()(
               isLoading: false,
               error: error instanceof Error 
                 ? error.message 
-                : 'Failed to refresh user data.'
+                : 'Failed to refresh user data. Please try again.'
             });
           }
         }

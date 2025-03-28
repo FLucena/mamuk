@@ -61,6 +61,9 @@ const Achievements = lazy(() => import('./pages/achievements/Achievements'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const ExerciseLibrary = lazy(() => import('./pages/exercises/ExerciseLibrary'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const About = lazy(() => import('./pages/About'));
 
 // Error Boundary to catch and handle errors
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -191,6 +194,22 @@ function App() {
                       <ProtectedRoute allowedRoles={['admin']}>
                         <UserManagement />
                       </ProtectedRoute>
+                    </Suspense>
+                  } />
+                  {/* Legal and About pages */}
+                  <Route path="/terms" element={
+                    <Suspense fallback={<PageLoading />}>
+                      <Terms />
+                    </Suspense>
+                  } />
+                  <Route path="/privacy" element={
+                    <Suspense fallback={<PageLoading />}>
+                      <Privacy />
+                    </Suspense>
+                  } />
+                  <Route path="/about" element={
+                    <Suspense fallback={<PageLoading />}>
+                      <About />
                     </Suspense>
                   } />
                 </Route>

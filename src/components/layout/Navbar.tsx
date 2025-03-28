@@ -24,8 +24,54 @@ const Navbar = ({
   const { isDarkMode, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [isHovering, setIsHovering] = useState(false);
   const location = useLocation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
+
+  // Handle scroll events
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          
+          // Show navbar if:
+          // 1. User is scrolling up
+          // 2. User is at the top of the page
+          // 3. Mobile menu is open
+          // 4. User is hovering near the top
+          setIsVisible(
+            currentScrollY < lastScrollY.current ||
+            currentScrollY < 50 ||
+            mobileMenuOpen ||
+            isHovering
+          );
+          
+          lastScrollY.current = currentScrollY;
+          ticking.current = false;
+        });
+        
+        ticking.current = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [mobileMenuOpen, isHovering]);
+
+  // Handle hover detection
+  const handleMouseMove = (e: MouseEvent) => {
+    // Show navbar when mouse is near the top of the screen (within 100px)
+    setIsHovering(e.clientY < 100);
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -60,7 +106,12 @@ const Navbar = ({
   }, [mobileMenuOpen]);
 
   return (
-    <nav className="navbar">
+    <nav 
+      className={cn(
+        "navbar fixed top-0 left-0 right-0 z-50 transition-transform duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm",
+        !isVisible && !mobileMenuOpen ? "-translate-y-full" : "translate-y-0"
+      )}
+    >
       <div className="navbar-container">
         <div className="flex h-16 justify-between items-center">
           {/* Logo and brand */}

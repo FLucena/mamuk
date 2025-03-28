@@ -41,15 +41,37 @@ export function LanguageProvider({
 
   // Translation function
   const t = (key: string): string => {
-    if (translations[language] && translations[language][key]) {
-      return translations[language][key];
+    const getTranslation = (lang: SupportedLanguage, k: string): string => {
+      // Handle nested translations using dot notation
+      const keys = k.split('.');
+      let translation: any = translations[lang];
+      
+      for (const key of keys) {
+        if (translation && typeof translation === 'object') {
+          translation = translation[key];
+        } else {
+          return k;
+        }
+      }
+
+      if (typeof translation === 'string') {
+        return translation;
+      }
+      return k;
+    };
+
+    // Try current language first
+    const currentTranslation = getTranslation(language, key);
+    if (currentTranslation !== key) {
+      return currentTranslation;
     }
-    
-    // Fallback to English if translation is missing
-    if (translations['en'] && translations['en'][key]) {
-      return translations['en'][key];
+
+    // Fallback to English
+    const englishTranslation = getTranslation('en', key);
+    if (englishTranslation !== key) {
+      return englishTranslation;
     }
-    
+
     // Last resort: return the key itself
     return key;
   };

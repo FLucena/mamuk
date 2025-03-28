@@ -39,26 +39,17 @@ const DashboardLayout = () => {
   const navigationItems = getNavigationItems(user);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Sticky Navbar */}
-      <div className="sticky top-0 z-50">
-        <Navbar
-          navigation={navigationItems}
-          logout={logout}
-          user={user as User | undefined}
-        />
-      </div>
-      
-      {/* Main Content */}
-      <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6 sm:p-8">
-          <Outlet />
-        </div>
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      <Navbar
+        navigation={navigationItems}
+        logout={logout}
+        user={user as User | undefined}
+      />
+      <main className="pt-16">
+        <Outlet />
       </main>
-      
-      {/* Footer */}
-      <Footer />
       <BackToTop />
+      <Footer />
     </div>
   );
 };

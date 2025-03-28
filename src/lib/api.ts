@@ -65,17 +65,4 @@ export const authService = {
   }
 };
 
-// User service
-export const userService = {
-  getProfile: async () => {
-    try {
-      const response = await api.get('/api/users/profile');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      throw error;
-    }
-  }
-};
-
 export default api; 

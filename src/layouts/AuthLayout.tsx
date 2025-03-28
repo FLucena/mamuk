@@ -1,11 +1,12 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../store/authStore';
 import Footer from '../components/layout/Footer';
 
 const AuthLayout = () => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   
-  // Redirect to dashboard if user is already authenticated
+  // Only redirect to dashboard if user is authenticated and trying to access auth pages
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }

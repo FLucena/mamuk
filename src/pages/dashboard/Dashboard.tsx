@@ -310,25 +310,26 @@ const Dashboard = () => {
   const weeklyProgressPercentage = Math.round((workoutsThisWeek / (weeklyGoal || 1)) * 100);
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-6 sm:space-y-8 animate-fadeIn p-4 sm:p-0">
       {/* Welcome section */}
-      <div className="sm:flex sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 pb-6 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 pb-4 sm:pb-6 mb-6 sm:mb-8">
+        <div className="mb-4 sm:mb-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             {t('welcome_back')}, {user?.name || t('fitness_enthusiast')}
           </h1>
-          <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-base sm:text-lg text-gray-600 dark:text-gray-400">
             {t('journey_overview')}
           </p>
         </div>
-        <div className="relative mt-4 sm:mt-0" ref={workoutOptionsRef}>
+        <div className="relative" ref={workoutOptionsRef}>
           <Button 
-            size="lg" 
-            className="flex items-center gap-2"
+            size="default"
+            className="w-full sm:w-auto flex items-center gap-2 justify-center"
             onClick={() => setShowWorkoutOptions(!showWorkoutOptions)}
           >
             <Plus className="h-4 w-4" />
-            {t('start_new_workout')}
+            <span className="hidden sm:inline">{t('start_new_workout')}</span>
+            <span className="sm:hidden">{t('new_workout')}</span>
             <ChevronDown className={`h-4 w-4 transition-transform ${showWorkoutOptions ? 'rotate-180' : ''}`} />
           </Button>
           
@@ -368,7 +369,7 @@ const Dashboard = () => {
       </div>
       
       {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Stats Card - Total Workouts */}
         <Card className="overflow-hidden border border-gray-200 dark:border-gray-700">
           <div className="p-6 flex items-start">
@@ -475,11 +476,11 @@ const Dashboard = () => {
       </div>
       
       {/* Content sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mt-6 sm:mt-8">
         {/* Recent Workouts */}
-        <div className="lg:col-span-2 space-y-5">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">{t('recent_workouts')}</h2>
+            <h2 className="text-lg sm:text-xl font-semibold">{t('recent_workouts')}</h2>
             <Link 
               to="/workouts" 
               className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-medium"
@@ -553,9 +554,9 @@ const Dashboard = () => {
         </div>
         
         {/* Right column */}
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Weekly Progress */}
-          <Card className="border border-gray-200 dark:border-gray-700 p-6">
+          <Card className="border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <CardTitle className="mb-4 flex items-center">
               <Calendar className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
               <span>{t('weekly_progress')}</span>
@@ -654,16 +655,16 @@ const WorkoutItem = ({ workout }: { workout: Workout }) => {
   return (
     <Link to={`/workouts/${workout.id}`}>
       <Card className="hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="p-5">
-          <div className="flex items-start justify-between">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0">
             <div>
-              <h3 className="text-lg font-semibold mb-1">{workout.title || 'Untitled Workout'}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              <h3 className="text-base sm:text-lg font-semibold mb-1">{workout.title || 'Untitled Workout'}</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2">
                 {formatDate(workout.updatedAt)}
               </p>
             </div>
             <div className={cn(
-              "px-2.5 py-0.5 rounded-full text-xs font-medium",
+              "self-start sm:self-auto px-2.5 py-0.5 rounded-full text-xs font-medium",
               workout.completed 
                 ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                 : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" 
@@ -672,14 +673,18 @@ const WorkoutItem = ({ workout }: { workout: Workout }) => {
             </div>
           </div>
           
-          <div className="mt-3 flex items-center text-sm text-gray-600 dark:text-gray-300">
-            <Dumbbell className="h-4 w-4 mr-1.5" />
-            <span>{totalExercises} {t('exercises')}</span>
+          <div className="mt-3 flex flex-wrap gap-3 sm:gap-0 sm:flex-nowrap items-center text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+            <div className="flex items-center">
+              <Dumbbell className="h-4 w-4 mr-1.5" />
+              <span>{totalExercises} {t('exercises')}</span>
+            </div>
             {workout.days.length > 0 && (
               <>
-                <span className="mx-2">&middot;</span>
-                <Calendar className="h-4 w-4 mr-1.5" />
-                <span>{workout.days.length} {workout.days.length === 1 ? t('day_singular') : t('day_plural')}</span>
+                <span className="hidden sm:inline mx-2">&middot;</span>
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-1.5" />
+                  <span>{workout.days.length} {workout.days.length === 1 ? t('day_singular') : t('day_plural')}</span>
+                </div>
               </>
             )}
           </div>
@@ -707,9 +712,9 @@ const AchievementItem = ({
         ? "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20" 
         : "border-gray-200 dark:border-gray-700"
     )}>
-      <div className="p-4 flex items-start">
+      <div className="p-3 sm:p-4 flex items-start">
         <div className={cn(
-          "h-10 w-10 rounded-full flex items-center justify-center",
+          "h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center",
           earned 
             ? "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300" 
             : "bg-gray-100 dark:bg-gray-800 text-gray-400"
@@ -717,7 +722,7 @@ const AchievementItem = ({
           {icon}
         </div>
         <div className="ml-3">
-          <h3 className="text-sm font-medium">{title}</h3>
+          <h3 className="text-xs sm:text-sm font-medium">{title}</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>
         </div>
       </div>
