@@ -20,7 +20,7 @@ const Footer = () => {
                 Your personal workout companion to create, track, and accomplish your fitness goals. Build custom workout routines and take control of your fitness journey.
               </p>
               <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Made with <Heart className="h-4 w-4 text-red-500 mx-1" aria-hidden="true" /> in 2023-{currentYear}
+                Made with <Heart className="h-4 w-4 text-red-500 mx-1" aria-hidden="true" /> in 2025-{currentYear}
               </p>
             </div>
 

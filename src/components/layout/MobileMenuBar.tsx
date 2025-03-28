@@ -12,6 +12,7 @@ interface UserType {
   name?: string;
   email?: string;
   id?: string;
+  profilePicture?: string;
   // Add other properties as needed
 }
 
@@ -27,7 +28,7 @@ const MobileProfileDropdown = ({ user, logout }: { user: UserType | null; logout
       <Menu.Button className="bg-white dark:bg-gray-800 p-1 rounded-full flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
         <span className="sr-only">Open user menu</span>
         <Avatar className="h-8 w-8">
-          <AvatarImage src={user?.image} alt={user?.name || ''} />
+          <AvatarImage src={user?.profilePicture} alt={user?.name || ''} />
           <AvatarFallback className="bg-indigo-600 text-white">
             {user?.name?.charAt(0).toUpperCase() || "U"}
           </AvatarFallback>

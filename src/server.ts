@@ -674,7 +674,7 @@ if (process.env.NODE_ENV === 'production') {
   
   // For any other request, send the React app's index.html
   // This allows client-side routing to work
-  app.get('*', (req, res) => {
+  app.get('*', (_req, res) => {
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 } else {
@@ -731,7 +731,7 @@ DELETE /api/workouts/:id
 }
 
 // General error handler - Must be the last middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Server error:', err);
   
   // Determine if we've already started sending a response

@@ -7,15 +7,20 @@ import type { NavigationItem } from '../../utils/navigation';
 import { useTheme } from '../../context/ThemeProvider';
 import { useLanguage } from '../../context/useLanguage';
 
-interface HorizontalNavbarProps {
+interface NavbarProps {
   navigation: NavigationItem[];
   logout: () => void;
+  user?: {
+    profilePicture?: string;
+    name: string;
+  };
 }
 
-const HorizontalNavbar = ({
+const Navbar = ({
   navigation,
   logout,
-}: HorizontalNavbarProps) => {
+  user,
+}: NavbarProps) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -119,8 +124,16 @@ const HorizontalNavbar = ({
             <Menu as="div" className="relative">
               <MenuButton className="flex items-center rounded-full bg-white dark:bg-gray-800 p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-gray-800">
                 <span className="sr-only">{t('open_user_menu')}</span>
-                <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                  <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center overflow-hidden">
+                  {user?.profilePicture ? (
+                    <img 
+                      src={user.profilePicture} 
+                      alt={user.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                  )}
                 </div>
               </MenuButton>
               <Transition
@@ -279,4 +292,4 @@ const HorizontalNavbar = ({
   );
 };
 
-export default HorizontalNavbar; 
+export default Navbar; 

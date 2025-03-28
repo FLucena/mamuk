@@ -53,7 +53,7 @@ const Profile = () => {
     if (workouts.length > 0) {
       // Filter user's workouts
       const userWorkouts = workouts.filter(w => 
-        w.createdBy === user?.id || (w.assignedTo && w.assignedTo.includes(user?.id || ''))
+        w.createdBy === user?._id || (w.assignedTo && w.assignedTo.includes(user?._id || ''))
       );
       
       // Sort by date
@@ -74,7 +74,7 @@ const Profile = () => {
         caloriesBurned: completedWorkouts * 300 // Very rough estimate
       }));
     }
-  }, [workouts, user?.id]);
+  }, [workouts, user?._id]);
   
   // Calculate streak (consecutive days with workouts)
   const calculateStreak = (sortedWorkouts: Workout[]): number => {
@@ -145,12 +145,20 @@ const Profile = () => {
       <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
         <div className="border-b border-gray-200 dark:border-gray-700">
           <div className="px-4 py-5 sm:px-6 flex items-center">
-            <div className="h-20 w-20 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mr-6">
-              <IconWrapper 
-                icon={UserIcon}
-                size="lg"
-                className="text-indigo-500 dark:text-indigo-400"
-              />
+            <div className="h-20 w-20 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mr-6 overflow-hidden">
+              {user.profilePicture ? (
+                <img 
+                  src={user.profilePicture} 
+                  alt={user.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <IconWrapper 
+                  icon={UserIcon}
+                  size="lg"
+                  className="text-indigo-500 dark:text-indigo-400"
+                />
+              )}
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">

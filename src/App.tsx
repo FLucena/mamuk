@@ -44,7 +44,7 @@ const ErrorFallback = ({ error }: { error: Error }) => (
 
 // Lazy-loaded layout components with their own Suspense boundaries
 const AuthLayout = lazy(() => import('./layouts/AuthLayout'));
-const HorizontalDashboardLayout = lazy(() => import('./layouts/HorizontalDashboardLayout'));
+const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'));
 
 // Lazy-loaded page components
 const Login = lazy(() => import('./pages/Login'));
@@ -136,7 +136,7 @@ function App() {
                 <Route element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <ProtectedRoute>
-                      <HorizontalDashboardLayout />
+                      <DashboardLayout />
                     </ProtectedRoute>
                   </Suspense>
                 }>
