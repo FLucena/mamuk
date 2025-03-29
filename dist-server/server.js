@@ -572,7 +572,7 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express_1.default.static(clientBuildPath));
     // For any other request, send the React app's index.html
     // This allows client-side routing to work
-    app.get('*', (req, res) => {
+    app.get('*', (_req, res) => {
         res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
     });
 }
@@ -630,7 +630,7 @@ DELETE /api/workouts/:id
     });
 }
 // General error handler - Must be the last middleware
-app.use((err, req, res, next) => {
+app.use((err, _req, res, next) => {
     console.error('Server error:', err);
     // Determine if we've already started sending a response
     if (res.headersSent) {

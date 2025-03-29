@@ -51,6 +51,20 @@ export default defineConfig(({ mode }) => {
         }
       },
       chunkSizeWarningLimit: 800 // Increase from default 500kb to 800kb
+    },
+    server: {
+      port: 5173,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5000',
+          changeOrigin: true
+        }
+      }
+    },
+    base: '/', // Ensure base URL is set correctly
+    preview: {
+      port: 5173,
+      strictPort: true
     }
   }
 })
